@@ -25,6 +25,7 @@
                     <button id="registerBtn" class="btn-primary">Регистрация</button>
                 </div>
                 <div id="userMenu" class="user-menu hidden">
+                    <img id="headerAvatar" class="header-avatar" src="" alt="avatar">
                     <span id="userGreeting" class="greeting"></span>
                     <button id="profileSettingsBtn" class="icon-btn" title="Настройки профиля">
                         <i class="fas fa-user-cog"></i>
@@ -47,13 +48,16 @@
                 <div id="postFormContainer" class="post-form-card hidden">
                     <div class="post-form">
                         <textarea id="postText" placeholder="Что нового? (до 280 символов)" maxlength="280"></textarea>
-                        <div class="image-upload-area">
-                            <label for="postImageInput" class="image-upload-label"><i class="fas fa-image"></i> Прикрепить фото</label>
-                            <input type="file" id="postImageInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
-                            <div id="postImagePreview" class="image-preview hidden"></div>
+                        <div class="image-preview" id="postImagePreview" style="display:none;">
+                            <img id="previewImg" src="#" alt="preview">
+                            <button type="button" id="removeImageBtn" class="remove-img"><i class="fas fa-times-circle"></i></button>
                         </div>
                         <div class="post-form-actions">
-                            <span id="charCounter">0/280</span>
+                            <div class="form-left">
+                                <label for="postImageInput" class="attach-btn"><i class="fas fa-image"></i> Фото</label>
+                                <input type="file" id="postImageInput" accept="image/*" style="display:none;">
+                                <span id="charCounter">0/280</span>
+                            </div>
                             <button id="submitPostBtn" class="btn-primary">Опубликовать</button>
                         </div>
                     </div>
@@ -64,7 +68,7 @@
             </div>
         </main>
 
-        <!-- Модальное окно входа -->
+        <!-- Модальные окна (вход, регистрация, профиль, админ, комментарии) -->
         <div id="loginModal" class="modal">
             <div class="modal-content">
                 <span class="close-modal">&times;</span>
@@ -77,7 +81,6 @@
             </div>
         </div>
 
-        <!-- Модальное окно регистрации -->
         <div id="registerModal" class="modal">
             <div class="modal-content">
                 <span class="close-modal">&times;</span>
@@ -91,16 +94,16 @@
             </div>
         </div>
 
-        <!-- Модальное окно настроек профиля (с аватаром) -->
         <div id="profileModal" class="modal">
             <div class="modal-content">
                 <span class="close-modal">&times;</span>
                 <h3><i class="fas fa-user-edit"></i> Настройки профиля</h3>
                 <form id="profileForm">
                     <div class="avatar-upload">
-                        <div class="current-avatar" id="currentAvatarPreview"></div>
-                        <label for="avatarInput" class="btn-outline" style="display:inline-block; margin-top:0.5rem;">Загрузить аватар</label>
-                        <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
+                        <img id="profileAvatarPreview" class="profile-avatar-preview" src="" alt="avatar">
+                        <label class="btn-outline" style="display:inline-block; margin-top:0.5rem;"><i class="fas fa-upload"></i> Загрузить аватар
+                            <input type="file" id="profileAvatarInput" accept="image/*" style="display:none;">
+                        </label>
                     </div>
                     <label>Имя пользователя</label>
                     <input type="text" id="profileUsername" placeholder="Новое имя" required>
@@ -113,35 +116,6 @@
             </div>
         </div>
 
-        <!-- Модальное окно редактирования пользователя админом (с аватаром) -->
-        <div id="adminEditUserModal" class="modal">
-            <div class="modal-content">
-                <span class="close-modal">&times;</span>
-                <h3><i class="fas fa-user-shield"></i> Редактирование пользователя (админ)</h3>
-                <form id="adminEditUserForm">
-                    <input type="hidden" id="adminEditUserId">
-                    <div class="avatar-upload">
-                        <div class="current-avatar" id="adminEditAvatarPreview"></div>
-                        <label for="adminAvatarInput" class="btn-outline" style="display:inline-block; margin-top:0.5rem;">Сменить аватар</label>
-                        <input type="file" id="adminAvatarInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
-                    </div>
-                    <label>Имя пользователя</label>
-                    <input type="text" id="adminEditUsername" required>
-                    <label>Email</label>
-                    <input type="email" id="adminEditEmail" required>
-                    <label>Новый пароль (оставьте пустым, чтобы не менять)</label>
-                    <input type="password" id="adminEditPassword" placeholder="Новый пароль">
-                    <label>Роль</label>
-                    <select id="adminEditRole">
-                        <option value="user">Пользователь</option>
-                        <option value="admin">Администратор</option>
-                    </select>
-                    <button type="submit" class="btn-primary full-width">Сохранить изменения</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Модальное окно админ-панели -->
         <div id="adminModal" class="modal admin-modal">
             <div class="modal-content wide-modal">
                 <span class="close-modal">&times;</span>
@@ -151,24 +125,49 @@
                     <button class="tab-btn" data-tab="allposts">Все посты</button>
                 </div>
                 <div id="adminUsersTab" class="admin-tab active">
-                    <div class="admin-stats">
-                        <p><strong>Активность пользователей в реальном времени</strong> (обновляется при каждом действии)</p>
-                    </div>
+                    <div class="admin-stats"><p><strong>Активность пользователей в реальном времени</strong></p></div>
                     <div class="table-wrapper">
-                        <table id="adminUsersTable">
-                            <thead><tr><th>Аватар</th><th>ID</th><th>Имя</th><th>Email</th><th>Роль</th><th>Постов</th><th>Последний вход</th><th>Последняя активность</th><th>Действия</th></tr></thead>
-                            <tbody></tbody>
-                        </table>
+                        <table id="adminUsersTable"><thead><tr><th>Аватар</th><th>Имя</th><th>Email</th><th>Роль</th><th>Постов</th><th>Последний вход</th><th>Последняя активность</th><th>Действия</th></tr></thead><tbody></tbody></table>
                     </div>
                 </div>
                 <div id="adminPostsTab" class="admin-tab">
                     <div class="table-wrapper">
-                        <table id="adminPostsTable">
-                            <thead><tr><th>ID</th><th>Автор</th><th>Текст</th><th>Изображение</th><th>Дата</th><th>Действия</th></tr></thead>
-                            <tbody></tbody>
-                        </table>
+                        <table id="adminPostsTable"><thead><tr><th>ID</th><th>Автор</th><th>Текст</th><th>Фото</th><th>Лайки</th><th>Комм.</th><th>Дата</th><th>Действия</th></tr></thead><tbody></tbody></table>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Модалка комментариев -->
+        <div id="commentsModal" class="modal">
+            <div class="modal-content wide-modal" style="max-width:600px;">
+                <span class="close-modal">&times;</span>
+                <h3><i class="fas fa-comments"></i> Комментарии</h3>
+                <div id="commentsList" class="comments-list"></div>
+                <div class="add-comment">
+                    <textarea id="commentText" placeholder="Написать комментарий..." rows="2"></textarea>
+                    <button id="submitCommentBtn" class="btn-primary">Отправить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модалка админского редактирования пользователя -->
+        <div id="adminEditUserModal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h3>Редактирование пользователя (админ)</h3>
+                <form id="adminEditUserForm">
+                    <input type="hidden" id="adminEditUserId">
+                    <label>Имя пользователя</label>
+                    <input type="text" id="adminEditUsername" required>
+                    <label>Email</label>
+                    <input type="email" id="adminEditEmail" required>
+                    <label>Новый пароль (оставьте пустым)</label>
+                    <input type="password" id="adminEditPassword">
+                    <label>Роль</label>
+                    <select id="adminEditRole"><option value="user">Пользователь</option><option value="admin">Администратор</option></select>
+                    <button type="submit" class="btn-primary full-width">Сохранить</button>
+                </form>
             </div>
         </div>
     </div>
