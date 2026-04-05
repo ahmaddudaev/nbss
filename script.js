@@ -3,6 +3,7 @@ let currentUser = null;
 let users = [];
 let posts = [];
 let searchQuery = '';
+let showOnlySubscriptions = true;  // true - показывать только подписки, false - все посты
 
 const STORAGE_USERS = 'nbss_users';
 const STORAGE_POSTS = 'nbss_posts';
@@ -14,10 +15,12 @@ function initData() {
     
     if (storedUsers) {
         users = JSON.parse(storedUsers);
-        // Миграция: добавить поле verified и avatar если нет
+        // Миграция: добавить недостающие поля
         users = users.map(u => {
             if (u.verified === undefined) u.verified = (u.role === 'admin');
             if (u.avatar === undefined) u.avatar = null;
+            if (u.followers === undefined) u.followers = [];
+            if (u.following === undefined) u.following = [];
             return u;
         });
     } else {
@@ -25,6 +28,7 @@ function initData() {
         users = [{ 
             id: '1', username: 'MrSigma', email: 'sigma@nbss.ru', password: 'Mrbeast132!', 
             role: 'admin', avatar: null, verified: true, 
+            followers: [], following: [],
             createdAt: now, lastLogin: now, lastActive: now, postCount: 0 
         }];
     }
@@ -32,7 +36,6 @@ function initData() {
     
     if (storedPosts) {
         posts = JSON.parse(storedPosts);
-        // Миграция: добавить likes и comments если нет
         posts = posts.map(p => {
             if (!p.likes) p.likes = [];
             if (!p.comments) p.comments = [];
@@ -41,7 +44,7 @@ function initData() {
     } else {
         posts = [{ 
             id: Date.now().toString() + '1', userId: '1', username: 'MrSigma', 
-            text: 'Добро пожаловать в нбсс! 🇷🇺 Быстрая соцсеть с фото, лайками и комментариями. Администратор может выдавать галочку верификации ✅', 
+            text: 'Добро пожаловать в нбсс! 🇷🇺 Теперь с подписками! Подписывайтесь на интересных авторов.', 
             image: null, likes: [], comments: [], createdAt: new Date().toISOString() 
         }];
     }
@@ -65,6 +68,89 @@ function formatDate(iso) { return new Date(iso).toLocaleString('ru-RU', { day:'n
 function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
 function showToast(msg, type='info') { const t = document.createElement('div'); t.innerText = msg; t.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:${type==='error'?'#dc2626':'#2563eb'};color:white;padding:8px 20px;border-radius:40px;z-index:9999;font-size:0.9rem;`; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
 function getAvatarUrl(user) { return user?.avatar || `https://ui-avatars.com/api/?background=2563eb&color=fff&rounded=true&size=40&name=${user?.username?.charAt(0)||'?'}`; }
+
+// ---------- FOLLOW SYSTEM ----------
+function followUser(targetUserId) {
+    if (!currentUser) { showToast('Войдите, чтобы подписываться', 'error'); return; }
+    if (targetUserId === currentUser.id) { showToast('Нельзя подписаться на себя', 'error'); return; }
+    const target = users.find(u => u.id === targetUserId);
+    if (!target) return;
+    if (!currentUser.following.includes(targetUserId)) {
+        currentUser.following.push(targetUserId);
+        target.followers.push(currentUser.id);
+        saveUsers();
+        showToast(`Вы подписались на @${target.username}`);
+        renderFeed();
+        if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
+        // обновить открытый профиль, если открыт
+        if (window.currentOpenProfileId === targetUserId) renderUserProfileModal(targetUserId);
+        if (document.getElementById('profileModal').style.display === 'flex') updateProfileModalStats();
+    } else {
+        showToast('Вы уже подписаны', 'info');
+    }
+}
+function unfollowUser(targetUserId) {
+    if (!currentUser) return;
+    const target = users.find(u => u.id === targetUserId);
+    if (!target) return;
+    currentUser.following = currentUser.following.filter(id => id !== targetUserId);
+    target.followers = target.followers.filter(id => id !== currentUser.id);
+    saveUsers();
+    showToast(`Вы отписались от @${target.username}`);
+    renderFeed();
+    if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
+    if (window.currentOpenProfileId === targetUserId) renderUserProfileModal(targetUserId);
+    if (document.getElementById('profileModal').style.display === 'flex') updateProfileModalStats();
+}
+function toggleFollow(targetUserId) {
+    if (!currentUser) { showToast('Войдите', 'error'); return; }
+    if (currentUser.following.includes(targetUserId)) {
+        unfollowUser(targetUserId);
+    } else {
+        followUser(targetUserId);
+    }
+}
+function updateProfileModalStats() {
+    if (currentUser) {
+        document.getElementById('profileFollowersCount').innerText = currentUser.followers.length;
+        document.getElementById('profileFollowingCount').innerText = currentUser.following.length;
+    }
+}
+
+// ---------- USER PROFILE MODAL ----------
+let currentOpenProfileId = null;
+function openUserProfile(userId) {
+    if (!currentUser) { showToast('Войдите, чтобы смотреть профили', 'error'); return; }
+    currentOpenProfileId = userId;
+    renderUserProfileModal(userId);
+    openModal('userProfileModal');
+}
+function renderUserProfileModal(userId) {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    const isOwnProfile = (currentUser && currentUser.id === userId);
+    const isFollowing = currentUser && currentUser.following.includes(userId);
+    const avatar = getAvatarUrl(user);
+    const verifiedBadge = user.verified ? '<span class="verified-badge"><i class="fas fa-check-circle"></i> verified</span>' : '';
+    const content = `
+        <img src="${avatar}" alt="avatar">
+        <h3>@${escapeHtml(user.username)} ${verifiedBadge}</h3>
+        <div class="profile-stats">
+            <div><div class="count">${user.followers.length}</div><div>подписчиков</div></div>
+            <div><div class="count">${user.following.length}</div><div>подписок</div></div>
+            <div><div class="count">${user.postCount || 0}</div><div>постов</div></div>
+        </div>
+    `;
+    document.getElementById('userProfileContent').innerHTML = content;
+    const followBtn = document.getElementById('followUserBtn');
+    if (!isOwnProfile && currentUser) {
+        followBtn.style.display = 'block';
+        followBtn.innerText = isFollowing ? 'Отписаться' : 'Подписаться';
+        followBtn.onclick = () => toggleFollow(userId);
+    } else {
+        followBtn.style.display = 'none';
+    }
+}
 
 // ---------- LIKES & COMMENTS ----------
 function toggleLike(postId) {
@@ -122,21 +208,28 @@ function deletePostById(postId) {
     } else showToast('Нет прав', 'error');
 }
 
-// ---------- FILTER POSTS (SEARCH) ----------
-function filterPostsBySearch() {
-    if (!searchQuery.trim()) return posts;
-    const query = searchQuery.toLowerCase();
-    return posts.filter(post => 
-        post.text.toLowerCase().includes(query) || 
-        post.username.toLowerCase().includes(query)
-    );
+// ---------- FILTER POSTS (SEARCH + SUBSCRIPTIONS) ----------
+function filterPostsForFeed() {
+    let filtered = [...posts];
+    // Поиск
+    if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        filtered = filtered.filter(p => p.text.toLowerCase().includes(q) || p.username.toLowerCase().includes(q));
+    }
+    // Режим "Подписки" (только для обычных пользователей; админ видит всё)
+    if (showOnlySubscriptions && currentUser && currentUser.role !== 'admin') {
+        filtered = filtered.filter(p => 
+            p.userId === currentUser.id || currentUser.following.includes(p.userId)
+        );
+    }
+    return filtered;
 }
 function renderFeed() {
     const feedDiv = document.getElementById('feed');
     if (!feedDiv) return;
-    let filteredPosts = filterPostsBySearch();
-    if (!filteredPosts.length) { feedDiv.innerHTML = '<div class="loading-spinner">Ничего не найдено 😔</div>'; return; }
-    const sorted = [...filteredPosts].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    let filtered = filterPostsForFeed();
+    if (!filtered.length) { feedDiv.innerHTML = '<div class="loading-spinner">Ничего не найдено 😔</div>'; return; }
+    const sorted = filtered.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
     feedDiv.innerHTML = sorted.map(post => {
         const author = users.find(u => u.id === post.userId);
         const avatar = getAvatarUrl(author);
@@ -146,7 +239,13 @@ function renderFeed() {
         const verified = author?.verified ? `<span class="verified-badge"><i class="fas fa-check-circle"></i> verified</span>` : '';
         return `<div class="post-card" data-post-id="${post.id}">
             <div class="post-header">
-                <div class="post-header-left"><img class="post-avatar" src="${avatar}"><div class="post-author-info"><span class="post-author">@${escapeHtml(post.username)}${verified}</span><span class="post-date">${formatDate(post.createdAt)}</span></div></div>
+                <div class="post-header-left">
+                    <img class="post-avatar" src="${avatar}" alt="avatar">
+                    <div class="post-author-info">
+                        <span class="post-author" data-user-id="${post.userId}" style="cursor:pointer;">@${escapeHtml(post.username)}${verified}</span>
+                        <span class="post-date">${formatDate(post.createdAt)}</span>
+                    </div>
+                </div>
                 ${(currentUser && (currentUser.id === post.userId || currentUser.role === 'admin')) ? `<button class="delete-post" data-id="${post.id}"><i class="fas fa-trash-alt"></i></button>` : ''}
             </div>
             <div class="post-text">${escapeHtml(post.text)}</div>
@@ -157,14 +256,30 @@ function renderFeed() {
             </div>
         </div>`;
     }).join('');
+    // Обработчики
     document.querySelectorAll('.delete-post').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); deletePostById(btn.dataset.id); }));
     document.querySelectorAll('.like-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); toggleLike(btn.dataset.id); }));
     document.querySelectorAll('.comment-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); openCommentsModal(btn.dataset.id); }));
+    document.querySelectorAll('.post-author').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const userId = el.dataset.userId;
+            if (userId) openUserProfile(userId);
+        });
+    });
 }
 
 // ---------- PROFILE ----------
 function updateHeaderAvatar() { if (currentUser) document.getElementById('headerAvatar').src = getAvatarUrl(currentUser); }
-function openProfileSettings() { if (!currentUser) return; document.getElementById('profileUsername').value = currentUser.username; document.getElementById('profileEmail').value = currentUser.email; document.getElementById('profilePassword').value = ''; document.getElementById('profileAvatarPreview').src = getAvatarUrl(currentUser); openModal('profileModal'); }
+function openProfileSettings() { 
+    if (!currentUser) return; 
+    document.getElementById('profileUsername').value = currentUser.username; 
+    document.getElementById('profileEmail').value = currentUser.email; 
+    document.getElementById('profilePassword').value = ''; 
+    document.getElementById('profileAvatarPreview').src = getAvatarUrl(currentUser); 
+    updateProfileModalStats();
+    openModal('profileModal'); 
+}
 let tempAvatarBase64 = null;
 document.getElementById('profileAvatarInput')?.addEventListener('change', e => { const f = e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ document.getElementById('profileAvatarPreview').src=ev.target.result; tempAvatarBase64=ev.target.result; }; r.readAsDataURL(f); } });
 function saveProfileSettings(newName, newEmail, newPass, newAvatar) {
@@ -195,6 +310,19 @@ function updateUIByAuth() {
             if (currentUser.role === 'admin') adminBtn.classList.remove('hidden');
             else adminBtn.classList.add('hidden');
         }
+        // Обновить переключатель ленты (для админа показываем оба режима, но админ всегда видит всё)
+        const subBtn = document.getElementById('showSubFeedBtn');
+        const allBtn = document.getElementById('showAllFeedBtn');
+        if (subBtn && allBtn) {
+            if (currentUser.role === 'admin') {
+                subBtn.style.display = 'none';
+                allBtn.style.display = 'none';
+                showOnlySubscriptions = false; // админ видит все посты
+            } else {
+                subBtn.style.display = 'block';
+                allBtn.style.display = 'block';
+            }
+        }
     } else { 
         if(authDiv) authDiv.classList.remove('hidden');
         if(userMenu) userMenu.classList.add('hidden');
@@ -211,26 +339,27 @@ function register(username, email, password) {
     if (users.find(u=>u.username===username)) { showToast('Имя занято','error'); return false; }
     if (users.find(u=>u.email===email)) { showToast('Email занят','error'); return false; }
     const now = new Date().toISOString();
-    users.push({ id: Date.now().toString(), username, email, password, role: 'user', verified: false, avatar: null, createdAt: now, lastLogin: now, lastActive: now, postCount: 0 });
+    users.push({ id: Date.now().toString(), username, email, password, role: 'user', verified: false, avatar: null, followers: [], following: [], createdAt: now, lastLogin: now, lastActive: now, postCount: 0 });
     saveUsers(); showToast('Регистрация успешна! Войдите.'); return true;
 }
 function logout() { currentUser = null; localStorage.removeItem(STORAGE_CURRENT); updateUIByAuth(); showToast('Вы вышли'); }
 
-// ---------- ADMIN PANEL (with verification) ----------
+// ---------- ADMIN PANEL (with verification & follow counts) ----------
 function renderAdminPanel() {
     if (!currentUser || currentUser.role !== 'admin') return;
     updatePostCounts();
     const tbody = document.querySelector('#adminUsersTable tbody');
     if (tbody) {
-        tbody.innerHTML = users.map(u => `<td>
+        tbody.innerHTML = users.map(u => `<tr>
             <td><img src="${getAvatarUrl(u)}" style="width:32px;height:32px;border-radius:50%;"></td>
             <td>@${escapeHtml(u.username)}</td>
             <td>${escapeHtml(u.email)}</td>
             <td>${u.role==='admin'?'👑 Админ':'👤 Пользователь'}</td>
             <td>${u.verified ? '<i class="fas fa-check-circle" style="color:#3b82f6;"></i> Да' : '<i class="fas fa-times-circle" style="color:#9ca3af;"></i> Нет'}</td>
             <td>${u.postCount||0}</td>
+            <td>${u.followers.length}</td>
+            <td>${u.following.length}</td>
             <td>${u.lastLogin?formatDate(u.lastLogin):'—'}</td>
-            <td>${u.lastActive?formatDate(u.lastActive):'—'}</td>
             <td>
                 <button class="edit-user-btn" data-id="${u.id}">✏️ Ред.</button>
                 ${u.role !== 'admin' ? `<button class="verify-user-btn" data-id="${u.id}">${u.verified ? '❌ Снять' : '✅ Вериф.'}</button>` : ''}
@@ -318,12 +447,28 @@ function openModal(id) { const el = document.getElementById(id); if(el) el.style
 function closeModal(id) { const el = document.getElementById(id); if(el) el.style.display = 'none'; }
 function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
 
-// ---------- SEARCH SETUP ----------
+// ---------- SEARCH & FEED TOGGLE ----------
 function setupSearch() {
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             searchQuery = e.target.value;
+            renderFeed();
+        });
+    }
+    const subBtn = document.getElementById('showSubFeedBtn');
+    const allBtn = document.getElementById('showAllFeedBtn');
+    if (subBtn && allBtn) {
+        subBtn.addEventListener('click', () => {
+            showOnlySubscriptions = true;
+            subBtn.classList.add('active');
+            allBtn.classList.remove('active');
+            renderFeed();
+        });
+        allBtn.addEventListener('click', () => {
+            showOnlySubscriptions = false;
+            allBtn.classList.add('active');
+            subBtn.classList.remove('active');
             renderFeed();
         });
     }
