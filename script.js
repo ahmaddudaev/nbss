@@ -7,16 +7,6 @@ const STORAGE_USERS = 'nbss_users';
 const STORAGE_POSTS = 'nbss_posts';
 const STORAGE_CURRENT = 'nbss_currentUser';
 
-// Вспомогательная функция для конвертации файла в base64
-function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
-
 function initData() {
     const storedUsers = localStorage.getItem(STORAGE_USERS);
     const storedPosts = localStorage.getItem(STORAGE_POSTS);
@@ -31,7 +21,7 @@ function initData() {
             email: 'sigma@nbss.ru',
             password: 'Mrbeast132!',
             role: 'admin',
-            avatar: null, // base64 or null
+            avatar: null,
             createdAt: now,
             lastLogin: now,
             lastActive: now,
@@ -47,8 +37,10 @@ function initData() {
             id: Date.now().toString() + '1',
             userId: '1',
             username: 'MrSigma',
-            text: 'Добро пожаловать в нбсс! 🇷🇺 Быстрая социальная сеть для каждого. Регистрируйтесь и делитесь мыслями. Теперь можно загружать фото!',
+            text: 'Добро пожаловать в нбсс! 🇷🇺 Быстрая социальная сеть с фото, лайками и комментариями.',
             image: null,
+            likes: [],
+            comments: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         }];
@@ -85,57 +77,6 @@ function updatePostCounts() {
 }
 
 // ==================== UI HELPERS ====================
-function renderFeed() {
-    const feedContainer = document.getElementById('feed');
-    if (!feedContainer) return;
-    if (posts.length === 0) {
-        feedContainer.innerHTML = '<div class="loading-spinner">Пока нет постов. Будьте первым!</div>';
-        return;
-    }
-    const sortedPosts = [...posts].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-    feedContainer.innerHTML = sortedPosts.map(post => {
-        const author = users.find(u => u.id === post.userId);
-        const avatarHtml = author && author.avatar ? `<img src="${author.avatar}" class="avatar-small" alt="avatar">` : `<div class="avatar-small" style="background:var(--accent); display:inline-flex; align-items:center; justify-content:center; border-radius:50%; width:32px; height:32px; margin-right:8px;"><i class="fas fa-user" style="color:white; font-size:14px;"></i></div>`;
-        const imageHtml = post.image ? `<div><img src="${post.image}" class="post-image" alt="post image" onclick="window.open(this.src)"></div>` : '';
-        return `
-            <div class="post-card" data-post-id="${post.id}">
-                <div class="post-header">
-                    <div style="display:flex; align-items:center;">
-                        ${avatarHtml}
-                        <span class="post-author">@${escapeHtml(post.username)}</span>
-                    </div>
-                    <span class="post-date">${formatDate(post.createdAt)}</span>
-                </div>
-                <div class="post-text">${escapeHtml(post.text)}</div>
-                ${imageHtml}
-                <div class="post-actions">
-                    ${ (currentUser && (currentUser.id === post.userId || currentUser.role === 'admin')) ? 
-                        `<button class="delete-post" data-id="${post.id}"><i class="fas fa-trash-alt"></i> Удалить</button>` : '' }
-                </div>
-            </div>
-        `;
-    }).join('');
-    document.querySelectorAll('.delete-post').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deletePostById(btn.dataset.id);
-        });
-    });
-}
-
-function deletePostById(postId) {
-    const post = posts.find(p => p.id === postId);
-    if (!post) return;
-    if (currentUser && (currentUser.id === post.userId || currentUser.role === 'admin')) {
-        posts = posts.filter(p => p.id !== postId);
-        savePosts();
-        updatePostCounts();
-        renderFeed();
-        if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
-        showToast('Пост удалён', 'info');
-    } else showToast('Нет прав для удаления', 'error');
-}
-
 function formatDate(iso) {
     const date = new Date(iso);
     return date.toLocaleString('ru-RU', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
@@ -168,6 +109,262 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 2500);
 }
 
+function getAvatarUrl(user) {
+    if (user && user.avatar) return user.avatar;
+    return 'https://ui-avatars.com/api/?background=2563eb&color=fff&rounded=true&size=40&name=' + (user ? user.username.charAt(0) : '?');
+}
+
+// ==================== ЛАЙКИ И КОММЕНТАРИИ ====================
+function toggleLike(postId) {
+    if (!currentUser) { showToast('Войдите, чтобы ставить лайки', 'error'); return; }
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    const likedIndex = post.likes.indexOf(currentUser.id);
+    if (likedIndex === -1) {
+        post.likes.push(currentUser.id);
+    } else {
+        post.likes.splice(likedIndex, 1);
+    }
+    savePosts();
+    renderFeed();
+    if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
+}
+
+function openCommentsModal(postId) {
+    if (!currentUser) { showToast('Войдите, чтобы комментировать', 'error'); return; }
+    window.currentCommentPostId = postId;
+    renderCommentsList(postId);
+    openModal('commentsModal');
+}
+
+function renderCommentsList(postId) {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    const container = document.getElementById('commentsList');
+    if (!post.comments || post.comments.length === 0) {
+        container.innerHTML = '<div class="loading-spinner">Нет комментариев. Будьте первым!</div>';
+        return;
+    }
+    container.innerHTML = post.comments.map(comment => {
+        const commentUser = users.find(u => u.id === comment.userId);
+        const avatar = getAvatarUrl(commentUser);
+        return `
+            <div class="comment-item">
+                <img class="comment-avatar" src="${avatar}" alt="avatar">
+                <div class="comment-content">
+                    <div class="comment-author">@${escapeHtml(comment.username)}</div>
+                    <div class="comment-text">${escapeHtml(comment.text)}</div>
+                    <div class="comment-date">${formatDate(comment.createdAt)}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function addComment(postId, text) {
+    if (!currentUser) return;
+    if (!text.trim()) { showToast('Введите текст комментария', 'error'); return; }
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    const newComment = {
+        id: Date.now().toString(),
+        userId: currentUser.id,
+        username: currentUser.username,
+        text: text.trim(),
+        createdAt: new Date().toISOString()
+    };
+    if (!post.comments) post.comments = [];
+    post.comments.push(newComment);
+    savePosts();
+    renderCommentsList(postId);
+    document.getElementById('commentText').value = '';
+    renderFeed(); // обновить счетчик комментариев в ленте
+}
+
+// ==================== ПОСТЫ С ФОТО ====================
+let currentPostImageBase64 = null;
+
+document.getElementById('postImageInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            currentPostImageBase64 = ev.target.result;
+            const preview = document.getElementById('postImagePreview');
+            const img = document.getElementById('previewImg');
+            img.src = currentPostImageBase64;
+            preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+document.getElementById('removeImageBtn').addEventListener('click', () => {
+    currentPostImageBase64 = null;
+    document.getElementById('postImagePreview').style.display = 'none';
+    document.getElementById('postImageInput').value = '';
+});
+
+function createPost(text, imageBase64) {
+    if (!currentUser) { showToast('Необходимо войти', 'error'); return; }
+    if (!text.trim() && !imageBase64) { showToast('Напишите текст или добавьте фото', 'error'); return; }
+    if (text.length > 280) { showToast('Максимум 280 символов', 'error'); return; }
+    const newPost = {
+        id: Date.now().toString(),
+        userId: currentUser.id,
+        username: currentUser.username,
+        text: text.trim(),
+        image: imageBase64 || null,
+        likes: [],
+        comments: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    posts.unshift(newPost);
+    savePosts();
+    updatePostCounts();
+    updateLastActive(currentUser.id);
+    renderFeed();
+    document.getElementById('postText').value = '';
+    document.getElementById('charCounter').innerText = '0/280';
+    currentPostImageBase64 = null;
+    document.getElementById('postImagePreview').style.display = 'none';
+    document.getElementById('postImageInput').value = '';
+    showToast('Пост опубликован!');
+    if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
+}
+
+function renderFeed() {
+    const feedContainer = document.getElementById('feed');
+    if (!feedContainer) return;
+    if (posts.length === 0) {
+        feedContainer.innerHTML = '<div class="loading-spinner">Пока нет постов. Будьте первым!</div>';
+        return;
+    }
+    const sortedPosts = [...posts].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+    feedContainer.innerHTML = sortedPosts.map(post => {
+        const author = users.find(u => u.id === post.userId);
+        const avatar = getAvatarUrl(author);
+        const isLiked = currentUser && post.likes.includes(currentUser.id);
+        const likeCount = post.likes.length;
+        const commentCount = post.comments ? post.comments.length : 0;
+        return `
+            <div class="post-card" data-post-id="${post.id}">
+                <div class="post-header">
+                    <div class="post-header-left">
+                        <img class="post-avatar" src="${avatar}" alt="avatar">
+                        <div class="post-author-info">
+                            <span class="post-author">@${escapeHtml(post.username)}</span>
+                            <span class="post-date">${formatDate(post.createdAt)}</span>
+                        </div>
+                    </div>
+                    <div class="post-actions">
+                        ${ (currentUser && (currentUser.id === post.userId || currentUser.role === 'admin')) ? 
+                            `<button class="delete-post" data-id="${post.id}"><i class="fas fa-trash-alt"></i></button>` : '' }
+                    </div>
+                </div>
+                <div class="post-text">${escapeHtml(post.text)}</div>
+                ${post.image ? `<div class="post-image"><img src="${post.image}" alt="post image"></div>` : ''}
+                <div class="post-stats">
+                    <button class="like-btn ${isLiked ? 'liked' : ''}" data-id="${post.id}"><i class="fas fa-heart"></i> ${likeCount}</button>
+                    <button class="comment-btn" data-id="${post.id}"><i class="fas fa-comment"></i> ${commentCount}</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    document.querySelectorAll('.delete-post').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deletePostById(btn.dataset.id);
+        });
+    });
+    document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleLike(btn.dataset.id);
+        });
+    });
+    document.querySelectorAll('.comment-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openCommentsModal(btn.dataset.id);
+        });
+    });
+}
+
+function deletePostById(postId) {
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    if (currentUser && (currentUser.id === post.userId || currentUser.role === 'admin')) {
+        posts = posts.filter(p => p.id !== postId);
+        savePosts();
+        updatePostCounts();
+        renderFeed();
+        if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
+        showToast('Пост удалён', 'info');
+    } else showToast('Нет прав для удаления', 'error');
+}
+
+// ==================== АВАТАРКИ ПОЛЬЗОВАТЕЛЕЙ ====================
+function updateHeaderAvatar() {
+    const headerAvatar = document.getElementById('headerAvatar');
+    if (currentUser && headerAvatar) {
+        headerAvatar.src = getAvatarUrl(currentUser);
+    }
+}
+
+function openProfileSettings() {
+    if (!currentUser) return;
+    document.getElementById('profileUsername').value = currentUser.username;
+    document.getElementById('profileEmail').value = currentUser.email;
+    document.getElementById('profilePassword').value = '';
+    document.getElementById('profileAvatarPreview').src = getAvatarUrl(currentUser);
+    openModal('profileModal');
+}
+
+document.getElementById('profileAvatarInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            document.getElementById('profileAvatarPreview').src = ev.target.result;
+            window.tempAvatarBase64 = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+function saveProfileSettings(newUsername, newEmail, newPassword, newAvatarBase64) {
+    if (!currentUser) return;
+    if (newUsername !== currentUser.username && users.find(u => u.username === newUsername)) {
+        showToast('Имя пользователя уже занято', 'error');
+        return false;
+    }
+    if (newEmail !== currentUser.email && users.find(u => u.email === newEmail)) {
+        showToast('Email уже используется', 'error');
+        return false;
+    }
+    if (newUsername.trim() === '') { showToast('Имя не может быть пустым', 'error'); return false; }
+    const oldUsername = currentUser.username;
+    currentUser.username = newUsername;
+    currentUser.email = newEmail;
+    if (newPassword && newPassword.length > 0) currentUser.password = newPassword;
+    if (newAvatarBase64) currentUser.avatar = newAvatarBase64;
+    const index = users.findIndex(u => u.id === currentUser.id);
+    if (index !== -1) users[index] = currentUser;
+    saveUsers();
+    posts.forEach(post => {
+        if (post.userId === currentUser.id) post.username = currentUser.username;
+    });
+    savePosts();
+    updateUIByAuth();
+    renderFeed();
+    if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
+    showToast('Профиль обновлён');
+    closeModal('profileModal');
+    return true;
+}
+
 // ==================== АВТОРИЗАЦИЯ ====================
 function updateUIByAuth() {
     const authDiv = document.getElementById('authButtons');
@@ -180,6 +377,7 @@ function updateUIByAuth() {
         userMenu.classList.remove('hidden');
         greetingSpan.textContent = `@${currentUser.username}`;
         postForm.classList.remove('hidden');
+        updateHeaderAvatar();
         if (currentUser.role === 'admin') adminBtn.classList.remove('hidden');
         else adminBtn.classList.add('hidden');
     } else {
@@ -229,57 +427,58 @@ function logout() {
     showToast('Вы вышли из аккаунта');
 }
 
-// ==================== НАСТРОЙКИ ПРОФИЛЯ (с аватаром) ====================
-let pendingAvatarBase64 = null;
-
-function openProfileSettings() {
-    if (!currentUser) return;
-    document.getElementById('profileUsername').value = currentUser.username;
-    document.getElementById('profileEmail').value = currentUser.email;
-    document.getElementById('profilePassword').value = '';
-    const previewDiv = document.getElementById('currentAvatarPreview');
-    if (currentUser.avatar) {
-        previewDiv.innerHTML = `<img src="${currentUser.avatar}" alt="avatar">`;
-    } else {
-        previewDiv.innerHTML = `<div style="width:80px;height:80px;background:var(--bg-secondary);border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="font-size:40px;color:gray;"></i></div>`;
+// ==================== АДМИН ПАНЕЛЬ (с аватарами) ====================
+function renderAdminPanel() {
+    if (!currentUser || currentUser.role !== 'admin') return;
+    updatePostCounts();
+    const tbody = document.querySelector('#adminUsersTable tbody');
+    if (tbody) {
+        tbody.innerHTML = users.map(user => {
+            const lastLoginF = user.lastLogin ? formatDate(user.lastLogin) : '—';
+            const lastActiveF = user.lastActive ? formatDate(user.lastActive) : '—';
+            const avatarHtml = `<img src="${getAvatarUrl(user)}" style="width:32px; height:32px; border-radius:50%;">`;
+            return `<tr>
+                <td>${avatarHtml}</td>
+                <td>@${escapeHtml(user.username)}</td>
+                <td>${escapeHtml(user.email)}</td>
+                <td>${user.role === 'admin' ? '👑 Админ' : '👤 Пользователь'}</td>
+                <td>${user.postCount || 0}</td>
+                <td>${lastLoginF}</td>
+                <td>${lastActiveF}</td>
+                <td><button class="edit-user-btn" data-id="${user.id}" style="background:#2563eb;color:white;border:none;border-radius:1rem;padding:0.2rem 0.6rem;margin-right:0.3rem;">✏️ Ред.</button>${user.role !== 'admin' ? `<button class="delete-user-btn" data-id="${user.id}" style="background:#dc2626;color:white;border:none;border-radius:1rem;padding:0.2rem 0.6rem;">Удалить</button>` : ''}</td>
+            </tr>`;
+        }).join('');
+        document.querySelectorAll('.delete-user-btn').forEach(btn => btn.addEventListener('click', () => { if(confirm('Удалить пользователя и все его посты?')) deleteUserById(btn.dataset.id); }));
+        document.querySelectorAll('.edit-user-btn').forEach(btn => btn.addEventListener('click', () => openAdminEditUser(btn.dataset.id)));
     }
-    pendingAvatarBase64 = null;
-    openModal('profileModal');
+    const postsTbody = document.querySelector('#adminPostsTable tbody');
+    if (postsTbody) {
+        const sorted = [...posts].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+        postsTbody.innerHTML = sorted.map(post => `
+            <tr>
+                <td>${post.id.slice(-5)}</td>
+                <td>@${escapeHtml(post.username)}</td>
+                <td style="max-width:200px; word-break:break-word;">${escapeHtml(post.text)}</td>
+                <td>${post.image ? '<i class="fas fa-image"></i>' : '-'}</td>
+                <td>${post.likes.length}</td>
+                <td>${post.comments ? post.comments.length : 0}</td>
+                <td>${formatDate(post.createdAt)}</td>
+                <td><button class="delete-post-admin" data-id="${post.id}" style="background:#dc2626;color:white;border:none;border-radius:1rem;padding:0.2rem 0.6rem;"><i class="fas fa-trash"></i></button></td>
+            </tr>
+        `).join('');
+        document.querySelectorAll('.delete-post-admin').forEach(btn => btn.addEventListener('click', () => { if(confirm('Удалить пост?')) deletePostById(btn.dataset.id); }));
+    }
 }
 
-async function saveProfileSettings(newUsername, newEmail, newPassword) {
-    if (!currentUser) return;
-    if (newUsername !== currentUser.username && users.find(u => u.username === newUsername)) {
-        showToast('Имя пользователя уже занято', 'error');
-        return false;
-    }
-    if (newEmail !== currentUser.email && users.find(u => u.email === newEmail)) {
-        showToast('Email уже используется', 'error');
-        return false;
-    }
-    if (newUsername.trim() === '') { showToast('Имя не может быть пустым', 'error'); return false; }
-    const oldUsername = currentUser.username;
-    currentUser.username = newUsername;
-    currentUser.email = newEmail;
-    if (newPassword && newPassword.length > 0) currentUser.password = newPassword;
-    if (pendingAvatarBase64) currentUser.avatar = pendingAvatarBase64;
-    const index = users.findIndex(u => u.id === currentUser.id);
-    if (index !== -1) users[index] = currentUser;
-    saveUsers();
-    posts.forEach(post => {
-        if (post.userId === currentUser.id) post.username = currentUser.username;
-    });
-    savePosts();
-    updateUIByAuth();
+function deleteUserById(userId) {
+    users = users.filter(u => u.id !== userId);
+    posts = posts.filter(p => p.userId !== userId);
+    saveUsers(); savePosts();
+    if (currentUser && currentUser.id === userId) logout();
+    renderAdminPanel();
     renderFeed();
-    if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
-    showToast('Профиль обновлён');
-    closeModal('profileModal');
-    return true;
+    showToast('Пользователь удалён');
 }
-
-// ==================== АДМИН: РЕДАКТИРОВАНИЕ ЛЮБОГО ПОЛЬЗОВАТЕЛЯ (с аватаром) ====================
-let adminPendingAvatar = null;
 
 function openAdminEditUser(userId) {
     const user = users.find(u => u.id === userId);
@@ -289,17 +488,10 @@ function openAdminEditUser(userId) {
     document.getElementById('adminEditEmail').value = user.email;
     document.getElementById('adminEditPassword').value = '';
     document.getElementById('adminEditRole').value = user.role;
-    const previewDiv = document.getElementById('adminEditAvatarPreview');
-    if (user.avatar) {
-        previewDiv.innerHTML = `<img src="${user.avatar}" alt="avatar">`;
-    } else {
-        previewDiv.innerHTML = `<div style="width:80px;height:80px;background:var(--bg-secondary);border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="font-size:40px;color:gray;"></i></div>`;
-    }
-    adminPendingAvatar = null;
     openModal('adminEditUserModal');
 }
 
-async function saveAdminEditUser() {
+function saveAdminEditUser() {
     const userId = document.getElementById('adminEditUserId').value;
     const user = users.find(u => u.id === userId);
     if (!user) return;
@@ -307,198 +499,32 @@ async function saveAdminEditUser() {
     const newEmail = document.getElementById('adminEditEmail').value.trim();
     const newPassword = document.getElementById('adminEditPassword').value;
     const newRole = document.getElementById('adminEditRole').value;
-    
     if (newUsername === '') { showToast('Имя не может быть пустым', 'error'); return; }
-    if (newUsername !== user.username && users.find(u => u.username === newUsername)) {
-        showToast('Имя пользователя уже занято', 'error');
-        return;
-    }
-    if (newEmail !== user.email && users.find(u => u.email === newEmail)) {
-        showToast('Email уже используется', 'error');
-        return;
-    }
-    
-    const oldUsername = user.username;
+    if (newUsername !== user.username && users.find(u => u.username === newUsername)) { showToast('Имя занято', 'error'); return; }
+    if (newEmail !== user.email && users.find(u => u.email === newEmail)) { showToast('Email занят', 'error'); return; }
     user.username = newUsername;
     user.email = newEmail;
-    if (newPassword && newPassword.length > 0) user.password = newPassword;
+    if (newPassword) user.password = newPassword;
     user.role = newRole;
-    if (adminPendingAvatar) user.avatar = adminPendingAvatar;
     saveUsers();
-    
-    if (oldUsername !== newUsername) {
-        posts.forEach(post => {
-            if (post.userId === user.id) post.username = newUsername;
-        });
-        savePosts();
-    }
-    
-    if (currentUser && currentUser.id === userId) {
-        currentUser = user;
-        localStorage.setItem(STORAGE_CURRENT, currentUser.id);
-        updateUIByAuth();
-    }
-    
+    posts.forEach(post => { if (post.userId === user.id) post.username = newUsername; });
+    savePosts();
+    if (currentUser && currentUser.id === userId) { currentUser = user; localStorage.setItem(STORAGE_CURRENT, currentUser.id); updateUIByAuth(); }
     renderFeed();
-    if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
+    renderAdminPanel();
     closeModal('adminEditUserModal');
     showToast(`Пользователь @${newUsername} обновлён`);
 }
 
-// ==================== ПОСТЫ С ФОТО ====================
-let pendingPostImage = null;
-
-function setupPostImageUpload() {
-    const input = document.getElementById('postImageInput');
-    const previewDiv = document.getElementById('postImagePreview');
-    input.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.size > 5 * 1024 * 1024) {
-                showToast('Файл слишком большой (макс. 5 МБ)', 'error');
-                return;
-            }
-            const base64 = await fileToBase64(file);
-            pendingPostImage = base64;
-            previewDiv.innerHTML = `<div style="position:relative;"><img src="${base64}" alt="preview"><span class="remove-image" id="removePostImage">✕</span></div>`;
-            previewDiv.classList.remove('hidden');
-            document.getElementById('removePostImage').addEventListener('click', () => {
-                pendingPostImage = null;
-                previewDiv.innerHTML = '';
-                previewDiv.classList.add('hidden');
-                input.value = '';
-            });
-        } else {
-            pendingPostImage = null;
-            previewDiv.classList.add('hidden');
-        }
-    });
-}
-
-function createPost(text) {
-    if (!currentUser) { showToast('Необходимо войти', 'error'); return; }
-    if (!text.trim() && !pendingPostImage) { showToast('Напишите текст или добавьте фото', 'error'); return; }
-    if (text.length > 280) { showToast('Максимум 280 символов', 'error'); return; }
-    const newPost = {
-        id: Date.now().toString(),
-        userId: currentUser.id,
-        username: currentUser.username,
-        text: text.trim(),
-        image: pendingPostImage || null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
-    posts.unshift(newPost);
-    savePosts();
-    updatePostCounts();
-    updateLastActive(currentUser.id);
-    renderFeed();
-    document.getElementById('postText').value = '';
-    document.getElementById('charCounter').innerText = '0/280';
-    pendingPostImage = null;
-    document.getElementById('postImagePreview').innerHTML = '';
-    document.getElementById('postImagePreview').classList.add('hidden');
-    document.getElementById('postImageInput').value = '';
-    showToast('Пост опубликован!');
-    if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
-}
-
-// ==================== АДМИН ПАНЕЛЬ (с аватарами и изображениями) ====================
-function renderAdminPanel() {
-    if (!currentUser || currentUser.role !== 'admin') return;
-    updatePostCounts();
-    const tbody = document.querySelector('#adminUsersTable tbody');
-    if (tbody) {
-        tbody.innerHTML = users.map(user => {
-            const lastLoginF = user.lastLogin ? formatDate(user.lastLogin) : '—';
-            const lastActiveF = user.lastActive ? formatDate(user.lastActive) : '—';
-            const canDelete = user.role !== 'admin' ? `<button class="delete-user-btn" data-id="${user.id}">Удалить</button>` : '—';
-            const avatarHtml = user.avatar ? `<img src="${user.avatar}" class="admin-avatar" alt="avatar">` : `<div class="admin-avatar" style="background:var(--bg-secondary); display:flex; align-items:center; justify-content:center;"><i class="fas fa-user"></i></div>`;
-            return `
-                <tr>
-                    <td>${avatarHtml}</td>
-                    <td>${user.id.slice(-5)}</td>
-                    <td>@${escapeHtml(user.username)}</td>
-                    <td>${escapeHtml(user.email)}</td>
-                    <td>${user.role === 'admin' ? '👑 Админ' : '👤 Пользователь'}</td>
-                    <td>${user.postCount || 0}</td>
-                    <td>${lastLoginF}</td>
-                    <td>${lastActiveF}</td>
-                    <td>
-                        <button class="edit-user-btn" data-id="${user.id}" style="background:#2563eb; color:white; border:none; border-radius:1rem; padding:0.2rem 0.6rem; margin-right:0.3rem; cursor:pointer;">✏️ Ред.</button>
-                        ${canDelete}
-                    </td>
-                </tr>
-            `;
-        }).join('');
-        document.querySelectorAll('.delete-user-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const userId = btn.dataset.id;
-                if (confirm('Удалить пользователя и все его посты?')) {
-                    users = users.filter(u => u.id !== userId);
-                    posts = posts.filter(p => p.userId !== userId);
-                    saveUsers(); savePosts();
-                    if (currentUser && currentUser.id === userId) logout();
-                    renderAdminPanel();
-                    renderFeed();
-                    showToast('Пользователь удалён');
-                }
-            });
-        });
-        document.querySelectorAll('.edit-user-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const userId = btn.dataset.id;
-                openAdminEditUser(userId);
-            });
-        });
-    }
-    const postsTbody = document.querySelector('#adminPostsTable tbody');
-    if (postsTbody) {
-        const sorted = [...posts].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-        postsTbody.innerHTML = sorted.map(post => {
-            const imageHtml = post.image ? `<img src="${post.image}" style="max-width:50px; max-height:50px; border-radius:4px;">` : '—';
-            return `
-                <tr>
-                    <td>${post.id.slice(-5)}</td>
-                    <td>@${escapeHtml(post.username)}</td>
-                    <td style="max-width:200px; word-break:break-word;">${escapeHtml(post.text)}</td>
-                    <td>${imageHtml}</td>
-                    <td>${formatDate(post.createdAt)}</td>
-                    <td><button class="delete-post-admin" data-id="${post.id}"><i class="fas fa-trash"></i></button></td>
-                </tr>
-            `;
-        }).join('');
-        document.querySelectorAll('.delete-post-admin').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const postId = btn.dataset.id;
-                if (confirm('Удалить этот пост?')) {
-                    posts = posts.filter(p => p.id !== postId);
-                    savePosts();
-                    updatePostCounts();
-                    renderFeed();
-                    renderAdminPanel();
-                    showToast('Пост удалён администратором');
-                }
-            });
-        });
-    }
-}
-
-// ==================== МОДАЛЬНЫЕ ОКНА ====================
+// ==================== МОДАЛЬНЫЕ ОКНА, ТЕМА, ЗАПУСК ====================
 function openModal(modalId) { document.getElementById(modalId).style.display = 'flex'; }
 function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
 function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
 
-// ==================== ТЕМА ====================
 function initTheme() {
     const savedTheme = localStorage.getItem('nbss_theme');
-    if (savedTheme === 'dark') {
-        document.body.classList.add('dark');
-        document.querySelector('#themeToggle i').className = 'fas fa-sun';
-    } else {
-        document.body.classList.remove('dark');
-        document.querySelector('#themeToggle i').className = 'fas fa-moon';
-    }
+    if (savedTheme === 'dark') { document.body.classList.add('dark'); document.querySelector('#themeToggle i').className = 'fas fa-sun'; }
+    else { document.body.classList.remove('dark'); document.querySelector('#themeToggle i').className = 'fas fa-moon'; }
 }
 function toggleTheme() {
     document.body.classList.toggle('dark');
@@ -508,88 +534,24 @@ function toggleTheme() {
     icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
 }
 
-// ==================== EVENT LISTENERS ====================
 function bindEvents() {
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
     document.getElementById('loginBtn').addEventListener('click', () => openModal('loginModal'));
     document.getElementById('registerBtn').addEventListener('click', () => openModal('registerModal'));
-    document.querySelectorAll('.close-modal').forEach(btn => {
-        btn.addEventListener('click', (e) => { const modal = btn.closest('.modal'); if(modal) modal.style.display = 'none'; });
-    });
+    document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', (e) => { const modal = btn.closest('.modal'); if(modal) modal.style.display = 'none'; }));
     window.addEventListener('click', (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; });
-    document.getElementById('loginForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        login(document.getElementById('loginUsername').value.trim(), document.getElementById('loginPassword').value);
-    });
-    document.getElementById('registerForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        if(register(document.getElementById('regUsername').value.trim(), document.getElementById('regEmail').value.trim(), document.getElementById('regPassword').value)) {
-            closeModal('registerModal');
-            openModal('loginModal');
-        }
-    });
+    document.getElementById('loginForm').addEventListener('submit', (e) => { e.preventDefault(); login(document.getElementById('loginUsername').value.trim(), document.getElementById('loginPassword').value); });
+    document.getElementById('registerForm').addEventListener('submit', (e) => { e.preventDefault(); if(register(document.getElementById('regUsername').value.trim(), document.getElementById('regEmail').value.trim(), document.getElementById('regPassword').value)) { closeModal('registerModal'); openModal('loginModal'); } });
     document.getElementById('logoutBtn').addEventListener('click', logout);
-    document.getElementById('submitPostBtn').addEventListener('click', () => createPost(document.getElementById('postText').value));
-    document.getElementById('postText').addEventListener('input', () => {
-        document.getElementById('charCounter').innerText = `${document.getElementById('postText').value.length}/280`;
-    });
-    document.getElementById('adminPanelBtn').addEventListener('click', () => {
-        if(currentUser && currentUser.role === 'admin') { renderAdminPanel(); openModal('adminModal'); }
-        else showToast('Доступ только для администратора', 'error');
-    });
+    document.getElementById('submitPostBtn').addEventListener('click', () => createPost(document.getElementById('postText').value, currentPostImageBase64));
+    document.getElementById('postText').addEventListener('input', () => { document.getElementById('charCounter').innerText = `${document.getElementById('postText').value.length}/280`; });
+    document.getElementById('adminPanelBtn').addEventListener('click', () => { if(currentUser && currentUser.role === 'admin') { renderAdminPanel(); openModal('adminModal'); } else showToast('Доступ только для администратора', 'error'); });
     document.getElementById('profileSettingsBtn').addEventListener('click', openProfileSettings);
-    document.getElementById('profileForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await saveProfileSettings(
-            document.getElementById('profileUsername').value.trim(),
-            document.getElementById('profileEmail').value.trim(),
-            document.getElementById('profilePassword').value
-        );
-    });
-    document.getElementById('adminEditUserForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await saveAdminEditUser();
-    });
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tabId = btn.dataset.tab;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('active'));
-            if(tabId === 'users') document.getElementById('adminUsersTab').classList.add('active');
-            else document.getElementById('adminPostsTab').classList.add('active');
-        });
-    });
-    
-    // Загрузка аватара в настройках профиля
-    document.getElementById('avatarInput').addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.size > 2 * 1024 * 1024) { showToast('Аватар не более 2 МБ', 'error'); return; }
-            const base64 = await fileToBase64(file);
-            pendingAvatarBase64 = base64;
-            document.getElementById('currentAvatarPreview').innerHTML = `<img src="${base64}" alt="avatar">`;
-        }
-    });
-    // Загрузка аватара в админ-редактировании
-    document.getElementById('adminAvatarInput').addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.size > 2 * 1024 * 1024) { showToast('Аватар не более 2 МБ', 'error'); return; }
-            const base64 = await fileToBase64(file);
-            adminPendingAvatar = base64;
-            document.getElementById('adminEditAvatarPreview').innerHTML = `<img src="${base64}" alt="avatar">`;
-        }
-    });
-    
-    setupPostImageUpload();
+    document.getElementById('profileForm').addEventListener('submit', (e) => { e.preventDefault(); saveProfileSettings(document.getElementById('profileUsername').value.trim(), document.getElementById('profileEmail').value.trim(), document.getElementById('profilePassword').value, window.tempAvatarBase64 || null); window.tempAvatarBase64 = null; });
+    document.getElementById('adminEditUserForm').addEventListener('submit', (e) => { e.preventDefault(); saveAdminEditUser(); });
+    document.getElementById('submitCommentBtn').addEventListener('click', () => { if(window.currentCommentPostId) addComment(window.currentCommentPostId, document.getElementById('commentText').value); });
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => { const tabId = btn.dataset.tab; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('active')); if(tabId === 'users') document.getElementById('adminUsersTab').classList.add('active'); else document.getElementById('adminPostsTab').classList.add('active'); }));
 }
 
-function startApp() {
-    initData();
-    bindEvents();
-    updateUIByAuth();
-    initTheme();
-    if(currentUser) updateLastActive(currentUser.id);
-}
+function startApp() { initData(); bindEvents(); updateUIByAuth(); initTheme(); if(currentUser) updateLastActive(currentUser.id); }
 startApp();
