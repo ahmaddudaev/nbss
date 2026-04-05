@@ -131,7 +131,6 @@ function saveProfileSettings(newName, newEmail, newPass, newAvatar) {
     if (newName !== currentUser.username && users.find(u=>u.username===newName)) { showToast('Имя занято','error'); return false; }
     if (newEmail !== currentUser.email && users.find(u=>u.email===newEmail)) { showToast('Email занят','error'); return false; }
     if (!newName.trim()) { showToast('Имя не может быть пустым','error'); return false; }
-    const oldName = currentUser.username;
     currentUser.username = newName; currentUser.email = newEmail; if (newPass) currentUser.password = newPass; if (newAvatar) currentUser.avatar = newAvatar;
     const idx = users.findIndex(u=>u.id===currentUser.id); if(idx!==-1) users[idx]=currentUser;
     saveUsers();
@@ -197,12 +196,40 @@ function saveAdminEditUser() {
     renderFeed(); renderAdminPanel(); closeModal('adminEditUserModal'); showToast(`Пользователь @${newName} обновлён`);
 }
 
-// ---------- MODALS & THEME ----------
+// ---------- THEME (сохраняется) ----------
+function initTheme() {
+    try {
+        const saved = localStorage.getItem('nbss_theme');
+        if (saved === 'dark') {
+            document.body.classList.add('dark');
+            const icon = document.querySelector('#themeToggle i');
+            if (icon) icon.className = 'fas fa-sun';
+        } else {
+            document.body.classList.remove('dark');
+            const icon = document.querySelector('#themeToggle i');
+            if (icon) icon.className = 'fas fa-moon';
+        }
+    } catch(e) {}
+}
+function toggleTheme() {
+    const isDark = document.body.classList.contains('dark');
+    if (isDark) {
+        document.body.classList.remove('dark');
+        localStorage.setItem('nbss_theme', 'light');
+        const icon = document.querySelector('#themeToggle i');
+        if (icon) icon.className = 'fas fa-moon';
+    } else {
+        document.body.classList.add('dark');
+        localStorage.setItem('nbss_theme', 'dark');
+        const icon = document.querySelector('#themeToggle i');
+        if (icon) icon.className = 'fas fa-sun';
+    }
+}
+
+// ---------- MODALS ----------
 function openModal(id) { document.getElementById(id).style.display = 'flex'; }
 function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
-function initTheme() { if(localStorage.getItem('nbss_theme')==='dark') { document.body.classList.add('dark'); document.querySelector('#themeToggle i').className='fas fa-sun'; } else { document.body.classList.remove('dark'); document.querySelector('#themeToggle i').className='fas fa-moon'; } }
-function toggleTheme() { document.body.classList.toggle('dark'); const isDark=document.body.classList.contains('dark'); localStorage.setItem('nbss_theme',isDark?'dark':'light'); document.querySelector('#themeToggle i').className=isDark?'fas fa-sun':'fas fa-moon'; }
 
 // ---------- EVENT BINDINGS ----------
 function bindEvents() {
