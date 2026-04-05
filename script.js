@@ -11,25 +11,42 @@ const STORAGE_CURRENT = 'nbss_currentUser';
 function initData() {
     const storedUsers = localStorage.getItem(STORAGE_USERS);
     const storedPosts = localStorage.getItem(STORAGE_POSTS);
-    if (storedUsers) users = JSON.parse(storedUsers);
-    else {
+    
+    if (storedUsers) {
+        users = JSON.parse(storedUsers);
+        // Миграция: добавить поле verified и avatar если нет
+        users = users.map(u => {
+            if (u.verified === undefined) u.verified = (u.role === 'admin');
+            if (u.avatar === undefined) u.avatar = null;
+            return u;
+        });
+    } else {
         const now = new Date().toISOString();
         users = [{ 
             id: '1', username: 'MrSigma', email: 'sigma@nbss.ru', password: 'Mrbeast132!', 
             role: 'admin', avatar: null, verified: true, 
             createdAt: now, lastLogin: now, lastActive: now, postCount: 0 
         }];
-        saveUsers();
     }
-    if (storedPosts) posts = JSON.parse(storedPosts);
-    else {
+    saveUsers();
+    
+    if (storedPosts) {
+        posts = JSON.parse(storedPosts);
+        // Миграция: добавить likes и comments если нет
+        posts = posts.map(p => {
+            if (!p.likes) p.likes = [];
+            if (!p.comments) p.comments = [];
+            return p;
+        });
+    } else {
         posts = [{ 
             id: Date.now().toString() + '1', userId: '1', username: 'MrSigma', 
             text: 'Добро пожаловать в нбсс! 🇷🇺 Быстрая соцсеть с фото, лайками и комментариями. Администратор может выдавать галочку верификации ✅', 
             image: null, likes: [], comments: [], createdAt: new Date().toISOString() 
         }];
-        savePosts();
     }
+    savePosts();
+    
     const savedUserId = localStorage.getItem(STORAGE_CURRENT);
     if (savedUserId) {
         currentUser = users.find(u => u.id === savedUserId);
@@ -54,6 +71,7 @@ function toggleLike(postId) {
     if (!currentUser) { showToast('Войдите, чтобы ставить лайки', 'error'); return; }
     const post = posts.find(p => p.id === postId);
     if (!post) return;
+    if (!post.likes) post.likes = [];
     const idx = post.likes.indexOf(currentUser.id);
     if (idx === -1) post.likes.push(currentUser.id);
     else post.likes.splice(idx, 1);
@@ -79,11 +97,11 @@ function addComment(postId, text) {
 
 // ---------- POSTS WITH IMAGES ----------
 let currentPostImageBase64 = null;
-document.getElementById('postImageInput').addEventListener('change', e => {
+document.getElementById('postImageInput')?.addEventListener('change', e => {
     const file = e.target.files[0];
     if (file) { const r = new FileReader(); r.onload = ev => { currentPostImageBase64 = ev.target.result; document.getElementById('previewImg').src = currentPostImageBase64; document.getElementById('postImagePreview').style.display = 'block'; }; r.readAsDataURL(file); }
 });
-document.getElementById('removeImageBtn').addEventListener('click', () => { currentPostImageBase64 = null; document.getElementById('postImagePreview').style.display = 'none'; document.getElementById('postImageInput').value = ''; });
+document.getElementById('removeImageBtn')?.addEventListener('click', () => { currentPostImageBase64 = null; document.getElementById('postImagePreview').style.display = 'none'; document.getElementById('postImageInput').value = ''; });
 function createPost(text, image) {
     if (!currentUser) { showToast('Войдите', 'error'); return; }
     if (!text.trim() && !image) { showToast('Напишите текст или добавьте фото', 'error'); return; }
@@ -115,14 +133,15 @@ function filterPostsBySearch() {
 }
 function renderFeed() {
     const feedDiv = document.getElementById('feed');
+    if (!feedDiv) return;
     let filteredPosts = filterPostsBySearch();
     if (!filteredPosts.length) { feedDiv.innerHTML = '<div class="loading-spinner">Ничего не найдено 😔</div>'; return; }
     const sorted = [...filteredPosts].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
     feedDiv.innerHTML = sorted.map(post => {
         const author = users.find(u => u.id === post.userId);
         const avatar = getAvatarUrl(author);
-        const isLiked = currentUser && post.likes.includes(currentUser.id);
-        const likeCount = post.likes.length;
+        const isLiked = currentUser && post.likes && post.likes.includes(currentUser.id);
+        const likeCount = post.likes ? post.likes.length : 0;
         const commentCount = post.comments ? post.comments.length : 0;
         const verified = author?.verified ? `<span class="verified-badge"><i class="fas fa-check-circle"></i> verified</span>` : '';
         return `<div class="post-card" data-post-id="${post.id}">
@@ -147,7 +166,7 @@ function renderFeed() {
 function updateHeaderAvatar() { if (currentUser) document.getElementById('headerAvatar').src = getAvatarUrl(currentUser); }
 function openProfileSettings() { if (!currentUser) return; document.getElementById('profileUsername').value = currentUser.username; document.getElementById('profileEmail').value = currentUser.email; document.getElementById('profilePassword').value = ''; document.getElementById('profileAvatarPreview').src = getAvatarUrl(currentUser); openModal('profileModal'); }
 let tempAvatarBase64 = null;
-document.getElementById('profileAvatarInput').addEventListener('change', e => { const f = e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ document.getElementById('profileAvatarPreview').src=ev.target.result; tempAvatarBase64=ev.target.result; }; r.readAsDataURL(f); } });
+document.getElementById('profileAvatarInput')?.addEventListener('change', e => { const f = e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ document.getElementById('profileAvatarPreview').src=ev.target.result; tempAvatarBase64=ev.target.result; }; r.readAsDataURL(f); } });
 function saveProfileSettings(newName, newEmail, newPass, newAvatar) {
     if (!currentUser) return;
     if (newName !== currentUser.username && users.find(u=>u.username===newName)) { showToast('Имя занято','error'); return false; }
@@ -166,9 +185,21 @@ function saveProfileSettings(newName, newEmail, newPass, newAvatar) {
 function updateUIByAuth() {
     const authDiv = document.getElementById('authButtons'), userMenu = document.getElementById('userMenu'), postForm = document.getElementById('postFormContainer'), adminBtn = document.getElementById('adminPanelBtn');
     if (currentUser) {
-        authDiv.classList.add('hidden'); userMenu.classList.remove('hidden'); document.getElementById('userGreeting').textContent = `@${currentUser.username}`; postForm.classList.remove('hidden'); updateHeaderAvatar();
-        if (currentUser.role === 'admin') adminBtn.classList.remove('hidden'); else adminBtn.classList.add('hidden');
-    } else { authDiv.classList.remove('hidden'); userMenu.classList.add('hidden'); postForm.classList.add('hidden'); }
+        if(authDiv) authDiv.classList.add('hidden');
+        if(userMenu) userMenu.classList.remove('hidden');
+        const greeting = document.getElementById('userGreeting');
+        if(greeting) greeting.textContent = `@${currentUser.username}`;
+        if(postForm) postForm.classList.remove('hidden');
+        updateHeaderAvatar();
+        if (adminBtn) {
+            if (currentUser.role === 'admin') adminBtn.classList.remove('hidden');
+            else adminBtn.classList.add('hidden');
+        }
+    } else { 
+        if(authDiv) authDiv.classList.remove('hidden');
+        if(userMenu) userMenu.classList.add('hidden');
+        if(postForm) postForm.classList.add('hidden');
+    }
     renderFeed();
 }
 function login(username, password) {
@@ -191,7 +222,7 @@ function renderAdminPanel() {
     updatePostCounts();
     const tbody = document.querySelector('#adminUsersTable tbody');
     if (tbody) {
-        tbody.innerHTML = users.map(u => `<tr>
+        tbody.innerHTML = users.map(u => `<td>
             <td><img src="${getAvatarUrl(u)}" style="width:32px;height:32px;border-radius:50%;"></td>
             <td>@${escapeHtml(u.username)}</td>
             <td>${escapeHtml(u.email)}</td>
@@ -204,7 +235,7 @@ function renderAdminPanel() {
                 <button class="edit-user-btn" data-id="${u.id}">✏️ Ред.</button>
                 ${u.role !== 'admin' ? `<button class="verify-user-btn" data-id="${u.id}">${u.verified ? '❌ Снять' : '✅ Вериф.'}</button>` : ''}
                 ${u.role !== 'admin' ? `<button class="delete-user-btn" data-id="${u.id}">Удалить</button>` : ''}
-             </td>
+              </td>
          `).join('');
         document.querySelectorAll('.delete-user-btn').forEach(btn=>btn.addEventListener('click',()=>{ if(confirm('Удалить пользователя и все его посты?')) deleteUserById(btn.dataset.id); }));
         document.querySelectorAll('.edit-user-btn').forEach(btn=>btn.addEventListener('click',()=>openAdminEditUser(btn.dataset.id)));
@@ -218,8 +249,8 @@ function renderAdminPanel() {
             <td>@${escapeHtml(p.username)}</td>
             <td style="max-width:200px;">${escapeHtml(p.text)}</td>
             <td>${p.image?'📷':'-'}</td>
-            <td>${p.likes.length}</td>
-            <td>${p.comments?.length||0}</td>
+            <td>${p.likes ? p.likes.length : 0}</td>
+            <td>${p.comments ? p.comments.length : 0}</td>
             <td>${formatDate(p.createdAt)}</td>
             <td><button class="delete-post-admin" data-id="${p.id}"><i class="fas fa-trash"></i></button></td>
          `).join('');
@@ -283,8 +314,8 @@ function toggleTheme() {
 }
 
 // ---------- MODALS ----------
-function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function openModal(id) { const el = document.getElementById(id); if(el) el.style.display = 'flex'; }
+function closeModal(id) { const el = document.getElementById(id); if(el) el.style.display = 'none'; }
 function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
 
 // ---------- SEARCH SETUP ----------
@@ -300,21 +331,34 @@ function setupSearch() {
 
 // ---------- EVENT BINDINGS ----------
 function bindEvents() {
-    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-    document.getElementById('loginBtn').addEventListener('click',()=>openModal('loginModal'));
-    document.getElementById('registerBtn').addEventListener('click',()=>openModal('registerModal'));
+    const themeBtn = document.getElementById('themeToggle');
+    if(themeBtn) themeBtn.addEventListener('click', toggleTheme);
+    const loginBtn = document.getElementById('loginBtn');
+    if(loginBtn) loginBtn.addEventListener('click',()=>openModal('loginModal'));
+    const registerBtn = document.getElementById('registerBtn');
+    if(registerBtn) registerBtn.addEventListener('click',()=>openModal('registerModal'));
     document.querySelectorAll('.close-modal').forEach(btn=>btn.addEventListener('click',()=>{ const m=btn.closest('.modal'); if(m) m.style.display='none'; }));
     window.addEventListener('click',e=>{ if(e.target.classList.contains('modal')) e.target.style.display='none'; });
-    document.getElementById('loginForm').addEventListener('submit',e=>{ e.preventDefault(); login(document.getElementById('loginUsername').value.trim(), document.getElementById('loginPassword').value); });
-    document.getElementById('registerForm').addEventListener('submit',e=>{ e.preventDefault(); if(register(document.getElementById('regUsername').value.trim(), document.getElementById('regEmail').value.trim(), document.getElementById('regPassword').value)) { closeModal('registerModal'); openModal('loginModal'); } });
-    document.getElementById('logoutBtn').addEventListener('click', logout);
-    document.getElementById('submitPostBtn').addEventListener('click',()=>createPost(document.getElementById('postText').value, currentPostImageBase64));
-    document.getElementById('postText').addEventListener('input',()=>{ document.getElementById('charCounter').innerText = `${document.getElementById('postText').value.length}/280`; });
-    document.getElementById('adminPanelBtn').addEventListener('click',()=>{ if(currentUser?.role==='admin') { renderAdminPanel(); openModal('adminModal'); } else showToast('Доступ только админу','error'); });
-    document.getElementById('profileSettingsBtn').addEventListener('click', openProfileSettings);
-    document.getElementById('profileForm').addEventListener('submit',e=>{ e.preventDefault(); saveProfileSettings(document.getElementById('profileUsername').value.trim(), document.getElementById('profileEmail').value.trim(), document.getElementById('profilePassword').value, tempAvatarBase64); tempAvatarBase64=null; });
-    document.getElementById('adminEditUserForm').addEventListener('submit',e=>{ e.preventDefault(); saveAdminEditUser(); });
-    document.getElementById('submitCommentBtn').addEventListener('click',()=>{ if(currentCommentPostId) addComment(currentCommentPostId, document.getElementById('commentText').value); });
+    const loginForm = document.getElementById('loginForm');
+    if(loginForm) loginForm.addEventListener('submit',e=>{ e.preventDefault(); login(document.getElementById('loginUsername').value.trim(), document.getElementById('loginPassword').value); });
+    const registerForm = document.getElementById('registerForm');
+    if(registerForm) registerForm.addEventListener('submit',e=>{ e.preventDefault(); if(register(document.getElementById('regUsername').value.trim(), document.getElementById('regEmail').value.trim(), document.getElementById('regPassword').value)) { closeModal('registerModal'); openModal('loginModal'); } });
+    const logoutBtn = document.getElementById('logoutBtn');
+    if(logoutBtn) logoutBtn.addEventListener('click', logout);
+    const submitPostBtn = document.getElementById('submitPostBtn');
+    if(submitPostBtn) submitPostBtn.addEventListener('click',()=>createPost(document.getElementById('postText').value, currentPostImageBase64));
+    const postTextarea = document.getElementById('postText');
+    if(postTextarea) postTextarea.addEventListener('input',()=>{ document.getElementById('charCounter').innerText = `${postTextarea.value.length}/280`; });
+    const adminBtn = document.getElementById('adminPanelBtn');
+    if(adminBtn) adminBtn.addEventListener('click',()=>{ if(currentUser?.role==='admin') { renderAdminPanel(); openModal('adminModal'); } else showToast('Доступ только админу','error'); });
+    const profileBtn = document.getElementById('profileSettingsBtn');
+    if(profileBtn) profileBtn.addEventListener('click', openProfileSettings);
+    const profileForm = document.getElementById('profileForm');
+    if(profileForm) profileForm.addEventListener('submit',e=>{ e.preventDefault(); saveProfileSettings(document.getElementById('profileUsername').value.trim(), document.getElementById('profileEmail').value.trim(), document.getElementById('profilePassword').value, tempAvatarBase64); tempAvatarBase64=null; });
+    const adminEditForm = document.getElementById('adminEditUserForm');
+    if(adminEditForm) adminEditForm.addEventListener('submit',e=>{ e.preventDefault(); saveAdminEditUser(); });
+    const submitCommentBtn = document.getElementById('submitCommentBtn');
+    if(submitCommentBtn) submitCommentBtn.addEventListener('click',()=>{ if(currentCommentPostId) addComment(currentCommentPostId, document.getElementById('commentText').value); });
     document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{ const tab=btn.dataset.tab; document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active')); document.getElementById(tab==='users'?'adminUsersTab':'adminPostsTab').classList.add('active'); }));
     setupSearch();
 }
