@@ -3,6 +3,7 @@ let currentUser = null;
 let users = [];
 let posts = [];
 let searchQuery = '';
+
 const STORAGE_USERS = 'nbss_users';
 const STORAGE_POSTS = 'nbss_posts';
 const STORAGE_CURRENT = 'nbss_currentUser';
@@ -13,12 +14,20 @@ function initData() {
     if (storedUsers) users = JSON.parse(storedUsers);
     else {
         const now = new Date().toISOString();
-        users = [{ id: '1', username: 'MrSigma', email: 'sigma@nbss.ru', password: 'Mrbeast132!', role: 'admin', verified: true, avatar: null, createdAt: now, lastLogin: now, lastActive: now, postCount: 0 }];
+        users = [{ 
+            id: '1', username: 'MrSigma', email: 'sigma@nbss.ru', password: 'Mrbeast132!', 
+            role: 'admin', avatar: null, verified: true, 
+            createdAt: now, lastLogin: now, lastActive: now, postCount: 0 
+        }];
         saveUsers();
     }
     if (storedPosts) posts = JSON.parse(storedPosts);
     else {
-        posts = [{ id: Date.now().toString() + '1', userId: '1', username: 'MrSigma', text: 'Добро пожаловать в нбсс! 🇷🇺 Быстрая соцсеть с фото, лайками и комментариями.', image: null, likes: [], comments: [], createdAt: new Date().toISOString() }];
+        posts = [{ 
+            id: Date.now().toString() + '1', userId: '1', username: 'MrSigma', 
+            text: 'Добро пожаловать в нбсс! 🇷🇺 Быстрая соцсеть с фото, лайками и комментариями. Администратор может выдавать галочку верификации ✅', 
+            image: null, likes: [], comments: [], createdAt: new Date().toISOString() 
+        }];
         savePosts();
     }
     const savedUserId = localStorage.getItem(STORAGE_CURRENT);
@@ -40,64 +49,6 @@ function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m =
 function showToast(msg, type='info') { const t = document.createElement('div'); t.innerText = msg; t.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:${type==='error'?'#dc2626':'#2563eb'};color:white;padding:8px 20px;border-radius:40px;z-index:9999;font-size:0.9rem;`; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
 function getAvatarUrl(user) { return user?.avatar || `https://ui-avatars.com/api/?background=2563eb&color=fff&rounded=true&size=40&name=${user?.username?.charAt(0)||'?'}`; }
 
-// ---------- ВЕРИФИКАЦИЯ ----------
-function toggleVerification(userId) {
-    if (!currentUser || currentUser.role !== 'admin') return;
-    const user = users.find(u => u.id === userId);
-    if (user) {
-        user.verified = !user.verified;
-        saveUsers();
-        renderFeed();
-        if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
-        showToast(`@${user.username} ${user.verified ? 'верифицирован' : 'лишён верификации'}`);
-    }
-}
-
-// ---------- ПОИСК ----------
-function filterPosts() {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return posts;
-    return posts.filter(post => post.text.toLowerCase().includes(query) || post.username.toLowerCase().includes(query));
-}
-function renderFeed() {
-    const feedDiv = document.getElementById('feed');
-    let filteredPosts = filterPosts();
-    if (!filteredPosts.length) { feedDiv.innerHTML = '<div class="loading-spinner">Постов не найдено 😔</div>'; return; }
-    const sorted = [...filteredPosts].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-    feedDiv.innerHTML = sorted.map(post => {
-        const author = users.find(u => u.id === post.userId);
-        const avatar = getAvatarUrl(author);
-        const isLiked = currentUser && post.likes.includes(currentUser.id);
-        const likeCount = post.likes.length;
-        const commentCount = post.comments ? post.comments.length : 0;
-        const isVerified = author?.verified || false;
-        return `<div class="post-card" data-post-id="${post.id}">
-            <div class="post-header">
-                <div class="post-header-left">
-                    <img class="post-avatar" src="${avatar}">
-                    <div class="post-author-info">
-                        <span class="post-author">@${escapeHtml(post.username)}${isVerified ? '<span class="verified-badge"><i class="fas fa-check-circle"></i></span>' : ''}</span>
-                        <span class="post-date">${formatDate(post.createdAt)}</span>
-                    </div>
-                </div>
-                ${(currentUser && (currentUser.id === post.userId || currentUser.role === 'admin')) ? `<button class="delete-post" data-id="${post.id}"><i class="fas fa-trash-alt"></i></button>` : ''}
-            </div>
-            <div class="post-text">${escapeHtml(post.text)}</div>
-            ${post.image ? `<div class="post-image"><img src="${post.image}"></div>` : ''}
-            <div class="post-stats">
-                <button class="like-btn ${isLiked ? 'liked' : ''}" data-id="${post.id}"><i class="fas fa-heart"></i> ${likeCount}</button>
-                <button class="comment-btn" data-id="${post.id}"><i class="fas fa-comment"></i> ${commentCount}</button>
-            </div>
-        </div>`;
-    }).join('');
-    attachPostEventListeners();
-}
-function attachPostEventListeners() {
-    document.querySelectorAll('.delete-post').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); deletePostById(btn.dataset.id); }));
-    document.querySelectorAll('.like-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); toggleLike(btn.dataset.id); }));
-    document.querySelectorAll('.comment-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); openCommentsModal(btn.dataset.id); }));
-}
-
 // ---------- ЛАЙКИ И КОММЕНТАРИИ ----------
 function toggleLike(postId) {
     if (!currentUser) { showToast('Войдите, чтобы ставить лайки', 'error'); return; }
@@ -114,7 +65,7 @@ function renderCommentsList(postId) {
     const post = posts.find(p => p.id === postId);
     const container = document.getElementById('commentsList');
     if (!post?.comments?.length) { container.innerHTML = '<div class="loading-spinner">Нет комментариев. Будьте первым!</div>'; return; }
-    container.innerHTML = post.comments.map(c => { const u = users.find(u=>u.id===c.userId); const av = getAvatarUrl(u); const isVerified = u?.verified || false; return `<div class="comment-item"><img class="comment-avatar" src="${av}"><div class="comment-content"><div class="comment-author">@${escapeHtml(c.username)}${isVerified ? '<span class="verified-badge"><i class="fas fa-check-circle"></i></span>' : ''}</div><div class="comment-text">${escapeHtml(c.text)}</div><div class="comment-date">${formatDate(c.createdAt)}</div></div></div>`; }).join('');
+    container.innerHTML = post.comments.map(c => { const u = users.find(u=>u.id===c.userId); const av = getAvatarUrl(u); return `<div class="comment-item"><img class="comment-avatar" src="${av}"><div class="comment-content"><div class="comment-author">@${escapeHtml(c.username)}</div><div class="comment-text">${escapeHtml(c.text)}</div><div class="comment-date">${formatDate(c.createdAt)}</div></div></div>`; }).join('');
 }
 function addComment(postId, text) {
     if (!currentUser || !text.trim()) return;
@@ -153,7 +104,46 @@ function deletePostById(postId) {
     } else showToast('Нет прав', 'error');
 }
 
-// ---------- ПРОФИЛЬ И АВАТАР ----------
+// ---------- ФИЛЬТРАЦИЯ ПОСТОВ (ПОИСК) ----------
+function filterPostsBySearch() {
+    if (!searchQuery.trim()) return posts;
+    const query = searchQuery.toLowerCase();
+    return posts.filter(post => 
+        post.text.toLowerCase().includes(query) || 
+        post.username.toLowerCase().includes(query)
+    );
+}
+function renderFeed() {
+    const feedDiv = document.getElementById('feed');
+    let filteredPosts = filterPostsBySearch();
+    if (!filteredPosts.length) { feedDiv.innerHTML = '<div class="loading-spinner">Ничего не найдено 😔</div>'; return; }
+    const sorted = [...filteredPosts].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    feedDiv.innerHTML = sorted.map(post => {
+        const author = users.find(u => u.id === post.userId);
+        const avatar = getAvatarUrl(author);
+        const isLiked = currentUser && post.likes.includes(currentUser.id);
+        const likeCount = post.likes.length;
+        const commentCount = post.comments ? post.comments.length : 0;
+        const verified = author?.verified ? `<span class="verified-badge"><i class="fas fa-check-circle"></i> verified</span>` : '';
+        return `<div class="post-card" data-post-id="${post.id}">
+            <div class="post-header">
+                <div class="post-header-left"><img class="post-avatar" src="${avatar}"><div class="post-author-info"><span class="post-author">@${escapeHtml(post.username)}${verified}</span><span class="post-date">${formatDate(post.createdAt)}</span></div></div>
+                ${(currentUser && (currentUser.id === post.userId || currentUser.role === 'admin')) ? `<button class="delete-post" data-id="${post.id}"><i class="fas fa-trash-alt"></i></button>` : ''}
+            </div>
+            <div class="post-text">${escapeHtml(post.text)}</div>
+            ${post.image ? `<div class="post-image"><img src="${post.image}"></div>` : ''}
+            <div class="post-stats">
+                <button class="like-btn ${isLiked ? 'liked' : ''}" data-id="${post.id}"><i class="fas fa-heart"></i> ${likeCount}</button>
+                <button class="comment-btn" data-id="${post.id}"><i class="fas fa-comment"></i> ${commentCount}</button>
+            </div>
+        </div>`;
+    }).join('');
+    document.querySelectorAll('.delete-post').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); deletePostById(btn.dataset.id); }));
+    document.querySelectorAll('.like-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); toggleLike(btn.dataset.id); }));
+    document.querySelectorAll('.comment-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); openCommentsModal(btn.dataset.id); }));
+}
+
+// ---------- ПРОФИЛЬ ----------
 function updateHeaderAvatar() { if (currentUser) document.getElementById('headerAvatar').src = getAvatarUrl(currentUser); }
 function openProfileSettings() { if (!currentUser) return; document.getElementById('profileUsername').value = currentUser.username; document.getElementById('profileEmail').value = currentUser.email; document.getElementById('profilePassword').value = ''; document.getElementById('profileAvatarPreview').src = getAvatarUrl(currentUser); openModal('profileModal'); }
 let tempAvatarBase64 = null;
@@ -195,7 +185,7 @@ function register(username, email, password) {
 }
 function logout() { currentUser = null; localStorage.removeItem(STORAGE_CURRENT); updateUIByAuth(); showToast('Вы вышли'); }
 
-// ---------- АДМИН ПАНЕЛЬ С ВЕРИФИКАЦИЕЙ ----------
+// ---------- АДМИН ПАНЕЛЬ (С ВЕРИФИКАЦИЕЙ) ----------
 function renderAdminPanel() {
     if (!currentUser || currentUser.role !== 'admin') return;
     updatePostCounts();
@@ -206,19 +196,19 @@ function renderAdminPanel() {
             <td>@${escapeHtml(u.username)}</td>
             <td>${escapeHtml(u.email)}</td>
             <td>${u.role==='admin'?'👑 Админ':'👤 Пользователь'}</td>
-            <td>${u.verified ? '<i class="fas fa-check-circle" style="color:#3b82f6"></i> Да' : '<i class="fas fa-times-circle" style="color:#9ca3af"></i> Нет'}</td>
+            <td>${u.verified ? '<i class="fas fa-check-circle" style="color:#3b82f6;"></i> Да' : '<i class="fas fa-times-circle" style="color:#9ca3af;"></i> Нет'}</td>
             <td>${u.postCount||0}</td>
             <td>${u.lastLogin?formatDate(u.lastLogin):'—'}</td>
             <td>${u.lastActive?formatDate(u.lastActive):'—'}</td>
             <td>
                 <button class="edit-user-btn" data-id="${u.id}">✏️ Ред.</button>
-                ${u.role!=='admin' ? `<button class="verify-user-btn" data-id="${u.id}" style="background:#10b981; color:white; border:none; border-radius:1rem; padding:0.2rem 0.6rem; margin:0 0.2rem; cursor:pointer;">${u.verified ? '🔹 Снять' : '✅ Выдать'}</button>` : ''}
-                ${u.role!=='admin' ? `<button class="delete-user-btn" data-id="${u.id}">Удалить</button>` : ''}
+                ${u.role !== 'admin' ? `<button class="verify-user-btn" data-id="${u.id}" style="background:#10b981; color:white; border:none; border-radius:1rem; padding:0.2rem 0.6rem; margin:0 0.2rem;">${u.verified ? '❌ Снять верификацию' : '✅ Верифицировать'}</button>` : ''}
+                ${u.role !== 'admin' ? `<button class="delete-user-btn" data-id="${u.id}">Удалить</button>` : ''}
             </td>
         </tr>`).join('');
         document.querySelectorAll('.delete-user-btn').forEach(btn=>btn.addEventListener('click',()=>{ if(confirm('Удалить пользователя и все его посты?')) deleteUserById(btn.dataset.id); }));
         document.querySelectorAll('.edit-user-btn').forEach(btn=>btn.addEventListener('click',()=>openAdminEditUser(btn.dataset.id)));
-        document.querySelectorAll('.verify-user-btn').forEach(btn=>btn.addEventListener('click',()=>toggleVerification(btn.dataset.id)));
+        document.querySelectorAll('.verify-user-btn').forEach(btn=>btn.addEventListener('click',()=>toggleUserVerification(btn.dataset.id)));
     }
     const postsTbody = document.querySelector('#adminPostsTable tbody');
     if (postsTbody) {
@@ -234,6 +224,16 @@ function renderAdminPanel() {
             <td><button class="delete-post-admin" data-id="${p.id}"><i class="fas fa-trash"></i></button></td>
         </tr>`).join('');
         document.querySelectorAll('.delete-post-admin').forEach(btn=>btn.addEventListener('click',()=>{ if(confirm('Удалить пост?')) deletePostById(btn.dataset.id); }));
+    }
+}
+function toggleUserVerification(userId) {
+    const user = users.find(u => u.id === userId);
+    if (user && user.role !== 'admin') {
+        user.verified = !user.verified;
+        saveUsers();
+        renderAdminPanel();
+        renderFeed(); // обновить ленту, чтобы галочки появились у постов
+        showToast(`Пользователь @${user.username} ${user.verified ? 'верифицирован' : 'лишён верификации'}`);
     }
 }
 function deleteUserById(id) { users = users.filter(u=>u.id!==id); posts = posts.filter(p=>p.userId!==id); saveUsers(); savePosts(); if (currentUser && currentUser.id===id) logout(); renderAdminPanel(); renderFeed(); showToast('Пользователь удалён'); }
@@ -282,10 +282,21 @@ function toggleTheme() {
     }
 }
 
-// ---------- МОДАЛКИ ----------
+// ---------- МОДАЛЬНЫЕ ОКНА ----------
 function openModal(id) { document.getElementById(id).style.display = 'flex'; }
 function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
+
+// ---------- ПОИСК ----------
+function setupSearch() {
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderFeed();
+        });
+    }
+}
 
 // ---------- СОБЫТИЯ ----------
 function bindEvents() {
@@ -305,14 +316,7 @@ function bindEvents() {
     document.getElementById('adminEditUserForm').addEventListener('submit',e=>{ e.preventDefault(); saveAdminEditUser(); });
     document.getElementById('submitCommentBtn').addEventListener('click',()=>{ if(currentCommentPostId) addComment(currentCommentPostId, document.getElementById('commentText').value); });
     document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{ const tab=btn.dataset.tab; document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active')); document.getElementById(tab==='users'?'adminUsersTab':'adminPostsTab').classList.add('active'); }));
-    // Поиск
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            searchQuery = e.target.value;
-            renderFeed();
-        });
-    }
+    setupSearch();
 }
 
 function startApp() { initData(); bindEvents(); updateUIByAuth(); initTheme(); if(currentUser) updateLastActive(currentUser.id); }
