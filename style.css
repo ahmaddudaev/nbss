@@ -210,3 +210,50 @@ th { background: var(--bg-secondary); font-weight: 600; }
     .header-actions { justify-content: space-between; }
     #searchInput { width: 100%; }
 }
+/* Поиск */
+.search-wrapper {
+    position: relative;
+    margin-top: 1rem;
+    width: 100%;
+}
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+.search-input {
+    width: 100%;
+    padding: 0.6rem 0.8rem 0.6rem 2.2rem;
+    border: 1px solid var(--border-color);
+    border-radius: 2rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+.search-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+}
+/* Верификация */
+.verified-badge {
+    color: #3b82f6;
+    margin-left: 4px;
+    font-size: 0.8rem;
+    display: inline-block;
+}
+.verified-badge i {
+    font-size: 0.75rem;
+}
+/* Кнопка админа всегда видна */
+.admin-only {
+    display: inline-flex !important;
+}
+/* Адаптация под мобильные */
+@media (max-width: 600px) {
+    .search-input { font-size: 0.85rem; }
+}
