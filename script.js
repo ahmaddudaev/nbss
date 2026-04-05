@@ -5,7 +5,7 @@ let posts = [];
 
 const STORAGE_USERS = 'nbss_users';
 const STORAGE_POSTS = 'nbss_posts';
-const STORAGE_CURRENT = 'nbss_currentUser';
+const STORAGE_CURRENT = 'nbss_currentUser';  // теперь localStorage
 
 function initData() {
     const storedUsers = localStorage.getItem(STORAGE_USERS);
@@ -43,14 +43,14 @@ function initData() {
         savePosts();
     }
     
-    const savedCurrent = sessionStorage.getItem(STORAGE_CURRENT);
-    if (savedCurrent) {
-        const userId = savedCurrent;
-        currentUser = users.find(u => u.id === userId);
+    // Восстанавливаем сессию из localStorage (теперь запоминается навсегда)
+    const savedUserId = localStorage.getItem(STORAGE_CURRENT);
+    if (savedUserId) {
+        currentUser = users.find(u => u.id === savedUserId);
         if (currentUser) {
             updateLastActive(currentUser.id);
         } else {
-            sessionStorage.removeItem(STORAGE_CURRENT);
+            localStorage.removeItem(STORAGE_CURRENT);
         }
     }
 }
@@ -148,7 +148,7 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 2500);
 }
 
-// ==================== АВТОРИЗАЦИЯ ====================
+// ==================== АВТОРИЗАЦИЯ (с сохранением в localStorage) ====================
 function updateUIByAuth() {
     const authDiv = document.getElementById('authButtons');
     const userMenu = document.getElementById('userMenu');
@@ -177,7 +177,8 @@ function login(username, password) {
         user.lastLogin = new Date().toISOString();
         user.lastActive = user.lastLogin;
         saveUsers();
-        sessionStorage.setItem(STORAGE_CURRENT, user.id);
+        // Сохраняем в localStorage — теперь пользователь остаётся после перезагрузки
+        localStorage.setItem(STORAGE_CURRENT, user.id);
         updateUIByAuth();
         closeAllModals();
         showToast(`Добро пожаловать, ${user.username}!`);
@@ -203,7 +204,7 @@ function register(username, email, password) {
 
 function logout() {
     currentUser = null;
-    sessionStorage.removeItem(STORAGE_CURRENT);
+    localStorage.removeItem(STORAGE_CURRENT);  // удаляем запоминание
     updateUIByAuth();
     showToast('Вы вышли из аккаунта');
 }
@@ -219,7 +220,6 @@ function openProfileSettings() {
 
 function saveProfileSettings(newUsername, newEmail, newPassword) {
     if (!currentUser) return;
-    // Проверка уникальности username (кроме себя)
     if (newUsername !== currentUser.username && users.find(u => u.username === newUsername)) {
         showToast('Имя пользователя уже занято', 'error');
         return false;
@@ -229,15 +229,12 @@ function saveProfileSettings(newUsername, newEmail, newPassword) {
         return false;
     }
     if (newUsername.trim() === '') { showToast('Имя не может быть пустым', 'error'); return false; }
-    // Обновляем данные
     currentUser.username = newUsername;
     currentUser.email = newEmail;
     if (newPassword && newPassword.length > 0) currentUser.password = newPassword;
-    // Обновить пользователя в массиве users
     const index = users.findIndex(u => u.id === currentUser.id);
     if (index !== -1) users[index] = currentUser;
     saveUsers();
-    // Обновить все посты этого пользователя (чоб username отображался новый)
     posts.forEach(post => {
         if (post.userId === currentUser.id) post.username = currentUser.username;
     });
