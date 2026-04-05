@@ -2,6 +2,8 @@
 let currentUser = null;
 let users = [];
 let posts = [];
+let currentSearchQuery = '';
+
 const STORAGE_USERS = 'nbss_users';
 const STORAGE_POSTS = 'nbss_posts';
 const STORAGE_CURRENT = 'nbss_currentUser';
@@ -12,12 +14,20 @@ function initData() {
     if (storedUsers) users = JSON.parse(storedUsers);
     else {
         const now = new Date().toISOString();
-        users = [{ id: '1', username: 'MrSigma', email: 'sigma@nbss.ru', password: 'Mrbeast132!', role: 'admin', avatar: null, createdAt: now, lastLogin: now, lastActive: now, postCount: 0 }];
+        users = [{ 
+            id: '1', username: 'MrSigma', email: 'sigma@nbss.ru', password: 'Mrbeast132!', 
+            role: 'admin', avatar: null, verified: 'gold', 
+            createdAt: now, lastLogin: now, lastActive: now, postCount: 0 
+        }];
         saveUsers();
     }
     if (storedPosts) posts = JSON.parse(storedPosts);
     else {
-        posts = [{ id: Date.now().toString() + '1', userId: '1', username: 'MrSigma', text: 'Добро пожаловать в нбсс! 🇷🇺 Быстрая соцсеть с фото, лайками и комментариями.', image: null, likes: [], comments: [], createdAt: new Date().toISOString() }];
+        posts = [{ 
+            id: Date.now().toString() + '1', userId: '1', username: 'MrSigma', 
+            text: 'Добро пожаловать в нбсс! 🇷🇺 Быстрая соцсеть с фото, лайками и комментариями. Админ выдаёт верификацию!', 
+            image: null, likes: [], comments: [], createdAt: new Date().toISOString() 
+        }];
         savePosts();
     }
     const savedUserId = localStorage.getItem(STORAGE_CURRENT);
@@ -38,6 +48,11 @@ function formatDate(iso) { return new Date(iso).toLocaleString('ru-RU', { day:'n
 function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
 function showToast(msg, type='info') { const t = document.createElement('div'); t.innerText = msg; t.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:${type==='error'?'#dc2626':'#2563eb'};color:white;padding:8px 20px;border-radius:40px;z-index:9999;font-size:0.9rem;`; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
 function getAvatarUrl(user) { return user?.avatar || `https://ui-avatars.com/api/?background=2563eb&color=fff&rounded=true&size=40&name=${user?.username?.charAt(0)||'?'}`; }
+function getVerifiedIcon(verified) {
+    if (verified === 'blue') return '<i class="fas fa-check-circle verified-icon verified-blue" title="Верифицирован"></i>';
+    if (verified === 'gold') return '<i class="fas fa-crown verified-icon verified-gold" title="Золотая верификация"></i>';
+    return '';
+}
 
 // ---------- LIKES & COMMENTS ----------
 function toggleLike(postId) {
@@ -93,19 +108,28 @@ function deletePostById(postId) {
         savePosts(); updatePostCounts(); renderFeed(); if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel(); showToast('Пост удалён');
     } else showToast('Нет прав', 'error');
 }
+
+// Поиск
+function filterPostsByQuery(query) {
+    if (!query.trim()) return posts;
+    const lowerQuery = query.toLowerCase();
+    return posts.filter(post => post.text.toLowerCase().includes(lowerQuery));
+}
 function renderFeed() {
     const feedDiv = document.getElementById('feed');
-    if (!posts.length) { feedDiv.innerHTML = '<div class="loading-spinner">Пока нет постов. Будьте первым!</div>'; return; }
-    const sorted = [...posts].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    let filteredPosts = filterPostsByQuery(currentSearchQuery);
+    if (!filteredPosts.length) { feedDiv.innerHTML = '<div class="loading-spinner">Постов не найдено</div>'; return; }
+    const sorted = [...filteredPosts].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
     feedDiv.innerHTML = sorted.map(post => {
         const author = users.find(u => u.id === post.userId);
         const avatar = getAvatarUrl(author);
         const isLiked = currentUser && post.likes.includes(currentUser.id);
         const likeCount = post.likes.length;
         const commentCount = post.comments ? post.comments.length : 0;
+        const verifiedIcon = getVerifiedIcon(author?.verified);
         return `<div class="post-card" data-post-id="${post.id}">
             <div class="post-header">
-                <div class="post-header-left"><img class="post-avatar" src="${avatar}"><div class="post-author-info"><span class="post-author">@${escapeHtml(post.username)}</span><span class="post-date">${formatDate(post.createdAt)}</span></div></div>
+                <div class="post-header-left"><img class="post-avatar" src="${avatar}"><div class="post-author-info"><span class="post-author">@${escapeHtml(post.username)} ${verifiedIcon}</span><span class="post-date">${formatDate(post.createdAt)}</span></div></div>
                 ${(currentUser && (currentUser.id === post.userId || currentUser.role === 'admin')) ? `<button class="delete-post" data-id="${post.id}"><i class="fas fa-trash-alt"></i></button>` : ''}
             </div>
             <div class="post-text">${escapeHtml(post.text)}</div>
@@ -158,37 +182,72 @@ function register(username, email, password) {
     if (users.find(u=>u.username===username)) { showToast('Имя занято','error'); return false; }
     if (users.find(u=>u.email===email)) { showToast('Email занят','error'); return false; }
     const now = new Date().toISOString();
-    users.push({ id: Date.now().toString(), username, email, password, role: 'user', avatar: null, createdAt: now, lastLogin: now, lastActive: now, postCount: 0 });
+    users.push({ id: Date.now().toString(), username, email, password, role: 'user', avatar: null, verified: 'none', createdAt: now, lastLogin: now, lastActive: now, postCount: 0 });
     saveUsers(); showToast('Регистрация успешна! Войдите.'); return true;
 }
 function logout() { currentUser = null; localStorage.removeItem(STORAGE_CURRENT); updateUIByAuth(); showToast('Вы вышли'); }
 
-// ---------- ADMIN PANEL ----------
+// ---------- ADMIN PANEL (с верификацией) ----------
 function renderAdminPanel() {
     if (!currentUser || currentUser.role !== 'admin') return;
     updatePostCounts();
     const tbody = document.querySelector('#adminUsersTable tbody');
     if (tbody) {
-        tbody.innerHTML = users.map(u => `<tr><td><img src="${getAvatarUrl(u)}" style="width:32px;height:32px;border-radius:50%;"></td><td>@${escapeHtml(u.username)}</td><td>${escapeHtml(u.email)}</td><td>${u.role==='admin'?'👑 Админ':'👤 Пользователь'}</td><td>${u.postCount||0}</td><td>${u.lastLogin?formatDate(u.lastLogin):'—'}</td><td>${u.lastActive?formatDate(u.lastActive):'—'}</td><td><button class="edit-user-btn" data-id="${u.id}">✏️ Ред.</button> ${u.role!=='admin'?`<button class="delete-user-btn" data-id="${u.id}">Удалить</button>`:''}</td></tr>`).join('');
+        tbody.innerHTML = users.map(u => {
+            const verifiedText = u.verified === 'blue' ? '🔵 Синяя' : (u.verified === 'gold' ? '🟡 Золотая' : '—');
+            return `<tr>
+                <td><img src="${getAvatarUrl(u)}" style="width:32px;height:32px;border-radius:50%;"></td>
+                <td>@${escapeHtml(u.username)}</td>
+                <td>${escapeHtml(u.email)}</td>
+                <td>${u.role==='admin'?'👑 Админ':'👤 Пользователь'}</td>
+                <td>${verifiedText} <button class="verify-btn" data-id="${u.id}" data-verified="${u.verified || 'none'}">${u.verified === 'none' ? 'Выдать' : 'Изменить'}</button></td>
+                <td>${u.postCount||0}</td>
+                <td>${u.lastLogin?formatDate(u.lastLogin):'—'}</td>
+                <td>${u.lastActive?formatDate(u.lastActive):'—'}</td>
+                <td><button class="edit-user-btn" data-id="${u.id}">✏️ Ред.</button> ${u.role!=='admin'?`<button class="delete-user-btn" data-id="${u.id}">Удалить</button>`:''}</td>
+            </tr>`;
+        }).join('');
         document.querySelectorAll('.delete-user-btn').forEach(btn=>btn.addEventListener('click',()=>{ if(confirm('Удалить пользователя и все его посты?')) deleteUserById(btn.dataset.id); }));
         document.querySelectorAll('.edit-user-btn').forEach(btn=>btn.addEventListener('click',()=>openAdminEditUser(btn.dataset.id)));
+        document.querySelectorAll('.verify-btn').forEach(btn=>btn.addEventListener('click',()=>toggleVerification(btn.dataset.id)));
     }
     const postsTbody = document.querySelector('#adminPostsTable tbody');
     if (postsTbody) {
         const sorted = [...posts].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-        postsTbody.innerHTML = sorted.map(p => `<tr><td>${p.id.slice(-5)}</td><td>@${escapeHtml(p.username)}</td><td style="max-width:200px;">${escapeHtml(p.text)}</td><td>${p.image?'📷':'-'}</td><td>${p.likes.length}</td><td>${p.comments?.length||0}</td><td>${formatDate(p.createdAt)}</td><td><button class="delete-post-admin" data-id="${p.id}"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+        postsTbody.innerHTML = sorted.map(p => `<tr>
+            <td>${p.id.slice(-5)}</td>
+            <td>@${escapeHtml(p.username)}</td>
+            <td style="max-width:200px;">${escapeHtml(p.text)}</td>
+            <td>${p.image?'📷':'-'}</td>
+            <td>${p.likes.length}</td>
+            <td>${p.comments?.length||0}</td>
+            <td>${formatDate(p.createdAt)}</td>
+            <td><button class="delete-post-admin" data-id="${p.id}"><i class="fas fa-trash"></i></button></td>
+        </tr>`).join('');
         document.querySelectorAll('.delete-post-admin').forEach(btn=>btn.addEventListener('click',()=>{ if(confirm('Удалить пост?')) deletePostById(btn.dataset.id); }));
     }
 }
+function toggleVerification(userId) {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    const current = user.verified || 'none';
+    if (current === 'none') user.verified = 'blue';
+    else if (current === 'blue') user.verified = 'gold';
+    else user.verified = 'none';
+    saveUsers();
+    renderAdminPanel();
+    renderFeed();
+    showToast(`Верификация пользователя @${user.username}: ${user.verified === 'none' ? 'снята' : (user.verified === 'blue' ? 'синяя галочка' : 'золотая галочка')}`);
+}
 function deleteUserById(id) { users = users.filter(u=>u.id!==id); posts = posts.filter(p=>p.userId!==id); saveUsers(); savePosts(); if (currentUser && currentUser.id===id) logout(); renderAdminPanel(); renderFeed(); showToast('Пользователь удалён'); }
-function openAdminEditUser(userId) { const u=users.find(u=>u.id===userId); if(!u) return; document.getElementById('adminEditUserId').value=u.id; document.getElementById('adminEditUsername').value=u.username; document.getElementById('adminEditEmail').value=u.email; document.getElementById('adminEditPassword').value=''; document.getElementById('adminEditRole').value=u.role; openModal('adminEditUserModal'); }
+function openAdminEditUser(userId) { const u=users.find(u=>u.id===userId); if(!u) return; document.getElementById('adminEditUserId').value=u.id; document.getElementById('adminEditUsername').value=u.username; document.getElementById('adminEditEmail').value=u.email; document.getElementById('adminEditPassword').value=''; document.getElementById('adminEditRole').value=u.role; document.getElementById('adminEditVerified').value=u.verified || 'none'; openModal('adminEditUserModal'); }
 function saveAdminEditUser() {
     const id = document.getElementById('adminEditUserId').value, u = users.find(u=>u.id===id); if(!u) return;
-    const newName = document.getElementById('adminEditUsername').value.trim(), newEmail = document.getElementById('adminEditEmail').value.trim(), newPass = document.getElementById('adminEditPassword').value, newRole = document.getElementById('adminEditRole').value;
+    const newName = document.getElementById('adminEditUsername').value.trim(), newEmail = document.getElementById('adminEditEmail').value.trim(), newPass = document.getElementById('adminEditPassword').value, newRole = document.getElementById('adminEditRole').value, newVerified = document.getElementById('adminEditVerified').value;
     if(!newName) { showToast('Имя не пустое','error'); return; }
     if(newName!==u.username && users.find(u=>u.username===newName)) { showToast('Имя занято','error'); return; }
     if(newEmail!==u.email && users.find(u=>u.email===newEmail)) { showToast('Email занят','error'); return; }
-    u.username = newName; u.email = newEmail; if(newPass) u.password = newPass; u.role = newRole;
+    u.username = newName; u.email = newEmail; if(newPass) u.password = newPass; u.role = newRole; u.verified = newVerified;
     saveUsers();
     posts.forEach(p=>{ if(p.userId===u.id) p.username = newName; });
     savePosts();
@@ -196,7 +255,7 @@ function saveAdminEditUser() {
     renderFeed(); renderAdminPanel(); closeModal('adminEditUserModal'); showToast(`Пользователь @${newName} обновлён`);
 }
 
-// ---------- THEME (сохраняется) ----------
+// ---------- THEME ----------
 function initTheme() {
     try {
         const saved = localStorage.getItem('nbss_theme');
@@ -249,6 +308,13 @@ function bindEvents() {
     document.getElementById('adminEditUserForm').addEventListener('submit',e=>{ e.preventDefault(); saveAdminEditUser(); });
     document.getElementById('submitCommentBtn').addEventListener('click',()=>{ if(currentCommentPostId) addComment(currentCommentPostId, document.getElementById('commentText').value); });
     document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{ const tab=btn.dataset.tab; document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active')); document.getElementById(tab==='users'?'adminUsersTab':'adminPostsTab').classList.add('active'); }));
+    
+    // Поиск
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', (e) => {
+        currentSearchQuery = e.target.value;
+        renderFeed();
+    });
 }
 
 function startApp() { initData(); bindEvents(); updateUIByAuth(); initTheme(); if(currentUser) updateLastActive(currentUser.id); }
