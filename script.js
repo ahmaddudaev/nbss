@@ -49,7 +49,7 @@ function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m =
 function showToast(msg, type='info') { const t = document.createElement('div'); t.innerText = msg; t.style.cssText = `position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:${type==='error'?'#dc2626':'#2563eb'};color:white;padding:8px 20px;border-radius:40px;z-index:9999;font-size:0.9rem;`; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
 function getAvatarUrl(user) { return user?.avatar || `https://ui-avatars.com/api/?background=2563eb&color=fff&rounded=true&size=40&name=${user?.username?.charAt(0)||'?'}`; }
 
-// ---------- ЛАЙКИ И КОММЕНТАРИИ ----------
+// ---------- LIKES & COMMENTS ----------
 function toggleLike(postId) {
     if (!currentUser) { showToast('Войдите, чтобы ставить лайки', 'error'); return; }
     const post = posts.find(p => p.id === postId);
@@ -77,7 +77,7 @@ function addComment(postId, text) {
     savePosts(); renderCommentsList(postId); document.getElementById('commentText').value = ''; renderFeed();
 }
 
-// ---------- ПОСТЫ С ФОТО ----------
+// ---------- POSTS WITH IMAGES ----------
 let currentPostImageBase64 = null;
 document.getElementById('postImageInput').addEventListener('change', e => {
     const file = e.target.files[0];
@@ -104,7 +104,7 @@ function deletePostById(postId) {
     } else showToast('Нет прав', 'error');
 }
 
-// ---------- ФИЛЬТРАЦИЯ ПОСТОВ (ПОИСК) ----------
+// ---------- FILTER POSTS (SEARCH) ----------
 function filterPostsBySearch() {
     if (!searchQuery.trim()) return posts;
     const query = searchQuery.toLowerCase();
@@ -143,7 +143,7 @@ function renderFeed() {
     document.querySelectorAll('.comment-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); openCommentsModal(btn.dataset.id); }));
 }
 
-// ---------- ПРОФИЛЬ ----------
+// ---------- PROFILE ----------
 function updateHeaderAvatar() { if (currentUser) document.getElementById('headerAvatar').src = getAvatarUrl(currentUser); }
 function openProfileSettings() { if (!currentUser) return; document.getElementById('profileUsername').value = currentUser.username; document.getElementById('profileEmail').value = currentUser.email; document.getElementById('profilePassword').value = ''; document.getElementById('profileAvatarPreview').src = getAvatarUrl(currentUser); openModal('profileModal'); }
 let tempAvatarBase64 = null;
@@ -162,7 +162,7 @@ function saveProfileSettings(newName, newEmail, newPass, newAvatar) {
     showToast('Профиль обновлён'); closeModal('profileModal'); return true;
 }
 
-// ---------- АВТОРИЗАЦИЯ ----------
+// ---------- AUTH ----------
 function updateUIByAuth() {
     const authDiv = document.getElementById('authButtons'), userMenu = document.getElementById('userMenu'), postForm = document.getElementById('postFormContainer'), adminBtn = document.getElementById('adminPanelBtn');
     if (currentUser) {
@@ -185,7 +185,7 @@ function register(username, email, password) {
 }
 function logout() { currentUser = null; localStorage.removeItem(STORAGE_CURRENT); updateUIByAuth(); showToast('Вы вышли'); }
 
-// ---------- АДМИН ПАНЕЛЬ (С ВЕРИФИКАЦИЕЙ) ----------
+// ---------- ADMIN PANEL (with verification) ----------
 function renderAdminPanel() {
     if (!currentUser || currentUser.role !== 'admin') return;
     updatePostCounts();
@@ -202,10 +202,10 @@ function renderAdminPanel() {
             <td>${u.lastActive?formatDate(u.lastActive):'—'}</td>
             <td>
                 <button class="edit-user-btn" data-id="${u.id}">✏️ Ред.</button>
-                ${u.role !== 'admin' ? `<button class="verify-user-btn" data-id="${u.id}" style="background:#10b981; color:white; border:none; border-radius:1rem; padding:0.2rem 0.6rem; margin:0 0.2rem;">${u.verified ? '❌ Снять верификацию' : '✅ Верифицировать'}</button>` : ''}
+                ${u.role !== 'admin' ? `<button class="verify-user-btn" data-id="${u.id}">${u.verified ? '❌ Снять' : '✅ Вериф.'}</button>` : ''}
                 ${u.role !== 'admin' ? `<button class="delete-user-btn" data-id="${u.id}">Удалить</button>` : ''}
-            </td>
-        </tr>`).join('');
+             </td>
+         `).join('');
         document.querySelectorAll('.delete-user-btn').forEach(btn=>btn.addEventListener('click',()=>{ if(confirm('Удалить пользователя и все его посты?')) deleteUserById(btn.dataset.id); }));
         document.querySelectorAll('.edit-user-btn').forEach(btn=>btn.addEventListener('click',()=>openAdminEditUser(btn.dataset.id)));
         document.querySelectorAll('.verify-user-btn').forEach(btn=>btn.addEventListener('click',()=>toggleUserVerification(btn.dataset.id)));
@@ -222,7 +222,7 @@ function renderAdminPanel() {
             <td>${p.comments?.length||0}</td>
             <td>${formatDate(p.createdAt)}</td>
             <td><button class="delete-post-admin" data-id="${p.id}"><i class="fas fa-trash"></i></button></td>
-        </tr>`).join('');
+         `).join('');
         document.querySelectorAll('.delete-post-admin').forEach(btn=>btn.addEventListener('click',()=>{ if(confirm('Удалить пост?')) deletePostById(btn.dataset.id); }));
     }
 }
@@ -232,7 +232,7 @@ function toggleUserVerification(userId) {
         user.verified = !user.verified;
         saveUsers();
         renderAdminPanel();
-        renderFeed(); // обновить ленту, чтобы галочки появились у постов
+        renderFeed();
         showToast(`Пользователь @${user.username} ${user.verified ? 'верифицирован' : 'лишён верификации'}`);
     }
 }
@@ -252,7 +252,7 @@ function saveAdminEditUser() {
     renderFeed(); renderAdminPanel(); closeModal('adminEditUserModal'); showToast(`Пользователь @${newName} обновлён`);
 }
 
-// ---------- ТЕМА ----------
+// ---------- THEME ----------
 function initTheme() {
     try {
         const saved = localStorage.getItem('nbss_theme');
@@ -282,12 +282,12 @@ function toggleTheme() {
     }
 }
 
-// ---------- МОДАЛЬНЫЕ ОКНА ----------
+// ---------- MODALS ----------
 function openModal(id) { document.getElementById(id).style.display = 'flex'; }
 function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
 
-// ---------- ПОИСК ----------
+// ---------- SEARCH SETUP ----------
 function setupSearch() {
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
@@ -298,7 +298,7 @@ function setupSearch() {
     }
 }
 
-// ---------- СОБЫТИЯ ----------
+// ---------- EVENT BINDINGS ----------
 function bindEvents() {
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
     document.getElementById('loginBtn').addEventListener('click',()=>openModal('loginModal'));
