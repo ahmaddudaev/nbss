@@ -13,10 +13,6 @@
     <header class="header">
         <div class="logo"><i class="fas fa-bolt"></i><span>нбсс</span><small>beta</small></div>
         <div class="header-actions">
-            <div class="search-container">
-                <i class="fas fa-search search-icon"></i>
-                <input type="text" id="searchInput" placeholder="Поиск по постам...">
-            </div>
             <button id="themeToggle" class="icon-btn"><i class="fas fa-moon"></i></button>
             <div id="authButtons" class="auth-buttons">
                 <button id="loginBtn" class="btn-outline">Вход</button>
@@ -33,7 +29,14 @@
     </header>
     <main class="main-content">
         <div class="feed-container">
-            <div class="feed-header"><h2><i class="fas fa-rss"></i> Лента новостей</h2></div>
+            <div class="feed-header">
+                <h2><i class="fas fa-rss"></i> Лента новостей</h2>
+                <!-- Красивая строка поиска -->
+                <div class="search-wrapper">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Поиск по постам..." class="search-input">
+                </div>
+            </div>
             <div id="postFormContainer" class="post-form-card hidden">
                 <div class="post-form">
                     <textarea id="postText" placeholder="Что нового? (до 280 символов)" maxlength="280"></textarea>
@@ -53,13 +56,13 @@
     </main>
 </div>
 
-<!-- Модальные окна -->
+<!-- Остальные модальные окна (без изменений) -->
 <div id="loginModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><h3>Вход</h3><form id="loginForm"><input type="text" id="loginUsername" placeholder="Имя пользователя" required><input type="password" id="loginPassword" placeholder="Пароль" required><button type="submit" class="btn-primary full-width">Войти</button></form></div></div>
 <div id="registerModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><h3>Регистрация</h3><form id="registerForm"><input type="text" id="regUsername" placeholder="Имя пользователя" required><input type="email" id="regEmail" placeholder="Email" required><input type="password" id="regPassword" placeholder="Пароль" required><button type="submit" class="btn-primary full-width">Зарегистрироваться</button></form></div></div>
 <div id="profileModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><h3><i class="fas fa-user-edit"></i> Настройки профиля</h3><form id="profileForm"><div class="avatar-upload"><img id="profileAvatarPreview" class="profile-avatar-preview" src=""><label class="btn-outline" style="display:inline-block; margin-top:0.5rem;"><i class="fas fa-upload"></i> Загрузить аватар<input type="file" id="profileAvatarInput" accept="image/*" style="display:none;"></label></div><label>Имя пользователя</label><input type="text" id="profileUsername" required><label>Email</label><input type="email" id="profileEmail" required><label>Новый пароль (оставьте пустым)</label><input type="password" id="profilePassword"><button type="submit" class="btn-primary full-width">Сохранить</button></form></div></div>
-<div id="adminModal" class="modal admin-modal"><div class="modal-content wide-modal"><span class="close-modal">&times;</span><h3><i class="fas fa-chart-line"></i> Админ-панель</h3><div class="admin-tabs"><button class="tab-btn active" data-tab="users">Пользователи</button><button class="tab-btn" data-tab="allposts">Все посты</button></div><div id="adminUsersTab" class="admin-tab active"><div class="admin-stats"><p><strong>Активность пользователей</strong></p></div><div class="table-wrapper"><table id="adminUsersTable"><thead><tr><th>Аватар</th><th>Имя</th><th>Email</th><th>Роль</th><th>Верификация</th><th>Постов</th><th>Последний вход</th><th>Последняя активность</th><th>Действия</th></tr></thead><tbody></tbody></table></div></div><div id="adminPostsTab" class="admin-tab"><div class="table-wrapper"><table id="adminPostsTable"><thead><tr><th>ID</th><th>Автор</th><th>Текст</th><th>Фото</th><th>Лайки</th><th>Комм.</th><th>Дата</th><th>Действия</th></tr></thead><tbody></tbody></table></div></div></div></div>
+<div id="adminModal" class="modal admin-modal"><div class="modal-content wide-modal"><span class="close-modal">&times;</span><h3><i class="fas fa-chart-line"></i> Админ-панель</h3><div class="admin-tabs"><button class="tab-btn active" data-tab="users">Пользователи</button><button class="tab-btn" data-tab="allposts">Все посты</button></div><div id="adminUsersTab" class="admin-tab active"><div class="admin-stats"><p><strong>Активность пользователей</strong></p></div><div class="table-wrapper"><table id="adminUsersTable"><thead><tr><th>Аватар</th><th>Имя</th><th>Email</th><th>Роль</th><th>Вериф.</th><th>Постов</th><th>Последний вход</th><th>Последняя активность</th><th>Действия</th></tr></thead><tbody></tbody></table></div></div><div id="adminPostsTab" class="admin-tab"><div class="table-wrapper"><table id="adminPostsTable"><thead><tr><th>ID</th><th>Автор</th><th>Текст</th><th>Фото</th><th>Лайки</th><th>Комм.</th><th>Дата</th><th>Действия</th></tr></thead><tbody></tbody></table></div></div></div></div>
 <div id="commentsModal" class="modal"><div class="modal-content wide-modal" style="max-width:600px;"><span class="close-modal">&times;</span><h3><i class="fas fa-comments"></i> Комментарии</h3><div id="commentsList" class="comments-list"></div><div class="add-comment"><textarea id="commentText" placeholder="Написать комментарий..." rows="2"></textarea><button id="submitCommentBtn" class="btn-primary full-width" style="margin-top:0.5rem;">Отправить</button></div></div></div>
-<div id="adminEditUserModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><h3>Редактирование пользователя</h3><form id="adminEditUserForm"><input type="hidden" id="adminEditUserId"><label>Имя пользователя</label><input type="text" id="adminEditUsername" required><label>Email</label><input type="email" id="adminEditEmail" required><label>Новый пароль</label><input type="password" id="adminEditPassword"><label>Роль</label><select id="adminEditRole"><option value="user">Пользователь</option><option value="admin">Администратор</option></select><label>Верификация</label><select id="adminEditVerified"><option value="none">Нет</option><option value="blue">Синяя галочка</option><option value="gold">Золотая галочка</option></select><button type="submit" class="btn-primary full-width">Сохранить</button></form></div></div>
+<div id="adminEditUserModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><h3>Редактирование пользователя</h3><form id="adminEditUserForm"><input type="hidden" id="adminEditUserId"><label>Имя пользователя</label><input type="text" id="adminEditUsername" required><label>Email</label><input type="email" id="adminEditEmail" required><label>Новый пароль</label><input type="password" id="adminEditPassword"><label>Роль</label><select id="adminEditRole"><option value="user">Пользователь</option><option value="admin">Администратор</option></select><button type="submit" class="btn-primary full-width">Сохранить</button></form></div></div>
 
 <script src="script.js"></script>
 </body>
