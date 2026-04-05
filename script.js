@@ -5,7 +5,7 @@ let posts = [];
 
 const STORAGE_USERS = 'nbss_users';
 const STORAGE_POSTS = 'nbss_posts';
-const STORAGE_CURRENT = 'nbss_currentUser';  // теперь localStorage
+const STORAGE_CURRENT = 'nbss_currentUser';
 
 function initData() {
     const storedUsers = localStorage.getItem(STORAGE_USERS);
@@ -43,7 +43,6 @@ function initData() {
         savePosts();
     }
     
-    // Восстанавливаем сессию из localStorage (теперь запоминается навсегда)
     const savedUserId = localStorage.getItem(STORAGE_CURRENT);
     if (savedUserId) {
         currentUser = users.find(u => u.id === savedUserId);
@@ -148,7 +147,7 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 2500);
 }
 
-// ==================== АВТОРИЗАЦИЯ (с сохранением в localStorage) ====================
+// ==================== АВТОРИЗАЦИЯ ====================
 function updateUIByAuth() {
     const authDiv = document.getElementById('authButtons');
     const userMenu = document.getElementById('userMenu');
@@ -177,7 +176,6 @@ function login(username, password) {
         user.lastLogin = new Date().toISOString();
         user.lastActive = user.lastLogin;
         saveUsers();
-        // Сохраняем в localStorage — теперь пользователь остаётся после перезагрузки
         localStorage.setItem(STORAGE_CURRENT, user.id);
         updateUIByAuth();
         closeAllModals();
@@ -204,12 +202,12 @@ function register(username, email, password) {
 
 function logout() {
     currentUser = null;
-    localStorage.removeItem(STORAGE_CURRENT);  // удаляем запоминание
+    localStorage.removeItem(STORAGE_CURRENT);
     updateUIByAuth();
     showToast('Вы вышли из аккаунта');
 }
 
-// ==================== НАСТРОЙКИ ПРОФИЛЯ ====================
+// ==================== НАСТРОЙКИ ПРОФИЛЯ (для себя) ====================
 function openProfileSettings() {
     if (!currentUser) return;
     document.getElementById('profileUsername').value = currentUser.username;
@@ -229,6 +227,7 @@ function saveProfileSettings(newUsername, newEmail, newPassword) {
         return false;
     }
     if (newUsername.trim() === '') { showToast('Имя не может быть пустым', 'error'); return false; }
+    const oldUsername = currentUser.username;
     currentUser.username = newUsername;
     currentUser.email = newEmail;
     if (newPassword && newPassword.length > 0) currentUser.password = newPassword;
@@ -245,6 +244,65 @@ function saveProfileSettings(newUsername, newEmail, newPassword) {
     showToast('Профиль обновлён');
     closeModal('profileModal');
     return true;
+}
+
+// ==================== АДМИН: РЕДАКТИРОВАНИЕ ЛЮБОГО ПОЛЬЗОВАТЕЛЯ ====================
+function openAdminEditUser(userId) {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    document.getElementById('adminEditUserId').value = user.id;
+    document.getElementById('adminEditUsername').value = user.username;
+    document.getElementById('adminEditEmail').value = user.email;
+    document.getElementById('adminEditPassword').value = '';
+    document.getElementById('adminEditRole').value = user.role;
+    openModal('adminEditUserModal');
+}
+
+function saveAdminEditUser() {
+    const userId = document.getElementById('adminEditUserId').value;
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    const newUsername = document.getElementById('adminEditUsername').value.trim();
+    const newEmail = document.getElementById('adminEditEmail').value.trim();
+    const newPassword = document.getElementById('adminEditPassword').value;
+    const newRole = document.getElementById('adminEditRole').value;
+    
+    if (newUsername === '') { showToast('Имя не может быть пустым', 'error'); return; }
+    if (newUsername !== user.username && users.find(u => u.username === newUsername)) {
+        showToast('Имя пользователя уже занято', 'error');
+        return;
+    }
+    if (newEmail !== user.email && users.find(u => u.email === newEmail)) {
+        showToast('Email уже используется', 'error');
+        return;
+    }
+    
+    const oldUsername = user.username;
+    user.username = newUsername;
+    user.email = newEmail;
+    if (newPassword && newPassword.length > 0) user.password = newPassword;
+    user.role = newRole;
+    saveUsers();
+    
+    // Обновить username в постах, если изменился
+    if (oldUsername !== newUsername) {
+        posts.forEach(post => {
+            if (post.userId === user.id) post.username = newUsername;
+        });
+        savePosts();
+    }
+    
+    // Если отредактировали текущего пользователя (админ редактирует себя)
+    if (currentUser && currentUser.id === userId) {
+        currentUser = user;
+        localStorage.setItem(STORAGE_CURRENT, currentUser.id);
+        updateUIByAuth();
+    }
+    
+    renderFeed();
+    if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
+    closeModal('adminEditUserModal');
+    showToast(`Пользователь @${newUsername} обновлён`);
 }
 
 // ==================== ПОСТЫ ====================
@@ -271,7 +329,7 @@ function createPost(text) {
     if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
 }
 
-// ==================== АДМИН ПАНЕЛЬ ====================
+// ==================== АДМИН ПАНЕЛЬ (с кнопкой редактирования) ====================
 function renderAdminPanel() {
     if (!currentUser || currentUser.role !== 'admin') return;
     updatePostCounts();
@@ -280,6 +338,7 @@ function renderAdminPanel() {
         tbody.innerHTML = users.map(user => {
             const lastLoginF = user.lastLogin ? formatDate(user.lastLogin) : '—';
             const lastActiveF = user.lastActive ? formatDate(user.lastActive) : '—';
+            const canDelete = user.role !== 'admin' ? `<button class="delete-user-btn" data-id="${user.id}">Удалить</button>` : '—';
             return `
                 <tr>
                     <td>${user.id.slice(-5)}</td>
@@ -289,10 +348,14 @@ function renderAdminPanel() {
                     <td>${user.postCount || 0}</td>
                     <td>${lastLoginF}</td>
                     <td>${lastActiveF}</td>
-                    <td>${user.role !== 'admin' ? `<button class="delete-user-btn" data-id="${user.id}">Удалить</button>` : '—'}</td>
+                    <td>
+                        <button class="edit-user-btn" data-id="${user.id}" style="background:#2563eb; color:white; border:none; border-radius:1rem; padding:0.2rem 0.6rem; margin-right:0.3rem; cursor:pointer;">✏️ Ред.</button>
+                        ${canDelete}
+                    </td>
                 </tr>
             `;
         }).join('');
+        // Кнопки удаления
         document.querySelectorAll('.delete-user-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const userId = btn.dataset.id;
@@ -305,6 +368,13 @@ function renderAdminPanel() {
                     renderFeed();
                     showToast('Пользователь удалён');
                 }
+            });
+        });
+        // Кнопки редактирования
+        document.querySelectorAll('.edit-user-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const userId = btn.dataset.id;
+                openAdminEditUser(userId);
             });
         });
     }
@@ -397,6 +467,11 @@ function bindEvents() {
             document.getElementById('profileEmail').value.trim(),
             document.getElementById('profilePassword').value
         );
+    });
+    // Админское редактирование пользователя
+    document.getElementById('adminEditUserForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveAdminEditUser();
     });
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
