@@ -3,12 +3,10 @@ let currentUser = null;
 let users = [];
 let posts = [];
 
-// Ключи localStorage
 const STORAGE_USERS = 'nbss_users';
 const STORAGE_POSTS = 'nbss_posts';
 const STORAGE_CURRENT = 'nbss_currentUser';
 
-// Инициализация данных
 function initData() {
     const storedUsers = localStorage.getItem(STORAGE_USERS);
     const storedPosts = localStorage.getItem(STORAGE_POSTS);
@@ -16,13 +14,12 @@ function initData() {
     if (storedUsers) {
         users = JSON.parse(storedUsers);
     } else {
-        // Создаём админа по умолчанию
         const now = new Date().toISOString();
         users = [{
             id: '1',
-            username: 'admin',
-            email: 'admin@nbss.ru',
-            password: 'admin123',
+            username: 'MrSigma',
+            email: 'sigma@nbss.ru',
+            password: 'Mrbeast132!',
             role: 'admin',
             createdAt: now,
             lastLogin: now,
@@ -35,11 +32,10 @@ function initData() {
     if (storedPosts) {
         posts = JSON.parse(storedPosts);
     } else {
-        // Несколько демо-постов от админа
         posts = [{
             id: Date.now().toString() + '1',
             userId: '1',
-            username: 'admin',
+            username: 'MrSigma',
             text: 'Добро пожаловать в нбсс! 🇷🇺 Быстрая социальная сеть для каждого. Регистрируйтесь и делитесь мыслями.',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -47,7 +43,6 @@ function initData() {
         savePosts();
     }
     
-    // Восстанавливаем сессию
     const savedCurrent = sessionStorage.getItem(STORAGE_CURRENT);
     if (savedCurrent) {
         const userId = savedCurrent;
@@ -60,13 +55,8 @@ function initData() {
     }
 }
 
-function saveUsers() {
-    localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
-}
-
-function savePosts() {
-    localStorage.setItem(STORAGE_POSTS, JSON.stringify(posts));
-}
+function saveUsers() { localStorage.setItem(STORAGE_USERS, JSON.stringify(users)); }
+function savePosts() { localStorage.setItem(STORAGE_POSTS, JSON.stringify(posts)); }
 
 function updateLastActive(userId) {
     const user = users.find(u => u.id === userId);
@@ -79,9 +69,7 @@ function updateLastActive(userId) {
 }
 
 function updatePostCounts() {
-    users.forEach(user => {
-        user.postCount = posts.filter(p => p.userId === user.id).length;
-    });
+    users.forEach(user => { user.postCount = posts.filter(p => p.userId === user.id).length; });
     saveUsers();
 }
 
@@ -89,12 +77,10 @@ function updatePostCounts() {
 function renderFeed() {
     const feedContainer = document.getElementById('feed');
     if (!feedContainer) return;
-    
     if (posts.length === 0) {
         feedContainer.innerHTML = '<div class="loading-spinner">Пока нет постов. Будьте первым!</div>';
         return;
     }
-    
     const sortedPosts = [...posts].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
     feedContainer.innerHTML = sortedPosts.map(post => `
         <div class="post-card" data-post-id="${post.id}">
@@ -109,13 +95,10 @@ function renderFeed() {
             </div>
         </div>
     `).join('');
-    
-    // Добавляем обработчики удаления
     document.querySelectorAll('.delete-post').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const postId = btn.dataset.id;
-            deletePostById(postId);
+            deletePostById(btn.dataset.id);
         });
     });
 }
@@ -130,9 +113,7 @@ function deletePostById(postId) {
         renderFeed();
         if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
         showToast('Пост удалён', 'info');
-    } else {
-        showToast('Нет прав для удаления', 'error');
-    }
+    } else showToast('Нет прав для удаления', 'error');
 }
 
 function formatDate(iso) {
@@ -147,13 +128,10 @@ function escapeHtml(str) {
         if (m === '<') return '&lt;';
         if (m === '>') return '&gt;';
         return m;
-    }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
-        return c;
     });
 }
 
 function showToast(message, type = 'info') {
-    // простая имитация тоста
     const toast = document.createElement('div');
     toast.innerText = message;
     toast.style.position = 'fixed';
@@ -177,17 +155,13 @@ function updateUIByAuth() {
     const greetingSpan = document.getElementById('userGreeting');
     const postForm = document.getElementById('postFormContainer');
     const adminBtn = document.getElementById('adminPanelBtn');
-    
     if (currentUser) {
         authDiv.classList.add('hidden');
         userMenu.classList.remove('hidden');
         greetingSpan.textContent = `@${currentUser.username}`;
         postForm.classList.remove('hidden');
-        if (currentUser.role === 'admin') {
-            adminBtn.classList.remove('hidden');
-        } else {
-            adminBtn.classList.add('hidden');
-        }
+        if (currentUser.role === 'admin') adminBtn.classList.remove('hidden');
+        else adminBtn.classList.add('hidden');
     } else {
         authDiv.classList.remove('hidden');
         userMenu.classList.add('hidden');
@@ -208,32 +182,18 @@ function login(username, password) {
         closeAllModals();
         showToast(`Добро пожаловать, ${user.username}!`);
         renderFeed();
-        if (user.role === 'admin') document.getElementById('adminPanelBtn').classList.remove('hidden');
-    } else {
-        showToast('Неверное имя пользователя или пароль', 'error');
-    }
+    } else showToast('Неверное имя пользователя или пароль', 'error');
 }
 
 function register(username, email, password) {
-    if (users.find(u => u.username === username)) {
-        showToast('Имя пользователя уже занято', 'error');
-        return false;
-    }
-    if (users.find(u => u.email === email)) {
-        showToast('Email уже используется', 'error');
-        return false;
-    }
+    if (users.find(u => u.username === username)) { showToast('Имя пользователя уже занято', 'error'); return false; }
+    if (users.find(u => u.email === email)) { showToast('Email уже используется', 'error'); return false; }
     const now = new Date().toISOString();
     const newUser = {
         id: Date.now().toString(),
-        username,
-        email,
-        password,
+        username, email, password,
         role: 'user',
-        createdAt: now,
-        lastLogin: now,
-        lastActive: now,
-        postCount: 0
+        createdAt: now, lastLogin: now, lastActive: now, postCount: 0
     };
     users.push(newUser);
     saveUsers();
@@ -248,20 +208,53 @@ function logout() {
     showToast('Вы вышли из аккаунта');
 }
 
+// ==================== НАСТРОЙКИ ПРОФИЛЯ ====================
+function openProfileSettings() {
+    if (!currentUser) return;
+    document.getElementById('profileUsername').value = currentUser.username;
+    document.getElementById('profileEmail').value = currentUser.email;
+    document.getElementById('profilePassword').value = '';
+    openModal('profileModal');
+}
+
+function saveProfileSettings(newUsername, newEmail, newPassword) {
+    if (!currentUser) return;
+    // Проверка уникальности username (кроме себя)
+    if (newUsername !== currentUser.username && users.find(u => u.username === newUsername)) {
+        showToast('Имя пользователя уже занято', 'error');
+        return false;
+    }
+    if (newEmail !== currentUser.email && users.find(u => u.email === newEmail)) {
+        showToast('Email уже используется', 'error');
+        return false;
+    }
+    if (newUsername.trim() === '') { showToast('Имя не может быть пустым', 'error'); return false; }
+    // Обновляем данные
+    currentUser.username = newUsername;
+    currentUser.email = newEmail;
+    if (newPassword && newPassword.length > 0) currentUser.password = newPassword;
+    // Обновить пользователя в массиве users
+    const index = users.findIndex(u => u.id === currentUser.id);
+    if (index !== -1) users[index] = currentUser;
+    saveUsers();
+    // Обновить все посты этого пользователя (чоб username отображался новый)
+    posts.forEach(post => {
+        if (post.userId === currentUser.id) post.username = currentUser.username;
+    });
+    savePosts();
+    updateUIByAuth();
+    renderFeed();
+    if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
+    showToast('Профиль обновлён');
+    closeModal('profileModal');
+    return true;
+}
+
 // ==================== ПОСТЫ ====================
 function createPost(text) {
-    if (!currentUser) {
-        showToast('Необходимо войти', 'error');
-        return;
-    }
-    if (!text.trim()) {
-        showToast('Текст поста не может быть пустым', 'error');
-        return;
-    }
-    if (text.length > 280) {
-        showToast('Максимум 280 символов', 'error');
-        return;
-    }
+    if (!currentUser) { showToast('Необходимо войти', 'error'); return; }
+    if (!text.trim()) { showToast('Текст поста не может быть пустым', 'error'); return; }
+    if (text.length > 280) { showToast('Максимум 280 символов', 'error'); return; }
     const newPost = {
         id: Date.now().toString(),
         userId: currentUser.id,
@@ -281,14 +274,10 @@ function createPost(text) {
     if (document.getElementById('adminModal').style.display === 'flex') renderAdminPanel();
 }
 
-// ==================== АДМИН ПАНЕЛЬ (активность) ====================
+// ==================== АДМИН ПАНЕЛЬ ====================
 function renderAdminPanel() {
     if (!currentUser || currentUser.role !== 'admin') return;
-    
-    // Обновляем счётчики постов
     updatePostCounts();
-    
-    // Таблица пользователей
     const tbody = document.querySelector('#adminUsersTable tbody');
     if (tbody) {
         tbody.innerHTML = users.map(user => {
@@ -307,16 +296,13 @@ function renderAdminPanel() {
                 </tr>
             `;
         }).join('');
-        
-        // обработчики удаления пользователей
         document.querySelectorAll('.delete-user-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const userId = btn.dataset.id;
                 if (confirm('Удалить пользователя и все его посты?')) {
                     users = users.filter(u => u.id !== userId);
                     posts = posts.filter(p => p.userId !== userId);
-                    saveUsers();
-                    savePosts();
+                    saveUsers(); savePosts();
                     if (currentUser && currentUser.id === userId) logout();
                     renderAdminPanel();
                     renderFeed();
@@ -325,8 +311,6 @@ function renderAdminPanel() {
             });
         });
     }
-    
-    // Таблица всех постов (админ)
     const postsTbody = document.querySelector('#adminPostsTable tbody');
     if (postsTbody) {
         const sorted = [...posts].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
@@ -339,7 +323,6 @@ function renderAdminPanel() {
                 <td><button class="delete-post-admin" data-id="${post.id}"><i class="fas fa-trash"></i></button></td>
             </tr>
         `).join('');
-        
         document.querySelectorAll('.delete-post-admin').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const postId = btn.dataset.id;
@@ -357,17 +340,9 @@ function renderAdminPanel() {
 }
 
 // ==================== МОДАЛЬНЫЕ ОКНА ====================
-function openModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) modal.style.display = 'flex';
-}
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) modal.style.display = 'none';
-}
-function closeAllModals() {
-    document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-}
+function openModal(modalId) { document.getElementById(modalId).style.display = 'flex'; }
+function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
 
 // ==================== ТЕМА ====================
 function initTheme() {
@@ -390,90 +365,59 @@ function toggleTheme() {
 
 // ==================== EVENT LISTENERS ====================
 function bindEvents() {
-    // Тема
     document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-    
-    // Модалки вход/регистрация
     document.getElementById('loginBtn').addEventListener('click', () => openModal('loginModal'));
     document.getElementById('registerBtn').addEventListener('click', () => openModal('registerModal'));
     document.querySelectorAll('.close-modal').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const modal = btn.closest('.modal');
-            if (modal) modal.style.display = 'none';
-        });
+        btn.addEventListener('click', (e) => { const modal = btn.closest('.modal'); if(modal) modal.style.display = 'none'; });
     });
-    window.addEventListener('click', (e) => {
-        if (e.target.classList.contains('modal')) e.target.style.display = 'none';
-    });
-    
-    // Форма входа
+    window.addEventListener('click', (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; });
     document.getElementById('loginForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const username = document.getElementById('loginUsername').value.trim();
-        const password = document.getElementById('loginPassword').value;
-        login(username, password);
+        login(document.getElementById('loginUsername').value.trim(), document.getElementById('loginPassword').value);
     });
-    
-    // Регистрация
     document.getElementById('registerForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const username = document.getElementById('regUsername').value.trim();
-        const email = document.getElementById('regEmail').value.trim();
-        const password = document.getElementById('regPassword').value;
-        if (register(username, email, password)) {
+        if(register(document.getElementById('regUsername').value.trim(), document.getElementById('regEmail').value.trim(), document.getElementById('regPassword').value)) {
             closeModal('registerModal');
             openModal('loginModal');
         }
     });
-    
-    // Выход
     document.getElementById('logoutBtn').addEventListener('click', logout);
-    
-    // Создание поста
-    document.getElementById('submitPostBtn').addEventListener('click', () => {
-        const text = document.getElementById('postText').value;
-        createPost(text);
+    document.getElementById('submitPostBtn').addEventListener('click', () => createPost(document.getElementById('postText').value));
+    document.getElementById('postText').addEventListener('input', () => {
+        document.getElementById('charCounter').innerText = `${document.getElementById('postText').value.length}/280`;
     });
-    const postTextarea = document.getElementById('postText');
-    postTextarea.addEventListener('input', () => {
-        const len = postTextarea.value.length;
-        document.getElementById('charCounter').innerText = `${len}/280`;
-    });
-    
-    // Админ панель
     document.getElementById('adminPanelBtn').addEventListener('click', () => {
-        if (currentUser && currentUser.role === 'admin') {
-            renderAdminPanel();
-            openModal('adminModal');
-        } else {
-            showToast('Доступ только для администратора', 'error');
-        }
+        if(currentUser && currentUser.role === 'admin') { renderAdminPanel(); openModal('adminModal'); }
+        else showToast('Доступ только для администратора', 'error');
     });
-    
-    // Табы в админке
+    document.getElementById('profileSettingsBtn').addEventListener('click', openProfileSettings);
+    document.getElementById('profileForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveProfileSettings(
+            document.getElementById('profileUsername').value.trim(),
+            document.getElementById('profileEmail').value.trim(),
+            document.getElementById('profilePassword').value
+        );
+    });
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const tabId = btn.dataset.tab;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('active'));
-            if (tabId === 'users') document.getElementById('adminUsersTab').classList.add('active');
+            if(tabId === 'users') document.getElementById('adminUsersTab').classList.add('active');
             else document.getElementById('adminPostsTab').classList.add('active');
         });
     });
 }
 
-// ==================== ЗАПУСК ====================
 function startApp() {
     initData();
     bindEvents();
     updateUIByAuth();
     initTheme();
-    
-    // Если есть сессия - обновляем активность
-    if (currentUser) {
-        updateLastActive(currentUser.id);
-    }
+    if(currentUser) updateLastActive(currentUser.id);
 }
-
 startApp();
