@@ -135,5 +135,27 @@
         </div>
     </div>
     <script src="script.js"></script>
+            <!-- Модальное окно редактирования пользователя админом -->
+        <div id="adminEditUserModal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h3><i class="fas fa-user-shield"></i> Редактирование пользователя (админ)</h3>
+                <form id="adminEditUserForm">
+                    <input type="hidden" id="adminEditUserId">
+                    <label>Имя пользователя</label>
+                    <input type="text" id="adminEditUsername" required>
+                    <label>Email</label>
+                    <input type="email" id="adminEditEmail" required>
+                    <label>Новый пароль (оставьте пустым, чтобы не менять)</label>
+                    <input type="password" id="adminEditPassword" placeholder="Новый пароль">
+                    <label>Роль</label>
+                    <select id="adminEditRole">
+                        <option value="user">Пользователь</option>
+                        <option value="admin">Администратор</option>
+                    </select>
+                    <button type="submit" class="btn-primary full-width">Сохранить изменения</button>
+                </form>
+            </div>
+        </div>
 </body>
 </html>
