@@ -47,6 +47,11 @@
                 <div id="postFormContainer" class="post-form-card hidden">
                     <div class="post-form">
                         <textarea id="postText" placeholder="Что нового? (до 280 символов)" maxlength="280"></textarea>
+                        <div class="image-upload-area">
+                            <label for="postImageInput" class="image-upload-label"><i class="fas fa-image"></i> Прикрепить фото</label>
+                            <input type="file" id="postImageInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
+                            <div id="postImagePreview" class="image-preview hidden"></div>
+                        </div>
                         <div class="post-form-actions">
                             <span id="charCounter">0/280</span>
                             <button id="submitPostBtn" class="btn-primary">Опубликовать</button>
@@ -59,7 +64,7 @@
             </div>
         </main>
 
-        <!-- Модальное окно входа (убрана подсказка про админа) -->
+        <!-- Модальное окно входа -->
         <div id="loginModal" class="modal">
             <div class="modal-content">
                 <span class="close-modal">&times;</span>
@@ -86,18 +91,51 @@
             </div>
         </div>
 
-        <!-- Модальное окно настроек профиля -->
+        <!-- Модальное окно настроек профиля (с аватаром) -->
         <div id="profileModal" class="modal">
             <div class="modal-content">
                 <span class="close-modal">&times;</span>
                 <h3><i class="fas fa-user-edit"></i> Настройки профиля</h3>
                 <form id="profileForm">
+                    <div class="avatar-upload">
+                        <div class="current-avatar" id="currentAvatarPreview"></div>
+                        <label for="avatarInput" class="btn-outline" style="display:inline-block; margin-top:0.5rem;">Загрузить аватар</label>
+                        <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
+                    </div>
                     <label>Имя пользователя</label>
                     <input type="text" id="profileUsername" placeholder="Новое имя" required>
                     <label>Email</label>
                     <input type="email" id="profileEmail" placeholder="Новый email" required>
                     <label>Новый пароль (оставьте пустым, если не менять)</label>
                     <input type="password" id="profilePassword" placeholder="Новый пароль">
+                    <button type="submit" class="btn-primary full-width">Сохранить изменения</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Модальное окно редактирования пользователя админом (с аватаром) -->
+        <div id="adminEditUserModal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h3><i class="fas fa-user-shield"></i> Редактирование пользователя (админ)</h3>
+                <form id="adminEditUserForm">
+                    <input type="hidden" id="adminEditUserId">
+                    <div class="avatar-upload">
+                        <div class="current-avatar" id="adminEditAvatarPreview"></div>
+                        <label for="adminAvatarInput" class="btn-outline" style="display:inline-block; margin-top:0.5rem;">Сменить аватар</label>
+                        <input type="file" id="adminAvatarInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none">
+                    </div>
+                    <label>Имя пользователя</label>
+                    <input type="text" id="adminEditUsername" required>
+                    <label>Email</label>
+                    <input type="email" id="adminEditEmail" required>
+                    <label>Новый пароль (оставьте пустым, чтобы не менять)</label>
+                    <input type="password" id="adminEditPassword" placeholder="Новый пароль">
+                    <label>Роль</label>
+                    <select id="adminEditRole">
+                        <option value="user">Пользователь</option>
+                        <option value="admin">Администратор</option>
+                    </select>
                     <button type="submit" class="btn-primary full-width">Сохранить изменения</button>
                 </form>
             </div>
@@ -118,7 +156,7 @@
                     </div>
                     <div class="table-wrapper">
                         <table id="adminUsersTable">
-                            <thead><tr><th>ID</th><th>Имя</th><th>Email</th><th>Роль</th><th>Постов</th><th>Последний вход</th><th>Последняя активность</th><th>Действия</th></tr></thead>
+                            <thead><tr><th>Аватар</th><th>ID</th><th>Имя</th><th>Email</th><th>Роль</th><th>Постов</th><th>Последний вход</th><th>Последняя активность</th><th>Действия</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -126,7 +164,7 @@
                 <div id="adminPostsTab" class="admin-tab">
                     <div class="table-wrapper">
                         <table id="adminPostsTable">
-                            <thead><tr><th>ID</th><th>Автор</th><th>Текст</th><th>Дата</th><th>Действия</th></tr></thead>
+                            <thead><tr><th>ID</th><th>Автор</th><th>Текст</th><th>Изображение</th><th>Дата</th><th>Действия</th></tr></thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -135,27 +173,5 @@
         </div>
     </div>
     <script src="script.js"></script>
-            <!-- Модальное окно редактирования пользователя админом -->
-        <div id="adminEditUserModal" class="modal">
-            <div class="modal-content">
-                <span class="close-modal">&times;</span>
-                <h3><i class="fas fa-user-shield"></i> Редактирование пользователя (админ)</h3>
-                <form id="adminEditUserForm">
-                    <input type="hidden" id="adminEditUserId">
-                    <label>Имя пользователя</label>
-                    <input type="text" id="adminEditUsername" required>
-                    <label>Email</label>
-                    <input type="email" id="adminEditEmail" required>
-                    <label>Новый пароль (оставьте пустым, чтобы не менять)</label>
-                    <input type="password" id="adminEditPassword" placeholder="Новый пароль">
-                    <label>Роль</label>
-                    <select id="adminEditRole">
-                        <option value="user">Пользователь</option>
-                        <option value="admin">Администратор</option>
-                    </select>
-                    <button type="submit" class="btn-primary full-width">Сохранить изменения</button>
-                </form>
-            </div>
-        </div>
 </body>
 </html>
