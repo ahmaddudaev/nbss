@@ -140,7 +140,7 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 @media (max-width: 768px) {
   .app-container { flex-direction: column; padding: 0; gap: 0; }
   .main-content { max-width: 100%; border: none; padding-bottom: 80px; }
-  .sidebar { display: none; } /* Скрываем боковые панели полностью */
+  .sidebar { display: none; } /* Боковые панели скрыты */
 
   /* Нижняя навигация */
   .sidebar-left {
