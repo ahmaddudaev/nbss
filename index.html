@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+        <!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -79,12 +79,23 @@
       <div id="adminPage" class="page">
         <div style="padding:16px;">
           <h2>⚙️ Административная панель</h2>
+          <!-- Статистика в админке -->
+          <div class="card" style="margin:16px 0;">
+            <h3>📊 Статистика сайта</h3>
+            <div class="stat-row"><span>👥 Пользователей:</span> <span id="adminUsersStat">0</span></div>
+            <div class="stat-row"><span>📝 Постов:</span> <span id="adminPostsStat">0</span></div>
+            <div class="stat-row"><span>👁️ Посещений:</span> <span id="adminPageViewsStat">0</span></div>
+            <div class="stat-row"><span>🟢 Онлайн:</span> <span id="adminOnlineStat">1</span></div>
+          </div>
           <div class="card" style="margin:16px 0;">
             <h3>Управление пользователями</h3>
             <select id="userSelect" style="width:100%; padding:8px; margin:8px 0; background:var(--bg); color:var(--text); border:1px solid var(--border);"></select>
             <button id="verifyUserBtn" class="btn-outline" style="margin:4px;">✅ Выдать галочку</button>
+            <button id="unverifyUserBtn" class="btn-outline" style="margin:4px;">❌ Убрать галочку</button>
             <button id="makeAdminBtn" class="btn-outline" style="margin:4px;">👑 Сделать админом</button>
+            <button id="revokeAdminBtn" class="btn-outline" style="margin:4px;">🔻 Разжаловать админа</button>
             <button id="givePremiumBtn" class="btn-outline" style="margin:4px;">💎 Выдать НБСС+ (299₽)</button>
+            <button id="revokePremiumBtn" class="btn-outline" style="margin:4px;">💔 Отобрать НБСС+</button>
             <button id="deleteUserBtn" class="btn-danger" style="margin:4px;">🗑 Удалить аккаунт</button>
           </div>
           <div class="card">
@@ -116,4 +127,4 @@
 
   <script src="script.js" defer></script>
 </body>
-</html>        
+</html>
