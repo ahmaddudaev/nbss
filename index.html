@@ -1,73 +1,119 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>нбсс — Национальная быстрая социальная сеть</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>НБСС — Национальная Быстрая Социальная Сеть</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body>
-<div class="app-container">
-    <header class="header">
-        <div class="logo"><i class="fas fa-bolt"></i><span>нбсс</span><small>beta</small></div>
-        <div class="header-actions">
-            <button id="themeToggle" class="icon-btn"><i class="fas fa-moon"></i></button>
-            <div id="authButtons" class="auth-buttons">
-                <button id="loginBtn" class="btn-outline">Вход</button>
-                <button id="registerBtn" class="btn-primary">Регистрация</button>
-            </div>
-            <div id="userMenu" class="user-menu hidden">
-                <img id="headerAvatar" class="header-avatar" src="" alt="avatar">
-                <span id="userGreeting" class="greeting"></span>
-                <button id="profileSettingsBtn" class="icon-btn"><i class="fas fa-user-cog"></i></button>
-                <button id="logoutBtn" class="icon-btn"><i class="fas fa-sign-out-alt"></i></button>
-                <button id="adminPanelBtn" class="icon-btn admin-only hidden"><i class="fas fa-user-shield"></i></button>
-            </div>
-        </div>
-    </header>
-    <main class="main-content">
-        <div class="feed-container">
-            <div class="feed-header">
-                <h2><i class="fas fa-rss"></i> Лента новостей</h2>
-                <div class="search-bar">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="searchInput" placeholder="Поиск по постам или авторам...">
-                </div>
-                <div class="feed-toggle">
-                    <button id="showSubFeedBtn" class="toggle-btn active">Подписки</button>
-                    <button id="showAllFeedBtn" class="toggle-btn">Все посты</button>
-                </div>
-            </div>
-            <div id="postFormContainer" class="post-form-card hidden">
-                <div class="post-form">
-                    <textarea id="postText" placeholder="Что нового? (до 280 символов)" maxlength="280"></textarea>
-                    <div class="image-preview" id="postImagePreview" style="display:none;"><img id="previewImg" src="#"><button type="button" id="removeImageBtn" class="remove-img"><i class="fas fa-times-circle"></i></button></div>
-                    <div class="post-form-actions">
-                        <div class="form-left">
-                            <label for="postImageInput" class="attach-btn"><i class="fas fa-image"></i> Фото</label>
-                            <input type="file" id="postImageInput" accept="image/*" style="display:none;">
-                            <span id="charCounter">0/280</span>
-                        </div>
-                        <button id="submitPostBtn" class="btn-primary">Опубликовать</button>
-                    </div>
-                </div>
-            </div>
-            <div id="feed" class="feed"><div class="loading-spinner"><i class="fas fa-spinner fa-pulse"></i> Загрузка...</div></div>
-        </div>
-    </main>
-</div>
+<body class="dark-mode">
+  <div id="app" class="app">
+    <!-- Левая боковая панель (навигация) -->
+    <div class="sidebar sidebar-left">
+      <div class="nav">
+        <div class="nav-item active" data-page="home"><span>🏠</span> Главная</div>
+        <div class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> Профиль</div>
+        <div class="nav-item" data-page="events"><span>📅</span> Ивенты</div>
+        <div class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> Админка</div>
+        <div class="nav-item" id="logoutBtn" style="display:none"><span>🚪</span> Выйти</div>
+      </div>
+      <button id="themeToggle" class="toggle-theme">🌓 Сменить тему</button>
+      <div style="margin-top:10px;">
+        <button id="loginNavBtn" class="btn-outline" style="width:100%">Войти</button>
+        <button id="registerNavBtn" class="btn-outline" style="width:100%; margin-top:6px;">Регистрация</button>
+      </div>
+    </div>
 
-<!-- Модальные окна -->
-<div id="loginModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><h3>Вход</h3><form id="loginForm"><input type="text" id="loginUsername" placeholder="Имя пользователя" required><input type="password" id="loginPassword" placeholder="Пароль" required><button type="submit" class="btn-primary full-width">Войти</button></form></div></div>
-<div id="registerModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><h3>Регистрация</h3><form id="registerForm"><input type="text" id="regUsername" placeholder="Имя пользователя" required><input type="email" id="regEmail" placeholder="Email" required><input type="password" id="regPassword" placeholder="Пароль" required><button type="submit" class="btn-primary full-width">Зарегистрироваться</button></form></div></div>
-<div id="profileModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><h3><i class="fas fa-user-edit"></i> Настройки профиля</h3><form id="profileForm"><div class="avatar-upload"><img id="profileAvatarPreview" class="profile-avatar-preview" src=""><label class="btn-outline" style="display:inline-block; margin-top:0.5rem;"><i class="fas fa-upload"></i> Загрузить аватар<input type="file" id="profileAvatarInput" accept="image/*" style="display:none;"></label></div><label>Имя пользователя</label><input type="text" id="profileUsername" required><label>Email</label><input type="email" id="profileEmail" required><label>Новый пароль (оставьте пустым)</label><input type="password" id="profilePassword"><button type="submit" class="btn-primary full-width">Сохранить</button></form><hr><h4>Статистика</h4><p>Подписчики: <span id="profileFollowersCount">0</span></p><p>Подписки: <span id="profileFollowingCount">0</span></p></div></div>
-<div id="adminModal" class="modal admin-modal"><div class="modal-content wide-modal"><span class="close-modal">&times;</span><h3><i class="fas fa-chart-line"></i> Админ-панель</h3><div class="admin-tabs"><button class="tab-btn active" data-tab="users">Пользователи</button><button class="tab-btn" data-tab="allposts">Все посты</button></div><div id="adminUsersTab" class="admin-tab active"><div class="admin-stats"><p><strong>Активность пользователей</strong></p></div><div class="table-wrapper"><table id="adminUsersTable"><thead><tr><th>Аватар</th><th>Имя</th><th>Email</th><th>Роль</th><th>Вериф.</th><th>Постов</th><th>Подписчики</th><th>Подписки</th><th>Последний вход</th><th>Действия</th></tr></thead><tbody></tbody></table></div></div><div id="adminPostsTab" class="admin-tab"><div class="table-wrapper"><table id="adminPostsTable"><thead><tr><th>ID</th><th>Автор</th><th>Текст</th><th>Фото</th><th>Лайки</th><th>Комм.</th><th>Дата</th><th>Действия</th></tr></thead><tbody></tbody></table></div></div></div></div>
-<div id="commentsModal" class="modal"><div class="modal-content wide-modal" style="max-width:600px;"><span class="close-modal">&times;</span><h3><i class="fas fa-comments"></i> Комментарии</h3><div id="commentsList" class="comments-list"></div><div class="add-comment"><textarea id="commentText" placeholder="Написать комментарий..." rows="2"></textarea><button id="submitCommentBtn" class="btn-primary full-width" style="margin-top:0.5rem;">Отправить</button></div></div></div>
-<div id="adminEditUserModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><h3>Редактирование пользователя</h3><form id="adminEditUserForm"><input type="hidden" id="adminEditUserId"><label>Имя пользователя</label><input type="text" id="adminEditUsername" required><label>Email</label><input type="email" id="adminEditEmail" required><label>Новый пароль</label><input type="password" id="adminEditPassword"><label>Роль</label><select id="adminEditRole"><option value="user">Пользователь</option><option value="admin">Администратор</option></select><button type="submit" class="btn-primary full-width">Сохранить</button></form></div></div>
-<div id="userProfileModal" class="modal"><div class="modal-content"><span class="close-modal">&times;</span><div id="userProfileContent"></div><button id="followUserBtn" class="btn-primary full-width" style="display:none;">Подписаться</button></div></div>
+    <!-- Основной контент -->
+    <div class="main-content" id="mainContent">
+      <!-- Страница входа -->
+      <div id="loginPage" class="page">
+        <div style="max-width: 400px; margin: 40px auto; padding: 30px;" class="card">
+          <h2 style="margin-bottom:20px;">🔐 Вход в НБСС</h2>
+          <input id="loginUsername" placeholder="Логин" style="width:100%; padding:12px; margin:8px 0; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px;">
+          <input id="loginPassword" type="password" placeholder="Пароль" style="width:100%; padding:12px; margin:8px 0; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px;">
+          <button id="loginBtn" class="btn" style="width:100%; margin-top:12px;">Войти</button>
+          <p style="margin-top:12px;">Нет аккаунта? <a id="showRegisterLink">Зарегистрироваться</a></p>
+        </div>
+      </div>
+      <!-- Страница регистрации -->
+      <div id="registerPage" class="page">
+        <div style="max-width:400px; margin:40px auto; padding:30px;" class="card">
+          <h2>📝 Регистрация</h2>
+          <input id="regUsername" placeholder="Придумайте логин" style="width:100%; padding:12px; margin:8px 0; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px;">
+          <input id="regPassword" type="password" placeholder="Пароль" style="width:100%; padding:12px; margin:8px 0; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px;">
+          <button id="registerBtn" class="btn" style="width:100%;">Создать аккаунт</button>
+        </div>
+      </div>
+      <!-- Главная лента -->
+      <div id="homePage" class="page active">
+        <div id="authBanner" class="auth-banner">
+          <span>👋 Добро пожаловать в НБСС! Вы смотрите публичную ленту.</span>
+          <span>
+            <button id="loginFromBanner" class="btn-outline" style="margin-right:6px;">Войти</button>
+            <button id="registerFromBanner" class="btn-outline">Регистрация</button>
+          </span>
+        </div>
+        <div id="postComposer" style="padding:16px; border-bottom:1px solid var(--border); display:none;">
+          <textarea id="postInput" placeholder="Что происходит? #хештег @упоминание" style="width:100%; background:var(--bg); border:none; color:var(--text); resize:none; padding:8px; border-radius:12px; min-height:70px;"></textarea>
+          <button id="publishPost" class="btn" style="margin-top:8px;">Опубликовать</button>
+        </div>
+        <div id="feedContainer"></div>
+      </div>
+      <!-- Профиль -->
+      <div id="profilePage" class="page">
+        <div style="padding:16px; border-bottom:1px solid var(--border);">
+          <h2 id="profileName">Профиль</h2>
+          <p id="profileStatus" style="color:var(--text2);"></p>
+        </div>
+        <div id="profilePosts"></div>
+      </div>
+      <!-- Ивенты -->
+      <div id="eventsPage" class="page">
+        <div style="padding:16px;">
+          <h2>📅 Активные ивенты</h2>
+          <div id="eventsList"></div>
+        </div>
+      </div>
+      <!-- Админ панель -->
+      <div id="adminPage" class="page">
+        <div style="padding:16px;">
+          <h2>⚙️ Административная панель</h2>
+          <div class="card" style="margin:16px 0;">
+            <h3>Управление пользователями</h3>
+            <select id="userSelect" style="width:100%; padding:8px; margin:8px 0; background:var(--bg); color:var(--text); border:1px solid var(--border);"></select>
+            <button id="verifyUserBtn" class="btn-outline" style="margin:4px;">✅ Выдать галочку</button>
+            <button id="makeAdminBtn" class="btn-outline" style="margin:4px;">👑 Сделать админом</button>
+            <button id="givePremiumBtn" class="btn-outline" style="margin:4px;">💎 Выдать НБСС+ (299₽)</button>
+            <button id="deleteUserBtn" class="btn-danger" style="margin:4px;">🗑 Удалить аккаунт</button>
+          </div>
+          <div class="card">
+            <h3>Создать ивент</h3>
+            <input id="eventTitle" placeholder="Название ивента" style="width:100%; padding:8px; margin:4px 0; background:var(--bg); border:1px solid var(--border); color:var(--text);">
+            <textarea id="eventDesc" placeholder="Описание" style="width:100%; padding:8px; margin:4px 0; background:var(--bg); border:1px solid var(--border); color:var(--text);"></textarea>
+            <button id="createEventBtn" class="btn">🚀 Запустить ивент</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-<script src="script.js"></script>
+    <!-- Правая боковая панель (активность, статистика) -->
+    <div class="sidebar sidebar-right">
+      <div class="stat-widget">
+        <h3 style="margin-bottom:10px;">📊 Активность сайта</h3>
+        <div class="stat-row"><span>👥 Пользователей:</span> <span id="totalUsersStat">0</span></div>
+        <div class="stat-row"><span>📝 Постов:</span> <span id="totalPostsStat">0</span></div>
+        <div class="stat-row"><span>👁️ Посещений:</span> <span id="pageViewsStat">0</span></div>
+        <div class="stat-row"><span>🟢 Онлайн:</span> <span id="onlineStat">1</span></div>
+      </div>
+      <div class="stat-widget">
+        <h3>💎 НБСС+ Premium</h3>
+        <p style="color:var(--text2);">Градиентный ник, приоритетная поддержка. 299₽/мес.</p>
+        <p id="premiumStatusUser" style="font-weight:bold;"></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js" defer></script>
 </body>
-</html>
+                </html>
