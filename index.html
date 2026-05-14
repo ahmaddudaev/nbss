@@ -11,14 +11,14 @@
     <!-- Левая боковая панель (навигация) -->
     <div class="sidebar sidebar-left">
       <div class="nav">
-        <div class="nav-item active" data-page="home"><span>🏠</span> Главная</div>
-        <div class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> Профиль</div>
-        <div class="nav-item" data-page="events"><span>📅</span> Ивенты</div>
-        <div class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> Админка</div>
-        <div class="nav-item" id="logoutBtn" style="display:none"><span>🚪</span> Выйти</div>
+        <div class="nav-item active" data-page="home"><span>🏠</span> <span>Главная</span></div>
+        <div class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> <span>Профиль</span></div>
+        <div class="nav-item" data-page="events"><span>📅</span> <span>Ивенты</span></div>
+        <div class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> <span>Админка</span></div>
+        <div class="nav-item" id="logoutBtn" style="display:none"><span>🚪</span> <span>Выйти</span></div>
       </div>
       <button id="themeToggle" class="toggle-theme">🌓 Сменить тему</button>
-      <div style="margin-top:10px;">
+      <div style="margin-top:10px;" class="auth-buttons">
         <button id="loginNavBtn" class="btn-outline" style="width:100%">Войти</button>
         <button id="registerNavBtn" class="btn-outline" style="width:100%; margin-top:6px;">Регистрация</button>
       </div>
@@ -116,4 +116,4 @@
 
   <script src="script.js" defer></script>
 </body>
-                </html>
+</html>        
