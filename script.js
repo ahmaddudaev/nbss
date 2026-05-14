@@ -65,8 +65,9 @@
     navProfile.style.display = loggedIn ? 'flex' : 'none';
     navAdmin.style.display = isAdmin() ? 'flex' : 'none';
     logoutBtn.style.display = loggedIn ? 'flex' : 'none';
-    loginNavBtn.style.display = loggedIn ? 'none' : 'block';
-    registerNavBtn.style.display = loggedIn ? 'none' : 'block';
+    loginNavBtn.style.display = loggedIn ? 'none' : 'inline-flex';
+    registerNavBtn.style.display = loggedIn ? 'none' : 'inline-flex';
+    // Для мобильной версии управление видимостью остаётся через JS, всё работает
     document.getElementById('premiumStatusUser').textContent = isPremium() ? 'Активна' : 'Не активна';
   }
 
@@ -293,4 +294,4 @@
   updateUIForAuth();
   showPage('home');
   updateStatsWidget();
-})(); 
+})();
