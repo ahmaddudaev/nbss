@@ -39,8 +39,9 @@
   const navProfile = document.getElementById('navProfile');
   const navAdmin = document.getElementById('navAdmin');
   const logoutBtn = document.getElementById('logoutBtn');
-  const loginNavBtn = document.getElementById('loginNavBtn');
-  const registerNavBtn = document.getElementById('registerNavBtn');
+  // Новые элементы навигации для входа/регистрации
+  const loginNavItem = document.getElementById('loginNavItem');
+  const registerNavItem = document.getElementById('registerNavItem');
 
   function showPage(pageId) {
     Object.values(pages).forEach(p => p.classList.remove('active'));
@@ -53,7 +54,6 @@
     if (pageId === 'events') renderEvents();
     if (pageId === 'admin') renderAdminPanel();
     updateStatsWidget();
-    // Обновление админской статистики при открытии админки
     if (pageId === 'admin') updateAdminStats();
   }
 
@@ -67,8 +67,9 @@
     navProfile.style.display = loggedIn ? 'flex' : 'none';
     navAdmin.style.display = isAdmin() ? 'flex' : 'none';
     logoutBtn.style.display = loggedIn ? 'flex' : 'none';
-    loginNavBtn.style.display = loggedIn ? 'none' : 'inline-flex';
-    registerNavBtn.style.display = loggedIn ? 'none' : 'inline-flex';
+    // Пункты «Войти» и «Регистрация» видны только гостям
+    loginNavItem.style.display = loggedIn ? 'none' : 'flex';
+    registerNavItem.style.display = loggedIn ? 'none' : 'flex';
     document.getElementById('premiumStatusUser').textContent = isPremium() ? 'Активна' : 'Не активна';
   }
 
@@ -103,12 +104,19 @@
     showPage('home');
   });
 
-  function goToLogin() { showPage('login'); }
-  function goToRegister() { showPage('register'); }
-  document.getElementById('loginFromBanner')?.addEventListener('click', goToLogin);
-  document.getElementById('registerFromBanner')?.addEventListener('click', goToRegister);
-  loginNavBtn.addEventListener('click', goToLogin);
-  registerNavBtn.addEventListener('click', goToRegister);
+  // Обработчики для пунктов навигации (включая Войти/Регистрация)
+  document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+    item.addEventListener('click', () => {
+      const page = item.dataset.page;
+      if (page === 'profile' && !currentUser) return alert('Сначала войдите');
+      if (page === 'admin' && !isAdmin()) return alert('Доступ запрещён');
+      showPage(page);
+    });
+  });
+
+  // Кнопки из баннера (оставлены для удобства)
+  document.getElementById('loginFromBanner')?.addEventListener('click', () => showPage('login'));
+  document.getElementById('registerFromBanner')?.addEventListener('click', () => showPage('register'));
 
   logoutBtn.addEventListener('click', () => {
     currentUser = null;
@@ -211,7 +219,6 @@
     if (!currentUser) return;
     const profileNameEl = document.getElementById('profileName');
     const u = users()[currentUser];
-    // Градиентное имя в профиле
     if (u?.premium) {
       profileNameEl.classList.add('premium-nick');
     } else {
@@ -231,7 +238,6 @@
     list.innerHTML = evs.length ? evs.map(e => `<div class="event-banner"><strong>${e.title}</strong><p>${e.desc}</p></div>`).join('') : '<p>Нет активных ивентов</p>';
   }
 
-  // Обновление статистики в админке
   function updateAdminStats() {
     document.getElementById('adminUsersStat').textContent = Object.keys(users()).length;
     document.getElementById('adminPostsStat').textContent = posts().length;
@@ -247,7 +253,7 @@
     updateAdminStats();
   }
 
-  // Выдача/отзыв привилегий
+  // Обработчики админских кнопок
   document.getElementById('verifyUserBtn').addEventListener('click', () => {
     if (!isAdmin()) return;
     const sel = document.getElementById('userSelect').value;
@@ -316,21 +322,11 @@
     document.getElementById('pageViewsStat').textContent = LS.get('pageviews');
     const online = Math.floor(Math.random() * 5) + 1;
     document.getElementById('onlineStat').textContent = online;
-    // Обновим и админскую статистику, если она видна
     if (pages.admin.classList.contains('active')) {
       updateAdminStats();
     }
   }
   setInterval(updateStatsWidget, 10000);
-
-  navItems.forEach(item => {
-    item.addEventListener('click', (e) => {
-      const page = item.dataset.page;
-      if (page === 'profile' && !currentUser) return alert('Сначала войдите');
-      if (page === 'admin' && !isAdmin()) return alert('Доступ запрещён');
-      showPage(page);
-    });
-  });
 
   updateUIForAuth();
   showPage('home');
