@@ -53,6 +53,8 @@
     if (pageId === 'events') renderEvents();
     if (pageId === 'admin') renderAdminPanel();
     updateStatsWidget();
+    // Обновление админской статистики при открытии админки
+    if (pageId === 'admin') updateAdminStats();
   }
 
   function isAdmin() { return currentUser && users()[currentUser]?.admin; }
@@ -67,7 +69,6 @@
     logoutBtn.style.display = loggedIn ? 'flex' : 'none';
     loginNavBtn.style.display = loggedIn ? 'none' : 'inline-flex';
     registerNavBtn.style.display = loggedIn ? 'none' : 'inline-flex';
-    // Для мобильной версии управление видимостью остаётся через JS, всё работает
     document.getElementById('premiumStatusUser').textContent = isPremium() ? 'Активна' : 'Не активна';
   }
 
@@ -208,8 +209,15 @@
 
   function renderProfile() {
     if (!currentUser) return;
-    document.getElementById('profileName').textContent = currentUser;
+    const profileNameEl = document.getElementById('profileName');
     const u = users()[currentUser];
+    // Градиентное имя в профиле
+    if (u?.premium) {
+      profileNameEl.classList.add('premium-nick');
+    } else {
+      profileNameEl.classList.remove('premium-nick');
+    }
+    profileNameEl.textContent = currentUser;
     document.getElementById('profileStatus').textContent = (u?.verified ? '✅ Верифицирован' : '') + (u?.premium ? ' 💎 НБСС+' : '');
     const profilePostsDiv = document.getElementById('profilePosts');
     const userPosts = posts().filter(p => p.author === currentUser);
@@ -223,18 +231,34 @@
     list.innerHTML = evs.length ? evs.map(e => `<div class="event-banner"><strong>${e.title}</strong><p>${e.desc}</p></div>`).join('') : '<p>Нет активных ивентов</p>';
   }
 
+  // Обновление статистики в админке
+  function updateAdminStats() {
+    document.getElementById('adminUsersStat').textContent = Object.keys(users()).length;
+    document.getElementById('adminPostsStat').textContent = posts().length;
+    document.getElementById('adminPageViewsStat').textContent = LS.get('pageviews');
+    document.getElementById('adminOnlineStat').textContent = document.getElementById('onlineStat').textContent;
+  }
+
   function renderAdminPanel() {
     if (!isAdmin()) return;
     const select = document.getElementById('userSelect');
     const allUsers = users();
-    select.innerHTML = Object.keys(allUsers).map(u => `<option value="${u}">${u} ${allUsers[u].admin?'(админ)':''} ${allUsers[u].verified?'✔️':''}</option>`).join('');
+    select.innerHTML = Object.keys(allUsers).map(u => `<option value="${u}">${u} ${allUsers[u].admin?'(админ)':''} ${allUsers[u].verified?'✔️':''} ${allUsers[u].premium?'💎':''}</option>`).join('');
+    updateAdminStats();
   }
 
+  // Выдача/отзыв привилегий
   document.getElementById('verifyUserBtn').addEventListener('click', () => {
     if (!isAdmin()) return;
     const sel = document.getElementById('userSelect').value;
     const all = users();
     if (all[sel]) { all[sel].verified = true; saveUsers(all); renderAdminPanel(); }
+  });
+  document.getElementById('unverifyUserBtn').addEventListener('click', () => {
+    if (!isAdmin()) return;
+    const sel = document.getElementById('userSelect').value;
+    const all = users();
+    if (all[sel]) { all[sel].verified = false; saveUsers(all); renderAdminPanel(); }
   });
   document.getElementById('makeAdminBtn').addEventListener('click', () => {
     if (!isAdmin()) return;
@@ -242,11 +266,24 @@
     const all = users();
     if (all[sel]) { all[sel].admin = true; saveUsers(all); renderAdminPanel(); }
   });
+  document.getElementById('revokeAdminBtn').addEventListener('click', () => {
+    if (!isAdmin()) return;
+    const sel = document.getElementById('userSelect').value;
+    if (sel === 'MrSigma') return alert('Нельзя лишить админки главного администратора');
+    const all = users();
+    if (all[sel]) { all[sel].admin = false; saveUsers(all); renderAdminPanel(); }
+  });
   document.getElementById('givePremiumBtn').addEventListener('click', () => {
     if (!isAdmin()) return;
     const sel = document.getElementById('userSelect').value;
     const all = users();
     if (all[sel]) { all[sel].premium = true; saveUsers(all); renderAdminPanel(); alert(`Подписка НБСС+ выдана ${sel}`); }
+  });
+  document.getElementById('revokePremiumBtn').addEventListener('click', () => {
+    if (!isAdmin()) return;
+    const sel = document.getElementById('userSelect').value;
+    const all = users();
+    if (all[sel]) { all[sel].premium = false; saveUsers(all); renderAdminPanel(); alert(`Подписка НБСС+ отобрана у ${sel}`); }
   });
   document.getElementById('deleteUserBtn').addEventListener('click', () => {
     if (!isAdmin()) return;
@@ -279,6 +316,10 @@
     document.getElementById('pageViewsStat').textContent = LS.get('pageviews');
     const online = Math.floor(Math.random() * 5) + 1;
     document.getElementById('onlineStat').textContent = online;
+    // Обновим и админскую статистику, если она видна
+    if (pages.admin.classList.contains('active')) {
+      updateAdminStats();
+    }
   }
   setInterval(updateStatsWidget, 10000);
 
