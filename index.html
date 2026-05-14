@@ -1,4 +1,4 @@
-        <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -16,12 +16,11 @@
         <div class="nav-item" data-page="events"><span>📅</span> <span>Ивенты</span></div>
         <div class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> <span>Админка</span></div>
         <div class="nav-item" id="logoutBtn" style="display:none"><span>🚪</span> <span>Выйти</span></div>
+        <!-- Кнопки входа/регистрации как элементы навигации (видны только гостям) -->
+        <div class="nav-item" id="loginNavItem" data-page="login"><span>🔑</span> <span>Войти</span></div>
+        <div class="nav-item" id="registerNavItem" data-page="register"><span>📝</span> <span>Регистрация</span></div>
       </div>
       <button id="themeToggle" class="toggle-theme">🌓 Сменить тему</button>
-      <div style="margin-top:10px;" class="auth-buttons">
-        <button id="loginNavBtn" class="btn-outline" style="width:100%">Войти</button>
-        <button id="registerNavBtn" class="btn-outline" style="width:100%; margin-top:6px;">Регистрация</button>
-      </div>
     </div>
 
     <!-- Основной контент -->
@@ -79,7 +78,6 @@
       <div id="adminPage" class="page">
         <div style="padding:16px;">
           <h2>⚙️ Административная панель</h2>
-          <!-- Статистика в админке -->
           <div class="card" style="margin:16px 0;">
             <h3>📊 Статистика сайта</h3>
             <div class="stat-row"><span>👥 Пользователей:</span> <span id="adminUsersStat">0</span></div>
@@ -127,4 +125,4 @@
 
   <script src="script.js" defer></script>
 </body>
-</html>
+        </html>
