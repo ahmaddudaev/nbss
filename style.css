@@ -1,45 +1,406 @@
-/* ЭКСТРЕННЫЙ CSS — лента всегда видна */
+/* ========== УНИВЕРСАЛЬНЫЙ CSS (ПК + телефон) ========== */
 :root {
   --bg: #000000;
   --bg2: #16181c;
+  --bg3: #1a1d23;
   --text: #e7e9ea;
   --text2: #71767b;
   --border: #2f3336;
   --accent: #1d9bf0;
+  --accent-hover: #1a8cd8;
+  --danger: #f4212e;
+  --success: #00ba7c;
   --card: #16181c;
+  --hover: #1a1d23;
+  --gradient-nbss: linear-gradient(135deg, #4da8f0, #ffffff);
+  --shadow: 0 0 15px rgba(29, 155, 240, 0.1);
 }
 .light-mode {
   --bg: #ffffff;
   --bg2: #f7f9f9;
+  --bg3: #eff3f4;
   --text: #0f1419;
   --text2: #536471;
   --border: #cfd9de;
   --card: #f7f9f9;
+  --hover: #eff3f4;
+  --shadow: 0 0 15px rgba(0, 0, 0, 0.05);
 }
-* { margin:0; padding:0; box-sizing:border-box; }
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
-  background: var(--bg); color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+  display: flex;
+  flex-direction: column;
 }
-.app { display: flex; max-width: 100%; }
-/* Показываем только основной контент */
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+
+input, textarea {
+  font-family: inherit;
+}
+
+/* Основной контейнер приложения */
+.app {
+  display: flex;
+  max-width: 1260px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 16px;
+  gap: 20px;
+  flex: 1;
+}
+
+/* Центральная колонка (лента) */
 .main-content {
-  flex: 1; width: 100%; max-width: 100%;
-  border: none; min-height: 100vh;
-  display: block !important;
+  flex: 1;
+  max-width: 600px;
+  width: 100%;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  min-height: 100vh;
+  background: var(--bg);
 }
-/* Скрываем боковые панели */
-.sidebar { display: none; }
-/* Простые стили для постов */
+
+/* Боковые панели */
+.sidebar {
+  width: 280px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sidebar-left {
+  align-items: flex-end;
+}
+.sidebar-right {
+  align-items: flex-start;
+}
+
+/* Навигация */
+.nav {
+  padding: 8px 0;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  border-radius: 28px;
+  font-size: 18px;
+  font-weight: 500;
+  transition: background 0.2s;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.nav-item:hover {
+  background: var(--hover);
+}
+.nav-item.active {
+  font-weight: 700;
+  background: var(--hover);
+}
+
+/* Кнопки */
+.btn {
+  background: var(--accent);
+  color: white;
+  border-radius: 28px;
+  padding: 10px 24px;
+  font-weight: 700;
+  font-size: 15px;
+  transition: background 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn:hover {
+  background: var(--accent-hover);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 28px;
+  padding: 8px 18px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.btn-outline:hover {
+  background: var(--hover);
+  border-color: var(--accent);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+  border-radius: 28px;
+  padding: 8px 18px;
+  font-weight: 600;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  padding: 16px;
+}
+
+/* Никнеймы */
+.username {
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.verified-badge {
+  color: var(--accent);
+  font-size: 18px;
+}
+.premium-nick {
+  background: linear-gradient(135deg, #4da8f0, #ffffff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 800;
+}
+
+/* Пост */
 .post {
-  padding: 15px; border-bottom: 1px solid var(--border);
-  display: flex; gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  transition: background 0.2s;
 }
-.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-weight: bold; }
-.username { font-weight: bold; }
-.btn { background: var(--accent); color: white; border-radius: 20px; padding: 6px 16px; border: none; }
-.post-actions button { background: none; border: none; color: var(--text2); }
-.hashtag { color: var(--accent); }
-.mention { color: var(--accent); }
-.page { display: none; }
-.page.active { display: block; }
+.post:hover {
+  background: var(--hover);
+}
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.post-body {
+  flex: 1;
+  min-width: 0;
+}
+.post-header {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.post-text {
+  margin: 6px 0;
+  font-size: 15px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.post-actions {
+  display: flex;
+  gap: 24px;
+  margin-top: 8px;
+  color: var(--text2);
+}
+.post-actions button {
+  color: var(--text2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  transition: color 0.2s;
+}
+.post-actions button:hover {
+  color: var(--accent);
+}
+
+/* Хештеги и упоминания */
+.hashtag {
+  color: var(--accent);
+}
+.mention {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* Ивенты */
+.event-banner {
+  background: var(--accent);
+  color: white;
+  border-radius: 16px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+/* Виджеты статистики */
+.stat-widget {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px 0;
+  font-size: 14px;
+}
+
+/* Переключатель темы */
+.toggle-theme {
+  background: var(--hover);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-weight: 600;
+  color: var(--text);
+  transition: background 0.2s;
+}
+
+/* Баннер для неавторизованных */
+.auth-banner {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Скрытие и отображение страниц */
+.hidden {
+  display: none !important;
+}
+.page {
+  display: none;
+}
+.page.active {
+  display: block;
+}
+
+/* ========= АДАПТИВНОСТЬ (телефоны) ========= */
+@media (max-width: 768px) {
+  .app {
+    flex-direction: column;
+    padding: 0;
+    gap: 0;
+  }
+
+  /* Основной контент на всю ширину */
+  .main-content {
+    max-width: 100%;
+    border-left: none;
+    border-right: none;
+    margin-bottom: 70px; /* освобождаем место под нижнюю панель */
+  }
+
+  /* Левая панель превращается в нижнюю навигацию */
+  .sidebar-left {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 8px 0;
+    z-index: 100;
+    height: auto;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  .sidebar-left .nav {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-around;
+    padding: 0;
+  }
+
+  .sidebar-left .nav-item {
+    font-size: 0; /* скрываем текст, оставляем иконки */
+    padding: 10px;
+    gap: 0;
+  }
+
+  .sidebar-left .nav-item span:first-child {
+    font-size: 22px; /* иконка */
+  }
+
+  .sidebar-left .nav-item span:not(:first-child) {
+    display: none;
+  }
+
+  /* Правая панель (активность) скрывается */
+  .sidebar-right {
+    display: none;
+  }
+
+  /* Кнопка входа/регистрации и выхода – переносим в нижнюю панель? Но они уже есть в nav, просто текст скрыт. 
+     Чтобы не терять функционал, можно оставить их в виде иконок в навигации, JS сам управляет видимостью.
+     Дополнительно: кнопка смены темы теперь фиксированная плавающая */
+  .toggle-theme {
+    position: fixed;
+    bottom: 80px;
+    right: 16px;
+    z-index: 110;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    padding: 0;
+    background: var(--accent);
+    color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  /* Корректировка отступов для страниц входа/регистрации */
+  .page .card {
+    margin: 20px auto;
+    max-width: 90%;
+  }
+}
