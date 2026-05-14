@@ -7,122 +7,128 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="dark-mode">
-  <div id="app" class="app">
-    <!-- Левая боковая панель (навигация) -->
-    <div class="sidebar sidebar-left">
-      <div class="nav">
-        <div class="nav-item active" data-page="home"><span>🏠</span> <span>Главная</span></div>
-        <div class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> <span>Профиль</span></div>
-        <div class="nav-item" data-page="events"><span>📅</span> <span>Ивенты</span></div>
-        <div class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> <span>Админка</span></div>
-        <div class="nav-item" id="logoutBtn" style="display:none"><span>🚪</span> <span>Выйти</span></div>
-        <!-- Кнопки входа/регистрации как элементы навигации (видны только гостям) -->
-        <div class="nav-item" id="loginNavItem" data-page="login"><span>🔑</span> <span>Войти</span></div>
-        <div class="nav-item" id="registerNavItem" data-page="register"><span>📝</span> <span>Регистрация</span></div>
-      </div>
-      <button id="themeToggle" class="toggle-theme">🌓 Сменить тему</button>
-    </div>
+  <div class="app-container">
+    <!-- Левая панель (навигация) -->
+    <aside class="sidebar sidebar-left">
+      <nav class="nav">
+        <a class="nav-item active" data-page="home"><span>🏠</span> <span>Главная</span></a>
+        <a class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> <span>Профиль</span></a>
+        <a class="nav-item" data-page="events"><span>📅</span> <span>Ивенты</span></a>
+        <a class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> <span>Админка</span></a>
+        <a class="nav-item" id="logoutLink" style="display:none"><span>🚪</span> <span>Выйти</span></a>
+        <a class="nav-item" id="loginLink" data-page="login"><span>🔑</span> <span>Войти</span></a>
+        <a class="nav-item" id="registerLink" data-page="register"><span>📝</span> <span>Регистрация</span></a>
+      </nav>
+      <button id="themeToggle" class="theme-toggle-btn">🌓</button>
+    </aside>
 
     <!-- Основной контент -->
-    <div class="main-content" id="mainContent">
+    <main class="main-content">
       <!-- Страница входа -->
-      <div id="loginPage" class="page">
-        <div style="max-width: 400px; margin: 40px auto; padding: 30px;" class="card">
-          <h2 style="margin-bottom:20px;">🔐 Вход в НБСС</h2>
-          <input id="loginUsername" placeholder="Логин" style="width:100%; padding:12px; margin:8px 0; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px;">
-          <input id="loginPassword" type="password" placeholder="Пароль" style="width:100%; padding:12px; margin:8px 0; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px;">
-          <button id="loginBtn" class="btn" style="width:100%; margin-top:12px;">Войти</button>
-          <p style="margin-top:12px;">Нет аккаунта? <a id="showRegisterLink">Зарегистрироваться</a></p>
+      <section id="loginPage" class="page">
+        <div class="card auth-card">
+          <h2>🔐 Вход в НБСС</h2>
+          <input id="loginUsername" placeholder="Логин" autocomplete="username">
+          <input id="loginPassword" type="password" placeholder="Пароль" autocomplete="current-password">
+          <button id="loginBtn" class="btn primary full-width">Войти</button>
+          <p>Нет аккаунта? <a id="showRegisterLink">Зарегистрироваться</a></p>
         </div>
-      </div>
+      </section>
+
       <!-- Страница регистрации -->
-      <div id="registerPage" class="page">
-        <div style="max-width:400px; margin:40px auto; padding:30px;" class="card">
+      <section id="registerPage" class="page">
+        <div class="card auth-card">
           <h2>📝 Регистрация</h2>
-          <input id="regUsername" placeholder="Придумайте логин" style="width:100%; padding:12px; margin:8px 0; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px;">
-          <input id="regPassword" type="password" placeholder="Пароль" style="width:100%; padding:12px; margin:8px 0; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px;">
-          <button id="registerBtn" class="btn" style="width:100%;">Создать аккаунт</button>
+          <input id="regUsername" placeholder="Придумайте логин">
+          <input id="regPassword" type="password" placeholder="Пароль">
+          <button id="registerBtn" class="btn primary full-width">Создать аккаунт</button>
         </div>
-      </div>
+      </section>
+
       <!-- Главная лента -->
-      <div id="homePage" class="page active">
+      <section id="homePage" class="page active">
         <div id="authBanner" class="auth-banner">
           <span>👋 Добро пожаловать в НБСС! Вы смотрите публичную ленту.</span>
           <span>
-            <button id="loginFromBanner" class="btn-outline" style="margin-right:6px;">Войти</button>
-            <button id="registerFromBanner" class="btn-outline">Регистрация</button>
+            <button id="loginFromBanner" class="btn outline">Войти</button>
+            <button id="registerFromBanner" class="btn outline">Регистрация</button>
           </span>
         </div>
-        <div id="postComposer" style="padding:16px; border-bottom:1px solid var(--border); display:none;">
-          <textarea id="postInput" placeholder="Что происходит? #хештег @упоминание" style="width:100%; background:var(--bg); border:none; color:var(--text); resize:none; padding:8px; border-radius:12px; min-height:70px;"></textarea>
-          <button id="publishPost" class="btn" style="margin-top:8px;">Опубликовать</button>
+        <div id="postComposer" class="post-composer" style="display:none">
+          <textarea id="postInput" placeholder="Что происходит? #хештег @упоминание"></textarea>
+          <button id="publishPost" class="btn primary">Опубликовать</button>
         </div>
-        <div id="feedContainer"></div>
-      </div>
+        <div id="feedContainer" class="feed"></div>
+      </section>
+
       <!-- Профиль -->
-      <div id="profilePage" class="page">
-        <div style="padding:16px; border-bottom:1px solid var(--border);">
+      <section id="profilePage" class="page">
+        <div class="profile-header">
           <h2 id="profileName">Профиль</h2>
-          <p id="profileStatus" style="color:var(--text2);"></p>
+          <p id="profileStatus"></p>
         </div>
-        <div id="profilePosts"></div>
-      </div>
+        <div id="profilePosts" class="feed"></div>
+      </section>
+
       <!-- Ивенты -->
-      <div id="eventsPage" class="page">
-        <div style="padding:16px;">
+      <section id="eventsPage" class="page">
+        <div class="events-container">
           <h2>📅 Активные ивенты</h2>
           <div id="eventsList"></div>
         </div>
-      </div>
+      </section>
+
       <!-- Админ панель -->
-      <div id="adminPage" class="page">
-        <div style="padding:16px;">
+      <section id="adminPage" class="page">
+        <div class="admin-container">
           <h2>⚙️ Административная панель</h2>
-          <div class="card" style="margin:16px 0;">
+          <div class="card">
             <h3>📊 Статистика сайта</h3>
             <div class="stat-row"><span>👥 Пользователей:</span> <span id="adminUsersStat">0</span></div>
             <div class="stat-row"><span>📝 Постов:</span> <span id="adminPostsStat">0</span></div>
             <div class="stat-row"><span>👁️ Посещений:</span> <span id="adminPageViewsStat">0</span></div>
             <div class="stat-row"><span>🟢 Онлайн:</span> <span id="adminOnlineStat">1</span></div>
           </div>
-          <div class="card" style="margin:16px 0;">
+          <div class="card">
             <h3>Управление пользователями</h3>
-            <select id="userSelect" style="width:100%; padding:8px; margin:8px 0; background:var(--bg); color:var(--text); border:1px solid var(--border);"></select>
-            <button id="verifyUserBtn" class="btn-outline" style="margin:4px;">✅ Выдать галочку</button>
-            <button id="unverifyUserBtn" class="btn-outline" style="margin:4px;">❌ Убрать галочку</button>
-            <button id="makeAdminBtn" class="btn-outline" style="margin:4px;">👑 Сделать админом</button>
-            <button id="revokeAdminBtn" class="btn-outline" style="margin:4px;">🔻 Разжаловать админа</button>
-            <button id="givePremiumBtn" class="btn-outline" style="margin:4px;">💎 Выдать НБСС+ (299₽)</button>
-            <button id="revokePremiumBtn" class="btn-outline" style="margin:4px;">💔 Отобрать НБСС+</button>
-            <button id="deleteUserBtn" class="btn-danger" style="margin:4px;">🗑 Удалить аккаунт</button>
+            <select id="userSelect"></select>
+            <div class="admin-actions">
+              <button id="verifyUserBtn" class="btn outline">✅ Выдать галочку</button>
+              <button id="unverifyUserBtn" class="btn outline">❌ Убрать галочку</button>
+              <button id="makeAdminBtn" class="btn outline">👑 Сделать админом</button>
+              <button id="revokeAdminBtn" class="btn outline">🔻 Разжаловать админа</button>
+              <button id="givePremiumBtn" class="btn outline">💎 Выдать НБСС+</button>
+              <button id="revokePremiumBtn" class="btn outline">💔 Отобрать НБСС+</button>
+              <button id="deleteUserBtn" class="btn danger">🗑 Удалить аккаунт</button>
+            </div>
           </div>
           <div class="card">
             <h3>Создать ивент</h3>
-            <input id="eventTitle" placeholder="Название ивента" style="width:100%; padding:8px; margin:4px 0; background:var(--bg); border:1px solid var(--border); color:var(--text);">
-            <textarea id="eventDesc" placeholder="Описание" style="width:100%; padding:8px; margin:4px 0; background:var(--bg); border:1px solid var(--border); color:var(--text);"></textarea>
-            <button id="createEventBtn" class="btn">🚀 Запустить ивент</button>
+            <input id="eventTitle" placeholder="Название ивента">
+            <textarea id="eventDesc" placeholder="Описание"></textarea>
+            <button id="createEventBtn" class="btn primary">🚀 Запустить ивент</button>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
 
-    <!-- Правая боковая панель (активность, статистика) -->
-    <div class="sidebar sidebar-right">
+    <!-- Правая панель (статистика) -->
+    <aside class="sidebar sidebar-right">
       <div class="stat-widget">
-        <h3 style="margin-bottom:10px;">📊 Активность сайта</h3>
+        <h3>📊 Активность</h3>
         <div class="stat-row"><span>👥 Пользователей:</span> <span id="totalUsersStat">0</span></div>
         <div class="stat-row"><span>📝 Постов:</span> <span id="totalPostsStat">0</span></div>
         <div class="stat-row"><span>👁️ Посещений:</span> <span id="pageViewsStat">0</span></div>
         <div class="stat-row"><span>🟢 Онлайн:</span> <span id="onlineStat">1</span></div>
       </div>
       <div class="stat-widget">
-        <h3>💎 НБСС+ Premium</h3>
-        <p style="color:var(--text2);">Градиентный ник, приоритетная поддержка. 299₽/мес.</p>
-        <p id="premiumStatusUser" style="font-weight:bold;"></p>
+        <h3>💎 НБСС+</h3>
+        <p>Градиентный ник, приоритетная поддержка. 299₽/мес.</p>
+        <p id="premiumStatusUser" class="premium-status"></p>
       </div>
-    </div>
+    </aside>
   </div>
 
   <script src="script.js" defer></script>
 </body>
-        </html>
+</html>
