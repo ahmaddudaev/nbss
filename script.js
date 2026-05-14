@@ -23,7 +23,6 @@
   const saveEvents = (e) => LS.set('events', e);
   const hash = (pw) => btoa(pw);
 
-  // DOM элементы
   const pageElements = {
     login: document.getElementById('loginPage'),
     register: document.getElementById('registerPage'),
