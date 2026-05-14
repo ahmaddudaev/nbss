@@ -68,7 +68,6 @@
     document.getElementById('premiumStatusUser').textContent = isPremium() ? 'Активна' : 'Не активна';
   }
 
-  // Навигация
   navLinks.forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
@@ -82,7 +81,6 @@
   document.getElementById('registerFromBanner')?.addEventListener('click', () => showPage('register'));
   logoutLink.addEventListener('click', () => { currentUser = null; LS.set('currentUser', null); updateUIForAuth(); showPage('home'); });
 
-  // Вход / Регистрация
   document.getElementById('loginBtn').addEventListener('click', () => {
     const u = document.getElementById('loginUsername').value.trim();
     const p = document.getElementById('loginPassword').value.trim();
@@ -103,14 +101,12 @@
     currentUser = u; LS.set('currentUser', u); updateUIForAuth(); showPage('home');
   });
 
-  // Смена темы
   document.getElementById('themeToggle').addEventListener('click', () => {
     document.body.classList.toggle('light-mode');
     localStorage.setItem('nbss_theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
   });
   if (localStorage.getItem('nbss_theme') === 'light') document.body.classList.add('light-mode');
 
-  // Публикация
   document.getElementById('publishPost').addEventListener('click', () => {
     if (!currentUser) return;
     const text = document.getElementById('postInput').value.trim();
@@ -209,7 +205,6 @@
     select.innerHTML = Object.keys(all).map(u => `<option value="${u}">${u} ${all[u].admin?'(админ)':''} ${all[u].verified?'✔️':''} ${all[u].premium?'💎':''}</option>`).join('');
   }
 
-  // Админ действия
   const adminHandlers = {
     verifyUserBtn: (sel) => { const all = users(); if (all[sel]) { all[sel].verified = true; saveUsers(all); } },
     unverifyUserBtn: (sel) => { const all = users(); if (all[sel]) { all[sel].verified = false; saveUsers(all); } },
@@ -256,7 +251,6 @@
   }
   setInterval(updateStatsWidget, 10000);
 
-  // Инициализация
   updateUIForAuth();
   showPage('home');
   updateStatsWidget();
