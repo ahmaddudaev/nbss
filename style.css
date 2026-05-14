@@ -140,20 +140,17 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 @media (max-width: 768px) {
   .app-container { flex-direction: column; padding: 0; gap: 0; }
 
-  /* Основной контент (лента) на всю ширину */
   .main-content {
     max-width: 100%;
     border: none;
-    padding-bottom: 80px; /* чтобы не заезжало под нижнюю панель */
+    padding-bottom: 80px;
     margin: 0;
   }
 
-  /* Полностью скрываем правую панель (активность, НБСС+) */
   .sidebar-right {
     display: none !important;
   }
 
-  /* Левая панель превращается в нижнюю навигацию */
   .sidebar-left {
     display: flex;
     position: fixed;
@@ -177,7 +174,7 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
   }
 
   .sidebar-left .nav-item {
-    font-size: 0;           /* текст скрыт, оставляем иконки */
+    font-size: 0;
     flex-direction: column;
     padding: 6px 0;
     gap: 2px;
@@ -187,14 +184,13 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
   }
 
   .sidebar-left .nav-item span:first-child {
-    font-size: 22px;        /* крупные иконки для пальцев */
+    font-size: 22px;
   }
 
   .sidebar-left .nav-item span:not(:first-child) {
     display: none;
   }
 
-  /* Кнопка смены темы – фиксированная в правом верхнем углу */
   .theme-toggle-btn {
     position: fixed;
     bottom: auto;
@@ -218,10 +214,9 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
     font-size: 20px;
   }
 
-  /* Баннер для гостей – адаптируем */
   .auth-banner {
     flex-direction: column;
     align-items: flex-start;
     font-size: 14px;
   }
-}
+    }
