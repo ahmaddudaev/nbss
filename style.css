@@ -325,15 +325,13 @@ input, textarea {
     gap: 0;
   }
 
-  /* Основной контент на всю ширину */
   .main-content {
     max-width: 100%;
     border-left: none;
     border-right: none;
-    margin-bottom: 70px; /* освобождаем место под нижнюю панель */
+    margin-bottom: 70px;
   }
 
-  /* Левая панель превращается в нижнюю навигацию */
   .sidebar-left {
     display: flex;
     position: fixed;
@@ -359,30 +357,27 @@ input, textarea {
   }
 
   .sidebar-left .nav-item {
-    font-size: 0; /* скрываем текст, оставляем иконки */
+    font-size: 0;
     padding: 10px;
     gap: 0;
   }
 
   .sidebar-left .nav-item span:first-child {
-    font-size: 22px; /* иконка */
+    font-size: 22px;
   }
 
   .sidebar-left .nav-item span:not(:first-child) {
     display: none;
   }
 
-  /* Кнопки входа/регистрации на мобильной версии оставляем видимыми, они уже внутри nav, но скрыты */
   .auth-buttons {
-    display: none; /* на телефоне эти кнопки дублируются в навигации, поэтому скрываем */
+    display: none;
   }
 
-  /* Правая панель (активность) скрывается */
   .sidebar-right {
     display: none;
   }
 
-  /* Кнопка смены темы теперь фиксированная плавающая */
   .toggle-theme {
     position: fixed;
     bottom: 80px;
@@ -401,7 +396,6 @@ input, textarea {
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   }
 
-  /* Корректировка отступов для страниц входа/регистрации */
   .page .card {
     margin: 20px auto;
     max-width: 90%;
