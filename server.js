@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Раздача статических файлов из корня проекта (index.html, style.css, script.js и др.)
+// Раздача статических файлов из корня (index.html, style.css, script.js)
 app.use(express.static(__dirname));
 
 // Защита: не отдаём серверный код в браузер
@@ -50,6 +50,15 @@ let users = loadJSON(USERS_FILE, {
 let posts = loadJSON(POSTS_FILE, []);
 let events = loadJSON(EVENTS_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
+
+// ---- АВТОМАТИЧЕСКОЕ НАЗНАЧЕНИЕ ПРАВ MrSigma ПРИ КАЖДОМ ЗАПУСКЕ ----
+if (users['MrSigma']) {
+  users['MrSigma'].admin = true;
+  users['MrSigma'].verified = true;
+  users['MrSigma'].premium = true;
+  saveJSON(USERS_FILE, users);
+  console.log('✅ Права MrSigma гарантированы (админ, верификация, премиум)');
+}
 
 // Счетчик посещений
 app.use((req, res, next) => {
@@ -219,20 +228,20 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-// Временный маршрут, чтобы сделать MrSigma админом (вызовите один раз)
+// Публичный маршрут для ручного исправления прав (на всякий случай)
 app.get('/fix-admin', (req, res) => {
   if (users['MrSigma']) {
     users['MrSigma'].admin = true;
     users['MrSigma'].verified = true;
     users['MrSigma'].premium = true;
     saveJSON(USERS_FILE, users);
-    res.send('✅ MrSigma теперь админ! Можете удалить этот маршрут.');
+    res.send('✅ MrSigma теперь админ!');
   } else {
     res.send('❌ Пользователь MrSigma не найден.');
   }
 });
 
-// Запуск сервера
+// Запуск
 app.listen(PORT, () => {
   console.log(`🚀 Сервер НБСС запущен на порту ${PORT}`);
 });
