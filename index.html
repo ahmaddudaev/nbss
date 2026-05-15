@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <!-- Подключаем фавиконку -->
+  <link rel="icon" type="image/png" href="favicon.png">
   <title>НБСС — Национальная Быстрая Социальная Сеть</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -10,6 +12,11 @@
   <div class="app-container">
     <!-- Левая панель (навигация) -->
     <aside class="sidebar sidebar-left">
+      <!-- Логотип -->
+      <div class="logo">
+        <img src="logo.png" alt="НБСС" class="logo-img">
+        <span class="logo-text">НБСС</span>
+      </div>
       <nav class="nav">
         <a class="nav-item active" data-page="home"><span>🏠</span> <span>Главная</span></a>
         <a class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> <span>Профиль</span></a>
@@ -34,7 +41,6 @@
           <p>Нет аккаунта? <a id="showRegisterLink">Зарегистрироваться</a></p>
         </div>
       </section>
-
       <!-- Страница регистрации -->
       <section id="registerPage" class="page">
         <div class="card auth-card">
@@ -44,7 +50,6 @@
           <button id="registerBtn" class="btn primary full-width">Создать аккаунт</button>
         </div>
       </section>
-
       <!-- Главная лента -->
       <section id="homePage" class="page active">
         <div id="authBanner" class="auth-banner">
@@ -60,7 +65,6 @@
         </div>
         <div id="feedContainer" class="feed"></div>
       </section>
-
       <!-- Профиль -->
       <section id="profilePage" class="page">
         <div class="profile-header">
@@ -69,7 +73,6 @@
         </div>
         <div id="profilePosts" class="feed"></div>
       </section>
-
       <!-- Ивенты -->
       <section id="eventsPage" class="page">
         <div class="events-container">
@@ -77,18 +80,11 @@
           <div id="eventsList"></div>
         </div>
       </section>
-
       <!-- Админ панель -->
       <section id="adminPage" class="page">
         <div class="admin-container">
           <h2>⚙️ Административная панель</h2>
-          <div class="card">
-            <h3>📊 Статистика сайта</h3>
-            <div class="stat-row"><span>👥 Пользователей:</span> <span id="adminUsersStat">0</span></div>
-            <div class="stat-row"><span>📝 Постов:</span> <span id="adminPostsStat">0</span></div>
-            <div class="stat-row"><span>👁️ Посещений:</span> <span id="adminPageViewsStat">0</span></div>
-            <div class="stat-row"><span>🟢 Онлайн:</span> <span id="adminOnlineStat">1</span></div>
-          </div>
+          <div class="card" id="adminStats"></div>
           <div class="card">
             <h3>Управление пользователями</h3>
             <select id="userSelect"></select>
@@ -114,13 +110,7 @@
 
     <!-- Правая панель (статистика) -->
     <aside class="sidebar sidebar-right">
-      <div class="stat-widget">
-        <h3>📊 Активность</h3>
-        <div class="stat-row"><span>👥 Пользователей:</span> <span id="totalUsersStat">0</span></div>
-        <div class="stat-row"><span>📝 Постов:</span> <span id="totalPostsStat">0</span></div>
-        <div class="stat-row"><span>👁️ Посещений:</span> <span id="pageViewsStat">0</span></div>
-        <div class="stat-row"><span>🟢 Онлайн:</span> <span id="onlineStat">1</span></div>
-      </div>
+      <div class="stat-widget" id="statsWidget"></div>
       <div class="stat-widget">
         <h3>💎 НБСС+</h3>
         <p>Градиентный ник, приоритетная поддержка. 299₽/мес.</p>
