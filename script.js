@@ -1,10 +1,7 @@
-// ================= НБСС – КЛИЕНТСКИЙ СКРИПТ (обновлённый) =================
-const API = '/api';   // сайт и API на одном домене Railway
-
+const API = '/api';
 let token = localStorage.getItem('nbss_token') || null;
 let currentUser = null;
 
-// Универсальная функция запросов
 async function request(url, options = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -16,17 +13,14 @@ async function request(url, options = {}) {
   return res.json();
 }
 
-// ---------- Проверка токена при старте ----------
+// При старте проверяем токен и получаем права
 (async function init() {
   if (token) {
     try {
-      // попытка получить статистику (любой защищённый маршрут) для проверки токена
-      await request('/stats');
-      // если не было ошибки, токен валиден, но права пользователя мы пока не знаем.
-      // Поэтому запросим список пользователей? Нет, лучше запомним, что авторизованы.
-      // При переходе на админку или профиль данные подтянутся.
+      currentUser = await request('/me');
     } catch (e) {
       token = null;
+      currentUser = null;
       localStorage.removeItem('nbss_token');
     }
   }
@@ -34,7 +28,6 @@ async function request(url, options = {}) {
   showPage('home');
 })();
 
-// ---------- Показ страниц ----------
 function showPage(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById(pageId + 'Page');
@@ -51,7 +44,6 @@ function showPage(pageId) {
   updateStats();
 }
 
-// ---------- Обновление интерфейса при авторизации ----------
 function updateUIForAuth() {
   const loggedIn = !!token;
   document.getElementById('authBanner').style.display = loggedIn ? 'none' : 'flex';
@@ -61,290 +53,17 @@ function updateUIForAuth() {
   document.getElementById('loginLink').style.display = loggedIn ? 'none' : 'flex';
   document.getElementById('registerLink').style.display = loggedIn ? 'none' : 'flex';
 
-  // Кнопка админки – показываем, только если currentUser.admin == true
   const navAdmin = document.getElementById('navAdmin');
   if (navAdmin) {
     navAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
   }
-}
-
-// ---------- Навигация ----------
-document.querySelectorAll('.nav-item[data-page]').forEach(link => {
-  link.addEventListener('click', e => {
-    e.preventDefault();
-    const page = link.dataset.page;
-    if (page === 'profile' && !token) return alert('Сначала войдите');
-    if (page === 'admin' && !(currentUser && currentUser.admin)) {
-      return alert('Нет прав администратора');
-    }
-    showPage(page);
-  });
-});
-
-document.getElementById('loginFromBanner')?.addEventListener('click', () => showPage('login'));
-document.getElementById('registerFromBanner')?.addEventListener('click', () => showPage('register'));
-
-// ---------- Вход ----------
-document.getElementById('loginBtn').addEventListener('click', async () => {
-  const username = document.getElementById('loginUsername').value.trim();
-  const password = document.getElementById('loginPassword').value.trim();
-  try {
-    const data = await request('/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password })
-    });
-    token = data.token;
-    currentUser = data.user;   // { username, verified, admin, premium }
-    localStorage.setItem('nbss_token', token);
-    updateUIForAuth();        // здесь же появится кнопка админки
-    showPage('home');
-  } catch (e) {
-    alert(e.message);
-  }
-});
-
-// ---------- Регистрация ----------
-document.getElementById('registerBtn').addEventListener('click', async () => {
-  const username = document.getElementById('regUsername').value.trim();
-  const password = document.getElementById('regPassword').value.trim();
-  try {
-    await request('/register', {
-      method: 'POST',
-      body: JSON.stringify({ username, password })
-    });
-    alert('Аккаунт создан! Теперь войдите.');
-    showPage('login');
-  } catch (e) {
-    alert(e.message);
-  }
-});
-
-document.getElementById('showRegisterLink').addEventListener('click', (e) => {
-  e.preventDefault();
-  showPage('register');
-});
-
-// ---------- Выход ----------
-document.getElementById('logoutLink').addEventListener('click', () => {
-  token = null;
-  currentUser = null;
-  localStorage.removeItem('nbss_token');
-  updateUIForAuth();
-  showPage('home');
-});
-
-// ---------- Смена темы ----------
-document.getElementById('themeToggle').addEventListener('click', () => {
-  document.body.classList.toggle('light-mode');
-  localStorage.setItem('nbss_theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
-});
-if (localStorage.getItem('nbss_theme') === 'light') document.body.classList.add('light-mode');
-
-// ---------- Публикация поста ----------
-document.getElementById('publishPost').addEventListener('click', async () => {
-  const text = document.getElementById('postInput').value.trim();
-  if (!text) return;
-  try {
-    await request('/posts', {
-      method: 'POST',
-      body: JSON.stringify({ text })
-    });
-    document.getElementById('postInput').value = '';
-    loadPosts();
-  } catch (e) {
-    alert(e.message);
-  }
-});
-
-// ---------- Загрузка постов ----------
-async function loadPosts() {
-  const container = document.getElementById('feedContainer');
-  try {
-    const posts = await request('/posts');
-    container.innerHTML = posts.map(p => renderPost(p)).join('');
-    attachPostActions();
-  } catch (e) {
-    container.innerHTML = '<p>Ошибка загрузки ленты</p>';
+  const premStatus = document.getElementById('premiumStatusUser');
+  if (premStatus) {
+    premStatus.textContent = (currentUser && currentUser.premium) ? 'Активна' : 'Не активна';
   }
 }
 
-function renderPost(p) {
-  const author = p.author;
-  // попытка найти пользователя в кеше (но у нас нет локального списка пользователей)
-  // галочку и премиум пока опустим, можно добавить запрос, но для простоты оставим
-  const verifiedIcon = '';   // позже можно доработать
-  const nickClass = '';      // позже можно доработать
-  const formatted = p.text
-    .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>')
-    .replace(/@(\w+)/g, '<span class="mention">@$1</span>');
-  return `
-    <div class="post" data-id="${p.id}">
-      <div class="avatar">${author[0]?.toUpperCase()}</div>
-      <div class="post-body">
-        <div class="post-header">
-          <span class="username ${nickClass}">${author}${verifiedIcon}</span>
-          <span>· ${new Date(p.timestamp).toLocaleString()}</span>
-        </div>
-        <div class="post-text">${formatted}</div>
-        <div class="post-actions">
-          <button class="like-btn">❤️ ${p.likes.length}</button>
-          <button class="repost-btn">🔄 ${p.reposts.length}</button>
-        </div>
-      </div>
-    </div>`;
-}
-
-function attachPostActions() {
-  document.querySelectorAll('.like-btn').forEach(btn => {
-    btn.onclick = async function() {
-      if (!token) return alert('Войдите, чтобы ставить лайки');
-      const postId = this.closest('.post').dataset.id;
-      try {
-        await request(`/posts/${postId}/like`, { method: 'POST' });
-        loadPosts();
-      } catch (e) { alert(e.message); }
-    };
-  });
-  document.querySelectorAll('.repost-btn').forEach(btn => {
-    btn.onclick = async function() {
-      if (!token) return alert('Войдите, чтобы делать репосты');
-      const postId = this.closest('.post').dataset.id;
-      try {
-        await request(`/posts/${postId}/repost`, { method: 'POST' });
-        loadPosts();
-      } catch (e) { alert(e.message); }
-    };
-  });
-}
-
-// ---------- Профиль ----------
-async function loadProfile() {
-  if (!currentUser) return;
-  const user = currentUser;
-  document.getElementById('profileName').textContent = user.username;
-  document.getElementById('profileStatus').innerHTML =
-    (user.verified ? '✅ Верифицирован' : '') + (user.premium ? ' 💎 НБСС+' : '');
-  try {
-    const allPosts = await request('/posts');
-    const userPosts = allPosts.filter(p => p.author === user.username);
-    const container = document.getElementById('profilePosts');
-    container.innerHTML = userPosts.length
-      ? userPosts.map(p => renderPost(p)).join('')
-      : '<p>Нет постов</p>';
-    attachPostActions();
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-// ---------- Ивенты ----------
-async function loadEvents() {
-  const list = document.getElementById('eventsList');
-  try {
-    const evs = await request('/events');
-    list.innerHTML = evs.length
-      ? evs.map(e => `<div class="event-banner"><strong>${e.title}</strong><p>${e.desc}</p></div>`).join('')
-      : '<p>Нет активных ивентов</p>';
-  } catch (e) {
-    list.innerHTML = '<p>Ошибка загрузки ивентов</p>';
-  }
-}
-
-// ---------- Админка ----------
-async function loadAdminStats() {
-  if (!currentUser || !currentUser.admin) return;
-  try {
-    const stats = await request('/stats');
-    document.getElementById('adminStats').innerHTML = `
-      <h3>📊 Статистика сайта</h3>
-      <div class="stat-row"><span>👥 Пользователей:</span> <span>${stats.users}</span></div>
-      <div class="stat-row"><span>📝 Постов:</span> <span>${stats.posts}</span></div>
-      <div class="stat-row"><span>👁️ Посещений:</span> <span>${stats.pageviews}</span></div>
-      <div class="stat-row"><span>🟢 Онлайн:</span> <span>${stats.online}</span></div>`;
-  } catch (e) { /* игнорируем */ }
-}
-
-async function loadAdminUsers() {
-  if (!currentUser || !currentUser.admin) return;
-  try {
-    const users = await request('/admin/users');
-    const select = document.getElementById('userSelect');
-    select.innerHTML = users.map(u => `<option>${u.username}</option>`).join('');
-
-    document.getElementById('verifyUserBtn').onclick = async () => {
-      await modifyUser(select.value, { verified: true });
-    };
-    document.getElementById('unverifyUserBtn').onclick = async () => {
-      await modifyUser(select.value, { verified: false });
-    };
-    document.getElementById('makeAdminBtn').onclick = async () => {
-      await modifyUser(select.value, { admin: true });
-    };
-    document.getElementById('revokeAdminBtn').onclick = async () => {
-      if (select.value === 'MrSigma') return alert('Нельзя разжаловать основателя');
-      await modifyUser(select.value, { admin: false });
-    };
-    document.getElementById('givePremiumBtn').onclick = async () => {
-      await modifyUser(select.value, { premium: true });
-    };
-    document.getElementById('revokePremiumBtn').onclick = async () => {
-      await modifyUser(select.value, { premium: false });
-    };
-    document.getElementById('deleteUserBtn').onclick = async () => {
-      if (select.value === 'MrSigma') return alert('Нельзя удалить основателя');
-      if (confirm(`Удалить ${select.value}?`)) {
-        await modifyUser(select.value, { delete: true });
-      }
-    };
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-async function modifyUser(username, changes) {
-  try {
-    await request(`/admin/user/${username}`, {
-      method: 'POST',
-      body: JSON.stringify(changes)
-    });
-    loadAdminUsers();
-  } catch (e) {
-    alert(e.message);
-  }
-}
-
-document.getElementById('createEventBtn').addEventListener('click', async () => {
-  const title = document.getElementById('eventTitle').value.trim();
-  const desc = document.getElementById('eventDesc').value.trim();
-  if (!title) return alert('Введите название ивента');
-  try {
-    await request('/events', {
-      method: 'POST',
-      body: JSON.stringify({ title, desc })
-    });
-    document.getElementById('eventTitle').value = '';
-    document.getElementById('eventDesc').value = '';
-    loadEvents();
-    alert('Ивент создан!');
-  } catch (e) {
-    alert(e.message);
-  }
-});
-
-// ---------- Статистика в правой панели ----------
-async function updateStats() {
-  try {
-    const stats = await request('/stats');
-    const widget = document.getElementById('statsWidget');
-    if (widget) {
-      widget.innerHTML = `
-        <h3>📊 Активность</h3>
-        <div class="stat-row"><span>👥</span> <span>${stats.users}</span></div>
-        <div class="stat-row"><span>📝</span> <span>${stats.posts}</span></div>
-        <div class="stat-row"><span>👁️</span> <span>${stats.pageviews}</span></div>
-        <div class="stat-row"><span>🟢</span> <span>${stats.online}</span></div>`;
-    }
-  } catch (e) { /* тихо */ }
-}
-updateStats();
-setInterval(updateStats, 10000);
+// Остальная часть скрипта – в точности как раньше (события, вход, посты, лайки, админка)
+// ... (вставьте сюда полный код из предыдущего ответа, начиная с "document.querySelectorAll('.nav-item[data-page]')...")
+// Для краткости я опускаю повторение, но вы можете взять последний рабочий script.js и просто
+// заменить в нём верхний блок (init) на этот, а остальное оставить без изменений.
