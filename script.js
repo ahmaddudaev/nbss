@@ -1,10 +1,10 @@
-// ==================== НБСС — КЛИЕНТСКИЙ СКРИПТ (СЕРВЕРНАЯ ВЕРСИЯ) ====================
-const API = 'https://nbss-production.up.railway.app/api';
+// ================= НБСС – КЛИЕНТСКИЙ СКРИПТ (обновлённый) =================
+const API = '/api';   // сайт и API на одном домене Railway
 
 let token = localStorage.getItem('nbss_token') || null;
-let currentUser = null;   // будет заполнен после входа или проверки токена
+let currentUser = null;
 
-// ---------- вспомогательная функция запросов ----------
+// Универсальная функция запросов
 async function request(url, options = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -16,17 +16,16 @@ async function request(url, options = {}) {
   return res.json();
 }
 
-// ---------- инициализация (проверка токена) ----------
+// ---------- Проверка токена при старте ----------
 (async function init() {
   if (token) {
     try {
-      // попробуем получить статистику, чтобы проверить токен
+      // попытка получить статистику (любой защищённый маршрут) для проверки токена
       await request('/stats');
-      // если не выбросило ошибку – токен рабочий, пользователь авторизован
-      // дополнительно можно получить данные о себе, но в нашем API нет отдельного /me,
-      // поэтому просто считаем, что авторизация ок.
+      // если не было ошибки, токен валиден, но права пользователя мы пока не знаем.
+      // Поэтому запросим список пользователей? Нет, лучше запомним, что авторизованы.
+      // При переходе на админку или профиль данные подтянутся.
     } catch (e) {
-      // токен невалиден
       token = null;
       localStorage.removeItem('nbss_token');
     }
@@ -35,7 +34,7 @@ async function request(url, options = {}) {
   showPage('home');
 })();
 
-// ---------- навигация по страницам ----------
+// ---------- Показ страниц ----------
 function showPage(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById(pageId + 'Page');
@@ -45,7 +44,6 @@ function showPage(pageId) {
   const nav = document.querySelector(`.nav-item[data-page="${pageId}"]`);
   if (nav) nav.classList.add('active');
 
-  // подгружаем данные при переходе
   if (pageId === 'home') loadPosts();
   if (pageId === 'profile') loadProfile();
   if (pageId === 'events') loadEvents();
@@ -53,7 +51,7 @@ function showPage(pageId) {
   updateStats();
 }
 
-// ---------- обновление интерфейса в зависимости от авторизации ----------
+// ---------- Обновление интерфейса при авторизации ----------
 function updateUIForAuth() {
   const loggedIn = !!token;
   document.getElementById('authBanner').style.display = loggedIn ? 'none' : 'flex';
@@ -62,18 +60,21 @@ function updateUIForAuth() {
   document.getElementById('logoutLink').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('loginLink').style.display = loggedIn ? 'none' : 'flex';
   document.getElementById('registerLink').style.display = loggedIn ? 'none' : 'flex';
-  // кнопка админки видна только админам (проверим позже)
+
+  // Кнопка админки – показываем, только если currentUser.admin == true
+  const navAdmin = document.getElementById('navAdmin');
+  if (navAdmin) {
+    navAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
+  }
 }
 
-// ---------- кнопки навигации (события) ----------
+// ---------- Навигация ----------
 document.querySelectorAll('.nav-item[data-page]').forEach(link => {
   link.addEventListener('click', e => {
     e.preventDefault();
     const page = link.dataset.page;
     if (page === 'profile' && !token) return alert('Сначала войдите');
-    if (page === 'admin' && !currentUser?.admin) {
-      // currentUser может быть ещё не загружен, попробуем получить из токена, но проще запросить /admin/users
-      // временно просто предупредим
+    if (page === 'admin' && !(currentUser && currentUser.admin)) {
       return alert('Нет прав администратора');
     }
     showPage(page);
@@ -83,7 +84,7 @@ document.querySelectorAll('.nav-item[data-page]').forEach(link => {
 document.getElementById('loginFromBanner')?.addEventListener('click', () => showPage('login'));
 document.getElementById('registerFromBanner')?.addEventListener('click', () => showPage('register'));
 
-// ---------- ВХОД ----------
+// ---------- Вход ----------
 document.getElementById('loginBtn').addEventListener('click', async () => {
   const username = document.getElementById('loginUsername').value.trim();
   const password = document.getElementById('loginPassword').value.trim();
@@ -93,16 +94,16 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
       body: JSON.stringify({ username, password })
     });
     token = data.token;
-    currentUser = data.user;   // содержит username, verified, admin, premium
+    currentUser = data.user;   // { username, verified, admin, premium }
     localStorage.setItem('nbss_token', token);
-    updateUIForAuth();
+    updateUIForAuth();        // здесь же появится кнопка админки
     showPage('home');
   } catch (e) {
     alert(e.message);
   }
 });
 
-// ---------- РЕГИСТРАЦИЯ ----------
+// ---------- Регистрация ----------
 document.getElementById('registerBtn').addEventListener('click', async () => {
   const username = document.getElementById('regUsername').value.trim();
   const password = document.getElementById('regPassword').value.trim();
@@ -123,7 +124,7 @@ document.getElementById('showRegisterLink').addEventListener('click', (e) => {
   showPage('register');
 });
 
-// ---------- ВЫХОД ----------
+// ---------- Выход ----------
 document.getElementById('logoutLink').addEventListener('click', () => {
   token = null;
   currentUser = null;
@@ -132,14 +133,14 @@ document.getElementById('logoutLink').addEventListener('click', () => {
   showPage('home');
 });
 
-// ---------- ПЕРЕКЛЮЧЕНИЕ ТЕМЫ ----------
+// ---------- Смена темы ----------
 document.getElementById('themeToggle').addEventListener('click', () => {
   document.body.classList.toggle('light-mode');
   localStorage.setItem('nbss_theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
 });
 if (localStorage.getItem('nbss_theme') === 'light') document.body.classList.add('light-mode');
 
-// ---------- ПУБЛИКАЦИЯ ПОСТА ----------
+// ---------- Публикация поста ----------
 document.getElementById('publishPost').addEventListener('click', async () => {
   const text = document.getElementById('postInput').value.trim();
   if (!text) return;
@@ -149,13 +150,13 @@ document.getElementById('publishPost').addEventListener('click', async () => {
       body: JSON.stringify({ text })
     });
     document.getElementById('postInput').value = '';
-    loadPosts();   // обновим ленту
+    loadPosts();
   } catch (e) {
     alert(e.message);
   }
 });
 
-// ---------- ЗАГРУЗКА ПОСТОВ (лента) ----------
+// ---------- Загрузка постов ----------
 async function loadPosts() {
   const container = document.getElementById('feedContainer');
   try {
@@ -168,17 +169,11 @@ async function loadPosts() {
 }
 
 function renderPost(p) {
-  // p содержит поля: id, author, text, likes (массив), reposts (массив), timestamp
-  // дополнительно сервер может присылать verified/premium автора? Нет, мы не храним это в посте,
-  // но мы можем получить из текущего списка пользователей (не очень эффективно).
-  // Пока для простоты verified будем брать из глобального объекта, если есть.
   const author = p.author;
-  // Попробуем найти пользователя в глобальной переменной? У нас её нет.
-  // Но для отображения галочки и премиум-ника можно сделать отдельный запрос или хранить кеш.
-  // Пока упростим: верификация и премиум не отображаются в ленте (или можно сделать запрос).
-  // В реальном проекте лучше добавить в пост поля verified и premium.
-  const verifiedIcon = ''; // временно пусто
-  const nickClass = '';    // временно пусто
+  // попытка найти пользователя в кеше (но у нас нет локального списка пользователей)
+  // галочку и премиум пока опустим, можно добавить запрос, но для простоты оставим
+  const verifiedIcon = '';   // позже можно доработать
+  const nickClass = '';      // позже можно доработать
   const formatted = p.text
     .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>')
     .replace(/@(\w+)/g, '<span class="mention">@$1</span>');
@@ -206,7 +201,7 @@ function attachPostActions() {
       const postId = this.closest('.post').dataset.id;
       try {
         await request(`/posts/${postId}/like`, { method: 'POST' });
-        loadPosts(); // обновим ленту
+        loadPosts();
       } catch (e) { alert(e.message); }
     };
   });
@@ -222,14 +217,13 @@ function attachPostActions() {
   });
 }
 
-// ---------- ПРОФИЛЬ ----------
+// ---------- Профиль ----------
 async function loadProfile() {
   if (!currentUser) return;
-  const user = currentUser; // получен при входе
+  const user = currentUser;
   document.getElementById('profileName').textContent = user.username;
   document.getElementById('profileStatus').innerHTML =
     (user.verified ? '✅ Верифицирован' : '') + (user.premium ? ' 💎 НБСС+' : '');
-  // загружаем посты автора
   try {
     const allPosts = await request('/posts');
     const userPosts = allPosts.filter(p => p.author === user.username);
@@ -243,7 +237,7 @@ async function loadProfile() {
   }
 }
 
-// ---------- ИВЕНТЫ ----------
+// ---------- Ивенты ----------
 async function loadEvents() {
   const list = document.getElementById('eventsList');
   try {
@@ -256,9 +250,9 @@ async function loadEvents() {
   }
 }
 
-// ---------- АДМИНКА ----------
+// ---------- Админка ----------
 async function loadAdminStats() {
-  if (!currentUser?.admin) return;
+  if (!currentUser || !currentUser.admin) return;
   try {
     const stats = await request('/stats');
     document.getElementById('adminStats').innerHTML = `
@@ -271,12 +265,12 @@ async function loadAdminStats() {
 }
 
 async function loadAdminUsers() {
-  if (!currentUser?.admin) return;
+  if (!currentUser || !currentUser.admin) return;
   try {
     const users = await request('/admin/users');
     const select = document.getElementById('userSelect');
     select.innerHTML = users.map(u => `<option>${u.username}</option>`).join('');
-    // назначаем обработчики кнопок
+
     document.getElementById('verifyUserBtn').onclick = async () => {
       await modifyUser(select.value, { verified: true });
     };
@@ -313,7 +307,7 @@ async function modifyUser(username, changes) {
       method: 'POST',
       body: JSON.stringify(changes)
     });
-    loadAdminUsers(); // обновим список
+    loadAdminUsers();
   } catch (e) {
     alert(e.message);
   }
@@ -337,19 +331,20 @@ document.getElementById('createEventBtn').addEventListener('click', async () => 
   }
 });
 
-// ---------- СТАТИСТИКА В ПРАВОЙ ПАНЕЛИ ----------
+// ---------- Статистика в правой панели ----------
 async function updateStats() {
   try {
     const stats = await request('/stats');
-    document.getElementById('statsWidget').innerHTML = `
-      <h3>📊 Активность</h3>
-      <div class="stat-row"><span>👥</span> <span>${stats.users}</span></div>
-      <div class="stat-row"><span>📝</span> <span>${stats.posts}</span></div>
-      <div class="stat-row"><span>👁️</span> <span>${stats.pageviews}</span></div>
-      <div class="stat-row"><span>🟢</span> <span>${stats.online}</span></div>`;
+    const widget = document.getElementById('statsWidget');
+    if (widget) {
+      widget.innerHTML = `
+        <h3>📊 Активность</h3>
+        <div class="stat-row"><span>👥</span> <span>${stats.users}</span></div>
+        <div class="stat-row"><span>📝</span> <span>${stats.posts}</span></div>
+        <div class="stat-row"><span>👁️</span> <span>${stats.pageviews}</span></div>
+        <div class="stat-row"><span>🟢</span> <span>${stats.online}</span></div>`;
+    }
   } catch (e) { /* тихо */ }
 }
-
-// первоначальное обновление и затем каждые 10 секунд
 updateStats();
 setInterval(updateStats, 10000);
