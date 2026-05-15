@@ -13,7 +13,6 @@ async function request(url, options = {}) {
   return res.json();
 }
 
-// При старте проверяем токен и получаем права
 (async function init() {
   if (token) {
     try {
@@ -69,7 +68,9 @@ document.querySelectorAll('.nav-item[data-page]').forEach(link => {
     e.preventDefault();
     const page = link.dataset.page;
     if (page === 'profile' && !token) return alert('Сначала войдите');
-    if (page === 'admin' && !(currentUser && currentUser.admin)) return alert('Нет прав');
+    if (page === 'admin' && !(currentUser && currentUser.admin)) {
+      return alert('Нет прав администратора');
+    }
     showPage(page);
   });
 });
@@ -100,7 +101,6 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
 document.getElementById('registerBtn').addEventListener('click', async () => {
   const username = document.getElementById('regUsername').value.trim();
   const password = document.getElementById('regPassword').value.trim();
-  if (!username || !password) return alert('Заполните все поля');
   try {
     await request('/register', {
       method: 'POST',
@@ -113,12 +113,11 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
   }
 });
 
-document.getElementById('showRegisterLink').addEventListener('click', e => {
+document.getElementById('showRegisterLink').addEventListener('click', (e) => {
   e.preventDefault();
   showPage('register');
 });
 
-// Выход
 document.getElementById('logoutLink').addEventListener('click', () => {
   token = null;
   currentUser = null;
@@ -134,23 +133,32 @@ document.getElementById('themeToggle').addEventListener('click', () => {
 });
 if (localStorage.getItem('nbss_theme') === 'light') document.body.classList.add('light-mode');
 
-// Публикация поста
-document.getElementById('publishPost').addEventListener('click', async () => {
-  const text = document.getElementById('postInput').value.trim();
+// Публикация поста (с Enter)
+const postInput = document.getElementById('postInput');
+document.getElementById('publishPost').addEventListener('click', publishPost);
+postInput?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    publishPost();
+  }
+});
+
+async function publishPost() {
+  const text = postInput.value.trim();
   if (!text) return;
   try {
     await request('/posts', {
       method: 'POST',
       body: JSON.stringify({ text })
     });
-    document.getElementById('postInput').value = '';
+    postInput.value = '';
     loadPosts();
   } catch (e) {
     alert(e.message);
   }
-});
+}
 
-// Загрузка постов (лента)
+// Загрузка постов
 async function loadPosts() {
   const container = document.getElementById('feedContainer');
   try {
@@ -163,27 +171,26 @@ async function loadPosts() {
 }
 
 function renderPost(p) {
-  const author = p.author;
-  // Попытка получить verified/premium автора из кеша (если есть currentUser и он совпадает, или можно добавить запрос)
-  // Пока упрощенно: verified и premium не отображаем в ленте, только в профиле
-  const verifiedIcon = '';
-  const nickClass = '';
+  const nickClass = p.authorPremium ? 'premium-nick' : '';
+  const verifiedIcon = p.authorVerified ? '<span class="verified-badge">✔️</span>' : '';
   const formatted = p.text
     .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>')
     .replace(/@(\w+)/g, '<span class="mention">@$1</span>');
   return `
     <div class="post" data-id="${p.id}">
-      <div class="avatar">${author[0]?.toUpperCase()}</div>
+      <div class="avatar">${p.author[0]?.toUpperCase()}</div>
       <div class="post-body">
         <div class="post-header">
-          <span class="username ${nickClass}">${author}${verifiedIcon}</span>
+          <span class="username ${nickClass}">${p.author}${verifiedIcon}</span>
           <span>· ${new Date(p.timestamp).toLocaleString()}</span>
         </div>
         <div class="post-text">${formatted}</div>
         <div class="post-actions">
           <button class="like-btn">❤️ ${p.likes.length}</button>
           <button class="repost-btn">🔄 ${p.reposts.length}</button>
+          <button class="comment-toggle">💬 Комментарии</button>
         </div>
+        <div class="comments-section" style="display:none;"></div>
       </div>
     </div>`;
 }
@@ -191,7 +198,7 @@ function renderPost(p) {
 function attachPostActions() {
   document.querySelectorAll('.like-btn').forEach(btn => {
     btn.onclick = async function() {
-      if (!token) return alert('Войдите, чтобы ставить лайки');
+      if (!token) return alert('Войдите');
       const postId = this.closest('.post').dataset.id;
       try {
         await request(`/posts/${postId}/like`, { method: 'POST' });
@@ -201,7 +208,7 @@ function attachPostActions() {
   });
   document.querySelectorAll('.repost-btn').forEach(btn => {
     btn.onclick = async function() {
-      if (!token) return alert('Войдите, чтобы делать репосты');
+      if (!token) return alert('Войдите');
       const postId = this.closest('.post').dataset.id;
       try {
         await request(`/posts/${postId}/repost`, { method: 'POST' });
@@ -209,26 +216,92 @@ function attachPostActions() {
       } catch (e) { alert(e.message); }
     };
   });
+
+  document.querySelectorAll('.comment-toggle').forEach(btn => {
+    btn.onclick = async function() {
+      const postEl = this.closest('.post');
+      const postId = postEl.dataset.id;
+      const section = postEl.querySelector('.comments-section');
+      if (section.style.display === 'none') {
+        section.style.display = 'block';
+        await loadComments(postId, section);
+      } else {
+        section.style.display = 'none';
+      }
+    };
+  });
+}
+
+async function loadComments(postId, container) {
+  try {
+    const comments = await request(`/posts/${postId}/comments`);
+    container.innerHTML = `
+      <div class="comments-list">
+        ${comments.map(c => renderComment(c)).join('')}
+      </div>
+      ${token ? `
+      <div class="comment-form">
+        <input type="text" class="comment-input" placeholder="Ваш комментарий... (Enter)">
+        <button class="btn primary comment-submit">Отправить</button>
+      </div>` : '<p class="comment-login-hint">Войдите, чтобы комментировать.</p>'}
+    `;
+    if (token) {
+      const input = container.querySelector('.comment-input');
+      const submit = container.querySelector('.comment-submit');
+      const sendComment = async () => {
+        const text = input.value.trim();
+        if (!text) return;
+        try {
+          await request(`/posts/${postId}/comments`, {
+            method: 'POST',
+            body: JSON.stringify({ text })
+          });
+          await loadComments(postId, container);
+        } catch (e) { alert(e.message); }
+      };
+      submit.onclick = sendComment;
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendComment();
+        }
+      });
+    }
+  } catch (e) {
+    container.innerHTML = '<p class="error">Ошибка загрузки комментариев</p>';
+  }
+}
+
+function renderComment(c) {
+  const nickClass = c.authorPremium ? 'premium-nick' : '';
+  const verifiedIcon = c.authorVerified ? '<span class="verified-badge">✔️</span>' : '';
+  return `
+    <div class="comment">
+      <div class="avatar-small">${c.author[0]?.toUpperCase()}</div>
+      <div class="comment-body">
+        <span class="username ${nickClass}">${c.author}${verifiedIcon}</span>
+        <span class="comment-time">${new Date(c.timestamp).toLocaleString()}</span>
+        <p class="comment-text">${c.text}</p>
+      </div>
+    </div>
+  `;
 }
 
 // Профиль
 async function loadProfile() {
   if (!currentUser) return;
-  const user = currentUser;
-  document.getElementById('profileName').textContent = user.username;
+  document.getElementById('profileName').textContent = currentUser.username;
   document.getElementById('profileStatus').innerHTML =
-    (user.verified ? '✅ Верифицирован' : '') + (user.premium ? ' 💎 НБСС+' : '');
+    (currentUser.verified ? '✅ Верифицирован' : '') + (currentUser.premium ? ' 💎 НБСС+' : '');
   try {
     const allPosts = await request('/posts');
-    const userPosts = allPosts.filter(p => p.author === user.username);
+    const userPosts = allPosts.filter(p => p.author === currentUser.username);
     const container = document.getElementById('profilePosts');
     container.innerHTML = userPosts.length
       ? userPosts.map(p => renderPost(p)).join('')
       : '<p>Нет постов</p>';
     attachPostActions();
-  } catch (e) {
-    console.error(e);
-  }
+  } catch (e) { console.error(e); }
 }
 
 // Ивенты
@@ -246,53 +319,39 @@ async function loadEvents() {
 
 // Админка
 async function loadAdminStats() {
-  if (!currentUser || !currentUser.admin) return;
+  if (!currentUser?.admin) return;
   try {
     const stats = await request('/stats');
     document.getElementById('adminStats').innerHTML = `
-      <h3>📊 Статистика сайта</h3>
+      <h3>📊 Статистика</h3>
       <div class="stat-row"><span>👥 Пользователей:</span> <span>${stats.users}</span></div>
       <div class="stat-row"><span>📝 Постов:</span> <span>${stats.posts}</span></div>
+      <div class="stat-row"><span>💬 Комментариев:</span> <span>${stats.comments}</span></div>
       <div class="stat-row"><span>👁️ Посещений:</span> <span>${stats.pageviews}</span></div>
       <div class="stat-row"><span>🟢 Онлайн:</span> <span>${stats.online}</span></div>`;
   } catch (e) {}
 }
 
 async function loadAdminUsers() {
-  if (!currentUser || !currentUser.admin) return;
+  if (!currentUser?.admin) return;
   try {
     const users = await request('/admin/users');
     const select = document.getElementById('userSelect');
     select.innerHTML = users.map(u => `<option>${u.username}</option>`).join('');
-
-    document.getElementById('verifyUserBtn').onclick = async () => {
-      await modifyUser(select.value, { verified: true });
-    };
-    document.getElementById('unverifyUserBtn').onclick = async () => {
-      await modifyUser(select.value, { verified: false });
-    };
-    document.getElementById('makeAdminBtn').onclick = async () => {
-      await modifyUser(select.value, { admin: true });
-    };
+    document.getElementById('verifyUserBtn').onclick = async () => await modifyUser(select.value, { verified: true });
+    document.getElementById('unverifyUserBtn').onclick = async () => await modifyUser(select.value, { verified: false });
+    document.getElementById('makeAdminBtn').onclick = async () => await modifyUser(select.value, { admin: true });
     document.getElementById('revokeAdminBtn').onclick = async () => {
       if (select.value === 'MrSigma') return alert('Нельзя разжаловать основателя');
       await modifyUser(select.value, { admin: false });
     };
-    document.getElementById('givePremiumBtn').onclick = async () => {
-      await modifyUser(select.value, { premium: true });
-    };
-    document.getElementById('revokePremiumBtn').onclick = async () => {
-      await modifyUser(select.value, { premium: false });
-    };
+    document.getElementById('givePremiumBtn').onclick = async () => await modifyUser(select.value, { premium: true });
+    document.getElementById('revokePremiumBtn').onclick = async () => await modifyUser(select.value, { premium: false });
     document.getElementById('deleteUserBtn').onclick = async () => {
       if (select.value === 'MrSigma') return alert('Нельзя удалить основателя');
-      if (confirm(`Удалить ${select.value}?`)) {
-        await modifyUser(select.value, { delete: true });
-      }
+      if (confirm(`Удалить ${select.value}?`)) await modifyUser(select.value, { delete: true });
     };
-  } catch (e) {
-    console.error(e);
-  }
+  } catch (e) {}
 }
 
 async function modifyUser(username, changes) {
@@ -302,30 +361,22 @@ async function modifyUser(username, changes) {
       body: JSON.stringify(changes)
     });
     loadAdminUsers();
-  } catch (e) {
-    alert(e.message);
-  }
+  } catch (e) { alert(e.message); }
 }
 
 document.getElementById('createEventBtn').addEventListener('click', async () => {
   const title = document.getElementById('eventTitle').value.trim();
   const desc = document.getElementById('eventDesc').value.trim();
-  if (!title) return alert('Введите название ивента');
+  if (!title) return;
   try {
-    await request('/events', {
-      method: 'POST',
-      body: JSON.stringify({ title, desc })
-    });
+    await request('/events', { method: 'POST', body: JSON.stringify({ title, desc }) });
     document.getElementById('eventTitle').value = '';
     document.getElementById('eventDesc').value = '';
     loadEvents();
     alert('Ивент создан!');
-  } catch (e) {
-    alert(e.message);
-  }
+  } catch (e) { alert(e.message); }
 });
 
-// Статистика в правой панели
 async function updateStats() {
   try {
     const stats = await request('/stats');
