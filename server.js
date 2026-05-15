@@ -10,13 +10,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Раздача статических файлов из корня (index.html, style.css, script.js)
+// Раздача статических файлов из корня
 app.use(express.static(__dirname));
-
-// Защита: не отдаём серверный код в браузер
 app.get('/server.js', (req, res) => res.status(404).send('Not found'));
 
-// Папка для хранения данных
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
@@ -27,16 +24,14 @@ const STATS_FILE = path.join(DATA_DIR, 'stats.json');
 
 function loadJSON(file, def = {}) {
   try { if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8')); }
-  catch (e) { console.error('Ошибка загрузки', file, e); }
+  catch (e) { console.error(e); }
   return def;
 }
-
 function saveJSON(file, data) {
   try { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); }
-  catch (e) { console.error('Ошибка сохранения', file, e); }
+  catch (e) { console.error(e); }
 }
 
-// Инициализация данных
 let users = loadJSON(USERS_FILE, {
   'MrSigma': {
     username: 'MrSigma',
@@ -46,34 +41,40 @@ let users = loadJSON(USERS_FILE, {
     premium: true
   }
 });
-
 let posts = loadJSON(POSTS_FILE, []);
 let events = loadJSON(EVENTS_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
-// ---- АВТОМАТИЧЕСКОЕ НАЗНАЧЕНИЕ ПРАВ MrSigma ПРИ КАЖДОМ ЗАПУСКЕ ----
+// Автоматически восстанавливаем права MrSigma при каждом запуске
 if (users['MrSigma']) {
   users['MrSigma'].admin = true;
   users['MrSigma'].verified = true;
   users['MrSigma'].premium = true;
   saveJSON(USERS_FILE, users);
-  console.log('✅ Права MrSigma гарантированы (админ, верификация, премиум)');
 }
 
-// Счетчик посещений
 app.use((req, res, next) => {
   stats.pageviews = (stats.pageviews || 0) + 1;
   saveJSON(STATS_FILE, stats);
   next();
 });
 
-function hash(pw) {
-  return crypto.createHash('sha256').update(pw).digest('hex');
+function hash(pw) { return crypto.createHash('sha256').update(pw).digest('hex'); }
+
+// Middleware авторизации
+function auth(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Требуется авторизация' });
+  }
+  const token = header.split(' ')[1];
+  const user = Object.values(users).find(u => u.token === token);
+  if (!user) return res.status(401).json({ error: 'Неверный токен' });
+  req.user = user;
+  next();
 }
 
 // ---------- API ----------
-
-// Регистрация
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
@@ -89,7 +90,6 @@ app.post('/api/register', (req, res) => {
   res.json({ ok: true });
 });
 
-// Вход
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   const user = users[username];
@@ -110,25 +110,18 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// Проверка авторизации (middleware)
-function auth(req, res, next) {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Требуется авторизация' });
-  }
-  const token = header.split(' ')[1];
-  const user = Object.values(users).find(u => u.token === token);
-  if (!user) return res.status(401).json({ error: 'Неверный токен' });
-  req.user = user;
-  next();
-}
-
-// Получить все посты
-app.get('/api/posts', (req, res) => {
-  res.json(posts);
+// Новый endpoint – получить данные о себе
+app.get('/api/me', auth, (req, res) => {
+  res.json({
+    username: req.user.username,
+    verified: req.user.verified,
+    admin: req.user.admin,
+    premium: req.user.premium
+  });
 });
 
-// Создать пост
+app.get('/api/posts', (req, res) => res.json(posts));
+
 app.post('/api/posts', auth, (req, res) => {
   const { text } = req.body;
   if (!text) return res.status(400).json({ error: 'Текст поста пуст' });
@@ -145,7 +138,6 @@ app.post('/api/posts', auth, (req, res) => {
   res.json({ ok: true, post });
 });
 
-// Лайк / анлайк
 app.post('/api/posts/:id/like', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
@@ -159,7 +151,6 @@ app.post('/api/posts/:id/like', auth, (req, res) => {
   res.json({ ok: true, likes: post.likes.length });
 });
 
-// Репост
 app.post('/api/posts/:id/repost', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
@@ -171,12 +162,8 @@ app.post('/api/posts/:id/repost', auth, (req, res) => {
   res.json({ ok: true, reposts: post.reposts.length });
 });
 
-// Получить события
-app.get('/api/events', (req, res) => {
-  res.json(events);
-});
+app.get('/api/events', (req, res) => res.json(events));
 
-// Создать событие (только админ)
 app.post('/api/events', auth, (req, res) => {
   if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
   const { title, desc } = req.body;
@@ -186,7 +173,6 @@ app.post('/api/events', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// Админка: список пользователей
 app.get('/api/admin/users', auth, (req, res) => {
   if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
   res.json(Object.values(users).map(u => ({
@@ -197,7 +183,6 @@ app.get('/api/admin/users', auth, (req, res) => {
   })));
 });
 
-// Админка: изменить пользователя
 app.post('/api/admin/user/:username', auth, (req, res) => {
   if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
   const target = req.params.username;
@@ -218,7 +203,6 @@ app.post('/api/admin/user/:username', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// Статистика
 app.get('/api/stats', (req, res) => {
   res.json({
     users: Object.keys(users).length,
@@ -228,7 +212,7 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-// Публичный маршрут для ручного исправления прав (на всякий случай)
+// Публичный fix-admin (запасной)
 app.get('/fix-admin', (req, res) => {
   if (users['MrSigma']) {
     users['MrSigma'].admin = true;
@@ -237,11 +221,8 @@ app.get('/fix-admin', (req, res) => {
     saveJSON(USERS_FILE, users);
     res.send('✅ MrSigma теперь админ!');
   } else {
-    res.send('❌ Пользователь MrSigma не найден.');
+    res.send('❌ Пользователь не найден');
   }
 });
 
-// Запуск
-app.listen(PORT, () => {
-  console.log(`🚀 Сервер НБСС запущен на порту ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 НБСС запущен на порту ${PORT}`));
