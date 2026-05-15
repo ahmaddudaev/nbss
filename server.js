@@ -10,8 +10,11 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Раздача статических файлов (ваш index.html, style.css, script.js)
-app.use(express.static(path.join(__dirname, 'public')));
+// Раздача статических файлов из корня проекта (index.html, style.css, script.js и др.)
+app.use(express.static(__dirname));
+
+// Защита: не отдаём серверный код в браузер
+app.get('/server.js', (req, res) => res.status(404).send('Not found'));
 
 // Папка для хранения данных
 const DATA_DIR = path.join(__dirname, 'data');
