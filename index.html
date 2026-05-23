@@ -9,7 +9,6 @@
 </head>
 <body class="dark-mode">
   <div class="app-container">
-    <!-- Левая панель (навигация) -->
     <aside class="sidebar sidebar-left">
       <div class="sidebar-logo">
         <img src="logo.png" alt="НБСС">
@@ -27,9 +26,7 @@
       <button id="themeToggle" class="theme-toggle-btn">🌓</button>
     </aside>
 
-    <!-- Основной контент -->
     <main class="main-content">
-      <!-- Поиск людей (добавлен) -->
       <div class="search-box" style="margin: 10px 20px;">
         <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." style="width:100%;">
         <div id="searchResults" class="search-results"></div>
@@ -87,26 +84,25 @@
             <h3>Управление пользователями</h3>
             <select id="userSelect"></select>
             <div class="admin-actions">
-              <button id="verifyUserBtn" class="btn outline">✅ Выдать галочку</button>
-              <button id="unverifyUserBtn" class="btn outline">❌ Убрать галочку</button>
-              <button id="makeAdminBtn" class="btn outline">👑 Сделать админом</button>
-              <button id="revokeAdminBtn" class="btn outline">🔻 Разжаловать админа</button>
-              <button id="givePremiumBtn" class="btn outline">💎 Выдать НБСС+</button>
-              <button id="revokePremiumBtn" class="btn outline">💔 Отобрать НБСС+</button>
-              <button id="deleteUserBtn" class="btn danger">🗑 Удалить аккаунт</button>
+              <button id="verifyUserBtn" class="btn outline">✅ Галочка</button>
+              <button id="unverifyUserBtn" class="btn outline">❌ Убрать</button>
+              <button id="makeAdminBtn" class="btn outline">👑 Админ</button>
+              <button id="revokeAdminBtn" class="btn outline">🔻 Разжаловать</button>
+              <button id="givePremiumBtn" class="btn outline">💎 НБСС+</button>
+              <button id="revokePremiumBtn" class="btn outline">💔 Отобрать</button>
+              <button id="deleteUserBtn" class="btn danger">🗑 Удалить</button>
             </div>
           </div>
           <div class="card">
             <h3>Создать ивент</h3>
-            <input id="eventTitle" placeholder="Название ивента">
+            <input id="eventTitle" placeholder="Название">
             <textarea id="eventDesc" placeholder="Описание"></textarea>
-            <button id="createEventBtn" class="btn primary">🚀 Запустить ивент</button>
+            <button id="createEventBtn" class="btn primary">🚀 Запустить</button>
           </div>
         </div>
       </section>
     </main>
 
-    <!-- Правая панель (статистика) -->
     <aside class="sidebar sidebar-right">
       <div class="stat-widget" id="statsWidget"></div>
       <div class="stat-widget">
@@ -116,7 +112,6 @@
       </div>
     </aside>
   </div>
-
   <script src="script.js" defer></script>
 </body>
 </html>
