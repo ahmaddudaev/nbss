@@ -57,7 +57,7 @@ document.getElementById('searchInput')?.addEventListener('input', async (e) => {
     const users = await request(`/users/search?q=${encodeURIComponent(q)}`);
     container.innerHTML = users.map(u => `
       <div class="search-user">
-        <span class="username ${u.premium ? 'premium-nick' : ''}">${u.username}${u.verified ? '<span class="verified-badge">✔️</span>' : ''}</span>
+        <span class="username ${u.premium ? 'premium-nick' : ''}">${u.username}${u.verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span>
       </div>
     `).join('');
   } catch (e) {}
@@ -132,7 +132,7 @@ function renderPost(p) {
       <div class="avatar">${p.author[0]?.toUpperCase() || '?'}</div>
       <div class="post-body">
         <div class="post-header">
-          <span class="username ${premium ? 'premium-nick' : ''}">${p.author || 'Аноним'}${verified ? '<span class="verified-badge">✔️</span>' : ''}</span>
+          <span class="username ${premium ? 'premium-nick' : ''}">${p.author || 'Аноним'}${verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span>
           <span>· ${new Date(p.timestamp).toLocaleString()}</span>
         </div>
         <div class="post-text">${p.text}</div>
@@ -188,7 +188,7 @@ async function loadComments(postId, container) {
 function renderComment(c) {
   const premium = c.authorPremium === true;
   const verified = c.authorVerified === true;
-  return `<div class="comment"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${premium ? 'premium-nick' : ''}">${c.author}${verified ? '<span class="verified-badge">✔️</span>' : ''}</span> <span class="comment-time">${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${c.text}</p></div></div>`;
+  return `<div class="comment"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${premium ? 'premium-nick' : ''}">${c.author}${verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span> <span class="comment-time">${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${c.text}</p></div></div>`;
 }
 
 async function loadProfile() {
@@ -197,7 +197,7 @@ async function loadProfile() {
   nameEl.textContent = currentUser.username;
   nameEl.className = currentUser.premium ? 'premium-nick' : '';
   const statusEl = document.getElementById('profileStatus');
-  statusEl.textContent = (currentUser.verified ? '✅ Верифицирован ' : '') + (currentUser.premium ? '💎 НБСС+' : '');
+  statusEl.innerHTML = (currentUser.verified ? '<img src="verification.png" class="verified-icon" alt="✔"> Верифицирован ' : '') + (currentUser.premium ? '💎 НБСС+' : '');
   const posts = await request('/posts');
   const userPosts = posts.filter(p => p.author === currentUser.username);
   const container = document.getElementById('profilePosts');
@@ -254,7 +254,7 @@ document.getElementById('createEventBtn').addEventListener('click', async () => 
 
 async function updateStats() {
   try {
-    await request('/stats'); // данные используются в админке, отдельный виджет убран
+    await request('/stats');
   } catch (e) {}
 }
 updateStats();
