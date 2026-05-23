@@ -1,7 +1,7 @@
 const API = '/api';
 let token = localStorage.getItem('nbss_token') || null;
 let currentUser = null;
-let currentDialog = null;  // с кем открыт чат
+let currentDialog = null;
 
 async function request(url, options = {}) {
   const headers = { 'Content-Type': 'application/json' };
@@ -14,7 +14,6 @@ async function request(url, options = {}) {
   return res.json();
 }
 
-// Инициализация
 (async function init() {
   if (token) {
     try { currentUser = await request('/me'); }
@@ -69,7 +68,6 @@ function updateUIForAuth() {
   if (mobileNavAdmin) mobileNavAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
 }
 
-// === НАВИГАЦИЯ ===
 document.querySelectorAll('.nav-item[data-page], .mobile-nav-item[data-page]').forEach(link => {
   link.addEventListener('click', e => {
     e.preventDefault();
@@ -77,12 +75,63 @@ document.querySelectorAll('.nav-item[data-page], .mobile-nav-item[data-page]').f
     if (page === 'profile' && !token) return alert('Сначала войдите');
     if (page === 'messages' && !token) return alert('Сначала войдите');
     if (page === 'admin' && !(currentUser?.admin)) return alert('Нет прав администратора');
-    window.viewingUser = null; // сброс просматриваемого пользователя
+    window.viewingUser = null;
     showPage(page);
   });
 });
 
-// === ПОИСК И ПЕРЕХОД В ПРОФИЛЬ ===
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const u = document.getElementById('loginUsername').value.trim();
+  const p = document.getElementById('loginPassword').value.trim();
+  try {
+    const data = await request('/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
+    token = data.token; currentUser = data.user;
+    localStorage.setItem('nbss_token', token); updateUIForAuth(); showPage('home');
+  } catch (e) { alert(e.message); }
+});
+
+document.getElementById('registerBtn').addEventListener('click', async () => {
+  const u = document.getElementById('regUsername').value.trim();
+  const p = document.getElementById('regPassword').value.trim();
+  if (!u || !p) return alert('Заполните поля');
+  if (u.length < 3) return alert('Минимум 3 символа');
+  try {
+    await request('/register', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
+    alert('Аккаунт создан! Войдите.'); showPage('login');
+  } catch (e) { alert(e.message); }
+});
+
+document.getElementById('logoutLink').addEventListener('click', () => {
+  token = null; currentUser = null; localStorage.removeItem('nbss_token');
+  updateUIForAuth(); showPage('home');
+});
+document.getElementById('mobileLogoutLink').addEventListener('click', () => {
+  token = null; currentUser = null; localStorage.removeItem('nbss_token');
+  updateUIForAuth(); showPage('home');
+});
+
+// Темы
+function applyTheme(theme) {
+  document.body.classList.remove('classic', 'liquid-light', 'liquid-dark');
+  document.body.classList.add(theme);
+  localStorage.setItem('nbss_theme', theme);
+}
+function loadTheme() {
+  const saved = localStorage.getItem('nbss_theme') || 'classic';
+  applyTheme(saved);
+}
+function updateThemeSettings() {
+  const radios = document.querySelectorAll('input[name="theme"]');
+  const current = localStorage.getItem('nbss_theme') || 'classic';
+  radios.forEach(r => { r.checked = (r.value === current); });
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('input[name="theme"]').forEach(radio => {
+    radio.addEventListener('change', (e) => { if (e.target.checked) applyTheme(e.target.value); });
+  });
+});
+
+// Поиск и переход в профиль
 document.getElementById('searchInput')?.addEventListener('input', async (e) => {
   const q = e.target.value.trim();
   const container = document.getElementById('searchResults');
@@ -121,59 +170,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// === ВХОД / РЕГИСТРАЦИЯ / ВЫХОД (без изменений) ===
-document.getElementById('loginBtn').addEventListener('click', async () => {
-  const u = document.getElementById('loginUsername').value.trim();
-  const p = document.getElementById('loginPassword').value.trim();
-  try {
-    const data = await request('/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
-    token = data.token; currentUser = data.user;
-    localStorage.setItem('nbss_token', token); updateUIForAuth(); showPage('home');
-  } catch (e) { alert(e.message); }
-});
-
-document.getElementById('registerBtn').addEventListener('click', async () => {
-  const u = document.getElementById('regUsername').value.trim();
-  const p = document.getElementById('regPassword').value.trim();
-  if (!u || !p) return alert('Заполните поля');
-  if (u.length < 3) return alert('Минимум 3 символа');
-  try {
-    await request('/register', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
-    alert('Аккаунт создан! Войдите.'); showPage('login');
-  } catch (e) { alert(e.message); }
-});
-
-document.getElementById('logoutLink').addEventListener('click', () => {
-  token = null; currentUser = null; localStorage.removeItem('nbss_token');
-  updateUIForAuth(); showPage('home');
-});
-document.getElementById('mobileLogoutLink').addEventListener('click', () => {
-  token = null; currentUser = null; localStorage.removeItem('nbss_token');
-  updateUIForAuth(); showPage('home');
-});
-
-// === ТЕМЫ ===
-function applyTheme(theme) {
-  document.body.classList.remove('classic', 'liquid-light', 'liquid-dark');
-  document.body.classList.add(theme);
-  localStorage.setItem('nbss_theme', theme);
-}
-function loadTheme() {
-  const saved = localStorage.getItem('nbss_theme') || 'classic';
-  applyTheme(saved);
-}
-function updateThemeSettings() {
-  const radios = document.querySelectorAll('input[name="theme"]');
-  const current = localStorage.getItem('nbss_theme') || 'classic';
-  radios.forEach(r => { r.checked = (r.value === current); });
-}
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('input[name="theme"]').forEach(radio => {
-    radio.addEventListener('change', (e) => { if (e.target.checked) applyTheme(e.target.value); });
-  });
-});
-
-// === ПУБЛИКАЦИЯ ===
+// Публикация поста
 document.getElementById('publishPost').addEventListener('click', async () => {
   const text = document.getElementById('postInput').value.trim();
   if (!text) return;
@@ -184,7 +181,7 @@ document.getElementById('publishPost').addEventListener('click', async () => {
   } catch (e) { alert(e.message); }
 });
 
-// === ЛЕНТА ===
+// Лента
 async function loadPosts() {
   const container = document.getElementById('feedContainer');
   try {
@@ -237,7 +234,6 @@ function attachPostActions() {
   });
 }
 
-// === КОММЕНТАРИИ ===
 async function loadComments(postId, container) {
   try {
     const comments = await request(`/posts/${postId}/comments`);
@@ -261,7 +257,7 @@ function renderComment(c) {
   return `<div class="comment"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${premium ? 'premium-nick' : ''}">${c.author}${verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span> <span>${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${c.text}</p></div></div>`;
 }
 
-// === ПРОФИЛЬ (свой и чужой) ===
+// Профили
 async function loadMyProfile() {
   if (!currentUser) return;
   const header = document.getElementById('profileHeader');
@@ -301,7 +297,7 @@ async function loadUserProfile(username) {
   }
 }
 
-// === ЛИЧНЫЕ СООБЩЕНИЯ ===
+// Личные сообщения
 async function loadDialogs() {
   const list = document.getElementById('dialogList');
   try {
@@ -364,5 +360,79 @@ document.querySelector('.back-to-dialogs')?.addEventListener('click', () => {
   loadDialogs();
 });
 
-// === ИВЕНТЫ, АДМИНКА, СТАТИСТИКА (без изменений) ===
-// ... (весь предыдущий код этих функций)
+// Ивенты
+async function loadEvents() {
+  const list = document.getElementById('eventsList');
+  try {
+    const evs = await request('/events');
+    list.innerHTML = evs.length ? evs.map(e => `<div class="event-banner card"><strong>${e.title}</strong><p>${e.desc}</p></div>`).join('') : '<p>Нет ивентов</p>';
+  } catch (e) {}
+}
+
+// Админка
+async function loadAdminStats() {
+  if (!currentUser?.admin) return;
+  const stats = await request('/stats');
+  document.getElementById('adminStats').innerHTML = `<h3>📊 Статистика</h3><div class="stat-row"><span>👥</span><span>${stats.users}</span></div><div class="stat-row"><span>📝</span><span>${stats.posts}</span></div>`;
+}
+
+async function loadAdminUsers() {
+  if (!currentUser?.admin) return;
+  const users = await request('/admin/users');
+  const select = document.getElementById('userSelect');
+  select.innerHTML = users.map(u => `<option>${u.username} ${u.admin ? '(админ)' : ''} ${u.verified ? '✔️' : ''} ${u.premium ? '💎' : ''}</option>`).join('');
+
+  const getSelected = () => select.value.split(' ')[0];
+  const isSigma = () => getSelected() === 'MrSigma';
+
+  document.getElementById('verifyUserBtn').onclick = async () => {
+    if (isSigma()) return alert('Нельзя изменить владельца');
+    await modifyUser(getSelected(), { verified: true });
+  };
+  document.getElementById('unverifyUserBtn').onclick = async () => {
+    if (isSigma()) return alert('Нельзя изменить владельца');
+    await modifyUser(getSelected(), { verified: false });
+  };
+  document.getElementById('makeAdminBtn').onclick = async () => {
+    if (isSigma()) return alert('Нельзя изменить владельца');
+    await modifyUser(getSelected(), { admin: true });
+  };
+  document.getElementById('revokeAdminBtn').onclick = async () => {
+    if (isSigma()) return alert('Нельзя изменить владельца');
+    await modifyUser(getSelected(), { admin: false });
+  };
+  document.getElementById('givePremiumBtn').onclick = async () => {
+    if (isSigma()) return alert('Нельзя изменить владельца');
+    await modifyUser(getSelected(), { premium: true });
+  };
+  document.getElementById('revokePremiumBtn').onclick = async () => {
+    if (isSigma()) return alert('Нельзя изменить владельца');
+    await modifyUser(getSelected(), { premium: false });
+  };
+  document.getElementById('deleteUserBtn').onclick = async () => {
+    if (isSigma()) return alert('Нельзя удалить основателя');
+    if (confirm(`Удалить ${getSelected()}?`)) {
+      await modifyUser(getSelected(), { delete: true });
+    }
+  };
+}
+
+async function modifyUser(username, changes) {
+  await request(`/admin/user/${username}`, { method: 'POST', body: JSON.stringify(changes) });
+  loadAdminUsers();
+}
+
+document.getElementById('createEventBtn').addEventListener('click', async () => {
+  const title = document.getElementById('eventTitle').value.trim();
+  const desc = document.getElementById('eventDesc').value.trim();
+  if (!title) return;
+  await request('/events', { method: 'POST', body: JSON.stringify({ title, desc }) });
+  document.getElementById('eventTitle').value = '';
+  document.getElementById('eventDesc').value = '';
+  loadEvents();
+});
+
+async function updateStats() {
+  try { await request('/stats'); } catch (e) {}
+}
+updateStats(); setInterval(updateStats, 10000);
