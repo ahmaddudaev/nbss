@@ -64,6 +64,12 @@ input, textarea, select {
 .page.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ========== ЦЕНТРИРОВАНИЕ ФОРМ ВХОДА/РЕГИСТРАЦИИ ========== */
+.auth-center {
+  display: flex; justify-content: center; align-items: center; min-height: 70vh;
+}
+.auth-card { width: 100%; max-width: 400px; }
+
 /* ========== КАРТОЧКИ И КНОПКИ ========== */
 .card {
   background: var(--card); border-radius: var(--radius); border: 1px solid var(--border);
@@ -89,6 +95,17 @@ input, textarea, select {
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;
 }
 .verified-icon { width: 16px; height: 16px; }
+
+/* ========== ОДНОСТРОЧНЫЙ КОМПОЗЕР ПОСТА ========== */
+.composer-row {
+  display: flex; gap: 12px; align-items: center;
+}
+.composer-input {
+  flex: 1; padding: 14px 18px; font-size: 16px;
+}
+.composer-btn {
+  flex-shrink: 0; padding: 14px 28px; font-size: 16px; white-space: nowrap;
+}
 
 /* ========== ПОСТЫ ========== */
 .post { padding: 16px 0; border-bottom: 1px solid var(--border); display: flex; gap: 12px; animation: fadeIn 0.3s; }
@@ -146,6 +163,26 @@ input, textarea, select {
 .search-results { margin-top: 8px; }
 .search-user { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--card); border-radius: 12px; margin-bottom: 6px; }
 
+/* ========== НОВАЯ СТРАНИЦА НАСТРОЕК ========== */
+.settings-card { text-align: center; max-width: 500px; margin: 40px auto; }
+.settings-subtitle { color: var(--text2); margin-bottom: 24px; }
+.theme-options { display: flex; flex-direction: column; gap: 16px; }
+.theme-option-label {
+  display: flex; align-items: center; gap: 16px; padding: 16px 20px;
+  border-radius: 16px; cursor: pointer; transition: background 0.2s;
+  border: 2px solid transparent;
+}
+.theme-option-label:hover { background: var(--hover); }
+.theme-option-label input[type="radio"] { accent-color: var(--accent); width: 20px; height: 20px; }
+.theme-preview {
+  width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.classic-preview { background: #16181c; }
+.liquid-light-preview { background: linear-gradient(135deg, #f0f4f8, #ffffff); }
+.liquid-dark-preview { background: linear-gradient(135deg, #1c1c1e, #2c2c2e); }
+.theme-name { font-weight: 600; font-size: 17px; }
+
 /* ========== МОБИЛЬНАЯ ВЕРСИЯ ========== */
 .mobile-nav { display: none; }
 @media (max-width: 768px) {
@@ -167,4 +204,6 @@ input, textarea, select {
   .search-box { margin: 10px 0; }
   .messages-container { flex-direction: column; height: auto; }
   .dialog-list { border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 12px; max-height: 200px; }
+  .composer-row { flex-direction: column; }
+  .composer-btn { width: 100%; }
 }
