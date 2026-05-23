@@ -29,6 +29,12 @@
 
     <!-- Основной контент -->
     <main class="main-content">
+      <!-- Поиск людей (добавлен) -->
+      <div class="search-box" style="margin: 10px 20px;">
+        <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." style="width:100%;">
+        <div id="searchResults" class="search-results"></div>
+      </div>
+
       <section id="loginPage" class="page">
         <div class="card auth-card">
           <h2>🔐 Вход в НБСС</h2>
@@ -110,6 +116,7 @@
       </div>
     </aside>
   </div>
+
   <script src="script.js" defer></script>
 </body>
 </html>
