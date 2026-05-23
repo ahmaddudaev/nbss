@@ -170,7 +170,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Публикация поста
+// Публикация поста (теперь из input, а не textarea)
 document.getElementById('publishPost').addEventListener('click', async () => {
   const text = document.getElementById('postInput').value.trim();
   if (!text) return;
@@ -179,6 +179,14 @@ document.getElementById('publishPost').addEventListener('click', async () => {
     document.getElementById('postInput').value = '';
     loadPosts();
   } catch (e) { alert(e.message); }
+});
+
+// Отправка поста по Enter
+document.getElementById('postInput')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('publishPost').click();
+  }
 });
 
 // Лента
