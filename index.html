@@ -9,7 +9,7 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- Левая панель (навигация) -->
+    <!-- Левая панель (только ПК) -->
     <aside class="sidebar sidebar-left">
       <div class="sidebar-logo">
         <img src="logo.png" alt="НБСС">
@@ -29,30 +29,23 @@
 
     <!-- Основной контент -->
     <main class="main-content">
-      <!-- Поиск людей -->
+      <!-- Поиск -->
       <div class="search-box" style="margin:10px 20px;">
         <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." style="width:100%;">
         <div id="searchResults" class="search-results"></div>
       </div>
 
-      <!-- Страница настроек -->
+      <!-- Страницы -->
       <section id="settingsPage" class="page">
         <div class="card">
           <h2>🎨 Настройки темы</h2>
           <div class="theme-options">
-            <label>
-              <input type="radio" name="theme" value="classic"> Классическая
-            </label>
-            <label>
-              <input type="radio" name="theme" value="liquid-light"> Liquid Glass Светлая
-            </label>
-            <label>
-              <input type="radio" name="theme" value="liquid-dark"> Liquid Glass Тёмная
-            </label>
+            <label><input type="radio" name="theme" value="classic"> Классическая</label>
+            <label><input type="radio" name="theme" value="liquid-light"> Liquid Glass Светлая</label>
+            <label><input type="radio" name="theme" value="liquid-dark"> Liquid Glass Тёмная</label>
           </div>
         </div>
       </section>
-
       <section id="loginPage" class="page">
         <div class="card auth-card">
           <h2>🔐 Вход в НБСС</h2>
@@ -102,8 +95,11 @@
           <h2>⚙️ Административная панель</h2>
           <div class="card" id="adminStats"></div>
           <div class="card">
-            <h3>Управление пользователями</h3>
-            <select id="userSelect"></select>
+            <h3>👥 Пользователи</h3>
+            <div class="admin-select-wrapper">
+              <select id="userSelect"></select>
+              <span class="admin-select-icon">▼</span>
+            </div>
             <div class="admin-actions">
               <button id="verifyUserBtn" class="btn outline">✅ Галочка</button>
               <button id="unverifyUserBtn" class="btn outline">❌ Убрать</button>
@@ -123,6 +119,18 @@
         </div>
       </section>
     </main>
+
+    <!-- Мобильная нижняя панель -->
+    <nav class="mobile-nav">
+      <a class="mobile-nav-item active" data-page="home"><span>🏠</span></a>
+      <a class="mobile-nav-item" data-page="profile" id="mobileNavProfile" style="display:none"><span>👤</span></a>
+      <a class="mobile-nav-item" data-page="events"><span>📅</span></a>
+      <a class="mobile-nav-item" data-page="admin" id="mobileNavAdmin" style="display:none"><span>⚙️</span></a>
+      <a class="mobile-nav-item" data-page="settings"><span>🎨</span></a>
+      <a class="mobile-nav-item" id="mobileLogoutLink" style="display:none"><span>🚪</span></a>
+      <a class="mobile-nav-item" id="mobileLoginLink" data-page="login"><span>🔑</span></a>
+      <a class="mobile-nav-item" id="mobileRegisterLink" data-page="register"><span>📝</span></a>
+    </nav>
   </div>
 
   <script src="script.js" defer></script>
