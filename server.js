@@ -3,17 +3,17 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const https = require('https'); // для перевода
+const https = require('https');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname)); // раздача index.html, style.css и др.
+app.use(express.static(__dirname));
 app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' }));
 
-// Папки для данных и загрузок
+// Папки
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
@@ -24,14 +24,6 @@ const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
 const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
 const STATS_FILE = path.join(DATA_DIR, 'stats.json');
 
-const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
-const AVATARS_DIR = path.join(UPLOADS_DIR, 'avatars');
-const BANNERS_DIR = path.join(UPLOADS_DIR, 'banners');
-[AVATARS_DIR, BANNERS_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
-
-// Утилиты для работы с JSON
 function loadJSON(file, def = {}) {
   try { if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) {}
   return def;
@@ -40,7 +32,6 @@ function saveJSON(file, data) {
   try { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); } catch (e) {}
 }
 
-// Инициализация хранилищ
 let users = loadJSON(USERS_FILE, {
   'MrSigma': {
     username: 'MrSigma',
@@ -58,7 +49,7 @@ let comments = loadJSON(COMMENTS_FILE, []);
 let messages = loadJSON(MESSAGES_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
-// Гарантируем права основателя при каждом запуске
+// Гарантируем права MrSigma
 if (users['MrSigma']) {
   users['MrSigma'].admin = true;
   users['MrSigma'].verified = true;
@@ -66,13 +57,10 @@ if (users['MrSigma']) {
   saveJSON(USERS_FILE, users);
 }
 
-// Счётчик посещений
 app.use((req, res, next) => { stats.pageviews++; saveJSON(STATS_FILE, stats); next(); });
 
-// Хеширование
 const hash = pw => crypto.createHash('sha256').update(pw).digest('hex');
 
-// Middleware авторизации
 function auth(req, res, next) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Требуется авторизация' });
@@ -83,9 +71,7 @@ function auth(req, res, next) {
   next();
 }
 
-// ======================= API =======================
-
-// Регистрация
+// ---------- API ----------
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Заполните поля' });
@@ -95,7 +81,6 @@ app.post('/api/register', (req, res) => {
   res.json({ ok: true });
 });
 
-// Вход
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   const user = users[username];
@@ -106,13 +91,11 @@ app.post('/api/login', (req, res) => {
   res.json({ token, user: { username: user.username, verified: user.verified, admin: user.admin, premium: user.premium, avatar: user.avatar, banner: user.banner } });
 });
 
-// Данные о себе
 app.get('/api/me', auth, (req, res) => {
   const user = users[req.user.username];
   res.json({ username: user.username, verified: user.verified, admin: user.admin, premium: user.premium, avatar: user.avatar || '', banner: user.banner || '' });
 });
 
-// Поиск
 app.get('/api/users/search', (req, res) => {
   const q = (req.query.q || '').toLowerCase();
   if (!q) return res.json([]);
@@ -121,14 +104,13 @@ app.get('/api/users/search', (req, res) => {
   res.json(result);
 });
 
-// Публичный профиль
 app.get('/api/user/:username', (req, res) => {
   const user = users[req.params.username];
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   res.json({ username: user.username, verified: user.verified, premium: user.premium, avatar: user.avatar, banner: user.banner });
 });
 
-// ======================= ПОСТЫ =======================
+// Посты
 app.get('/api/posts', (req, res) => {
   const enriched = posts.map(p => {
     const author = users[p.author] || {};
@@ -164,7 +146,7 @@ app.post('/api/posts/:id/repost', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// ======================= КОММЕНТАРИИ =======================
+// Комментарии
 app.get('/api/posts/:id/comments', (req, res) => {
   const postComments = comments.filter(c => c.postId == req.params.id);
   const enriched = postComments.map(c => {
@@ -183,7 +165,7 @@ app.post('/api/posts/:id/comments', auth, (req, res) => {
   res.json({ ok: true, comment: { ...comment, authorVerified: req.user.verified, authorPremium: req.user.premium } });
 });
 
-// ======================= ПЕРЕВОД =======================
+// Перевод
 app.post('/api/translate', (req, res) => {
   const { text, target } = req.body;
   if (!text || !target) return res.status(400).json({ error: 'Не указан текст или язык' });
@@ -201,7 +183,7 @@ app.post('/api/translate', (req, res) => {
   }).on('error', () => res.status(500).json({ error: 'Сервис перевода недоступен' }));
 });
 
-// ======================= СОБЫТИЯ =======================
+// События
 app.get('/api/events', (req, res) => res.json(events));
 app.post('/api/events', auth, (req, res) => {
   if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
@@ -212,10 +194,15 @@ app.post('/api/events', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// ======================= АДМИНКА =======================
+// Админка
 app.get('/api/admin/users', auth, (req, res) => {
   if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
-  res.json(Object.values(users).map(u => ({ username: u.username, verified: u.verified, admin: u.admin, premium: u.premium })));
+  res.json(Object.values(users).map(u => ({
+    username: u.username,
+    verified: u.verified,
+    admin: u.admin,
+    premium: u.premium
+  })));
 });
 
 app.post('/api/admin/user/:username', auth, (req, res) => {
@@ -250,7 +237,12 @@ app.post('/api/admin/user/:username', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// ======================= ЛИЧНЫЕ СООБЩЕНИЯ =======================
+// Статистика
+app.get('/api/stats', (req, res) => {
+  res.json({ users: Object.keys(users).length, posts: posts.length, comments: comments.length, pageviews: stats.pageviews, online: Math.floor(Math.random()*5)+1 });
+});
+
+// Личные сообщения
 app.get('/api/dialogs', auth, (req, res) => {
   const user = req.user.username;
   const dialogs = new Map();
@@ -289,64 +281,4 @@ app.post('/api/messages', auth, (req, res) => {
   res.json({ ok: true, message: msg });
 });
 
-// ======================= СТАТИСТИКА =======================
-app.get('/api/stats', (req, res) => {
-  res.json({ users: Object.keys(users).length, posts: posts.length, comments: comments.length, pageviews: stats.pageviews, online: Math.floor(Math.random()*5)+1 });
-});
-
-// ======================= ЗАГРУЗКА АВАТАРОК/БАННЕРОВ =======================
-const multer = require('multer');
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    if (file.fieldname === 'avatar') cb(null, AVATARS_DIR);
-    else if (file.fieldname === 'banner') cb(null, BANNERS_DIR);
-    else cb(new Error('Неизвестное поле'));
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${req.user.username}_${Date.now()}${ext}`);
-  }
-});
-const upload = multer({
-  storage,
-  limits: { fileSize: 2 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png/;
-    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-    const mime = allowed.test(file.mimetype);
-    if (ext && mime) cb(null, true);
-    else cb(new Error('Только JPEG/PNG'));
-  }
-});
-
-app.post('/api/avatar', auth, upload.single('avatar'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
-  const url = `/uploads/avatars/${req.file.filename}`;
-  users[req.user.username].avatar = url;
-  saveJSON(USERS_FILE, users);
-  res.json({ ok: true, url });
-});
-
-app.post('/api/banner', auth, upload.single('banner'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
-  const url = `/uploads/banners/${req.file.filename}`;
-  users[req.user.username].banner = url;
-  saveJSON(USERS_FILE, users);
-  res.json({ ok: true, url });
-});
-
-// ======================= ВОССТАНОВЛЕНИЕ АДМИНКИ =======================
-app.get('/fix-admin', (req, res) => {
-  if (users['MrSigma']) {
-    users['MrSigma'].admin = true;
-    users['MrSigma'].verified = true;
-    users['MrSigma'].premium = true;
-    saveJSON(USERS_FILE, users);
-    res.send('✅ MrSigma теперь админ!');
-  } else {
-    res.send('❌ Пользователь не найден');
-  }
-});
-
-// ======================= ЗАПУСК =======================
 app.listen(PORT, () => console.log(`🚀 НБСС запущен на порту ${PORT}`));
