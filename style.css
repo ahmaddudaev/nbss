@@ -61,7 +61,7 @@ input, textarea, select {
   backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   background-image: url('logo.png'); background-repeat: no-repeat; background-position: center center;
   background-size: 60%; background-blend-mode: overlay;
-  padding: 20px 24px;   /* ← отступы, чтобы ники не прилипали */
+  padding: 20px 24px;
 }
 
 .page { display: none; animation: fadeIn 0.3s ease; }
@@ -107,7 +107,7 @@ input, textarea, select {
 .sidebar-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .sidebar-logo img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 
-/* Никнеймы – с отступами, градиент */
+/* Никнеймы */
 .post-header .username,
 .comment-body .username,
 .search-user .username,
@@ -125,7 +125,15 @@ input, textarea, select {
   background-clip: text !important;
   font-weight: 800;
 }
-.verified-badge { color: var(--accent); font-size: 1.1em; }
+
+/* Иконка верификации (вместо текстовой галочки) */
+.verified-icon {
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+  margin-left: 2px;
+  flex-shrink: 0;
+}
 
 /* Посты */
 .post { padding: 20px; border-bottom: 1px solid var(--border-light); display: flex; gap: 16px; animation: fadeIn 0.3s; background: var(--bg-secondary); }
@@ -134,7 +142,7 @@ input, textarea, select {
 .post-header { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
 .post-text { font-size: 16px; line-height: 1.6; word-break: break-word; margin-bottom: 12px; }
 
-/* Кнопки действий – всегда в строку */
+/* Кнопки действий – в одну строку */
 .post-actions {
   display: flex; gap: 20px; color: var(--text-secondary); margin-top: 12px;
   flex-wrap: nowrap; overflow-x: auto;
@@ -174,19 +182,10 @@ input, textarea, select {
 .search-user .username { flex: 1; }
 
 /* Профиль – градиентный ник */
-.profile-header {
-  padding: 24px 20px;
-  border-bottom: 1px solid var(--border-light);
-}
-.profile-header h2 {
-  display: inline-flex; align-items: center; gap: 6px;
-  margin-bottom: 4px;
-}
+.profile-header { padding: 24px 20px; border-bottom: 1px solid var(--border-light); }
+.profile-header h2 { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 
-/* Скрываем правый aside полностью */
-.sidebar-right { display: none !important; }
-
-/* Адаптив */
+/* Мобильная версия */
 @media (max-width: 768px) {
   .app-container { flex-direction: column; padding: 0; }
   .main-content { max-width: 100%; border-radius: 0; margin-bottom: 80px; padding: 16px 12px; }
