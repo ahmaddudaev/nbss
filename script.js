@@ -118,6 +118,7 @@ document.getElementById('showRegisterLink').addEventListener('click', (e) => {
   showPage('register');
 });
 
+// Выход
 document.getElementById('logoutLink').addEventListener('click', () => {
   token = null;
   currentUser = null;
@@ -128,22 +129,21 @@ document.getElementById('logoutLink').addEventListener('click', () => {
 
 // Смена темы
 document.getElementById('themeToggle').addEventListener('click', () => {
-  document.body.classList.toggle('light-mode');
-  localStorage.setItem('nbss_theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
+  document.body.classList.toggle('dark-mode');
+  localStorage.setItem('nbss_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
 });
-if (localStorage.getItem('nbss_theme') === 'light') document.body.classList.add('light-mode');
+if (localStorage.getItem('nbss_theme') === 'light') document.body.classList.remove('dark-mode');
 
-// Публикация поста (с Enter)
+// Публикация поста (Enter)
 const postInput = document.getElementById('postInput');
-document.getElementById('publishPost').addEventListener('click', publishPost);
 postInput?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    publishPost();
+    document.getElementById('publishPost').click();
   }
 });
 
-async function publishPost() {
+document.getElementById('publishPost').addEventListener('click', async () => {
   const text = postInput.value.trim();
   if (!text) return;
   try {
@@ -156,7 +156,7 @@ async function publishPost() {
   } catch (e) {
     alert(e.message);
   }
-}
+});
 
 // Загрузка постов
 async function loadPosts() {
@@ -206,6 +206,7 @@ function attachPostActions() {
       } catch (e) { alert(e.message); }
     };
   });
+
   document.querySelectorAll('.repost-btn').forEach(btn => {
     btn.onclick = async function() {
       if (!token) return alert('Войдите');
@@ -241,14 +242,14 @@ async function loadComments(postId, container) {
       </div>
       ${token ? `
       <div class="comment-form">
-        <input type="text" class="comment-input" placeholder="Ваш комментарий... (Enter)">
+        <input type="text" class="comment-input" placeholder="Ваш комментарий...">
         <button class="btn primary comment-submit">Отправить</button>
       </div>` : '<p class="comment-login-hint">Войдите, чтобы комментировать.</p>'}
     `;
     if (token) {
       const input = container.querySelector('.comment-input');
       const submit = container.querySelector('.comment-submit');
-      const sendComment = async () => {
+      submit.onclick = async () => {
         const text = input.value.trim();
         if (!text) return;
         try {
@@ -259,11 +260,10 @@ async function loadComments(postId, container) {
           await loadComments(postId, container);
         } catch (e) { alert(e.message); }
       };
-      submit.onclick = sendComment;
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
-          sendComment();
+          submit.click();
         }
       });
     }
@@ -319,39 +319,53 @@ async function loadEvents() {
 
 // Админка
 async function loadAdminStats() {
-  if (!currentUser?.admin) return;
+  if (!currentUser || !currentUser.admin) return;
   try {
     const stats = await request('/stats');
     document.getElementById('adminStats').innerHTML = `
-      <h3>📊 Статистика</h3>
+      <h3>📊 Статистика сайта</h3>
       <div class="stat-row"><span>👥 Пользователей:</span> <span>${stats.users}</span></div>
       <div class="stat-row"><span>📝 Постов:</span> <span>${stats.posts}</span></div>
-      <div class="stat-row"><span>💬 Комментариев:</span> <span>${stats.comments}</span></div>
       <div class="stat-row"><span>👁️ Посещений:</span> <span>${stats.pageviews}</span></div>
       <div class="stat-row"><span>🟢 Онлайн:</span> <span>${stats.online}</span></div>`;
-  } catch (e) {}
+  } catch (e) { /* игнорируем */ }
 }
 
 async function loadAdminUsers() {
-  if (!currentUser?.admin) return;
+  if (!currentUser || !currentUser.admin) return;
   try {
     const users = await request('/admin/users');
     const select = document.getElementById('userSelect');
     select.innerHTML = users.map(u => `<option>${u.username}</option>`).join('');
-    document.getElementById('verifyUserBtn').onclick = async () => await modifyUser(select.value, { verified: true });
-    document.getElementById('unverifyUserBtn').onclick = async () => await modifyUser(select.value, { verified: false });
-    document.getElementById('makeAdminBtn').onclick = async () => await modifyUser(select.value, { admin: true });
+
+    document.getElementById('verifyUserBtn').onclick = async () => {
+      await modifyUser(select.value, { verified: true });
+    };
+    document.getElementById('unverifyUserBtn').onclick = async () => {
+      await modifyUser(select.value, { verified: false });
+    };
+    document.getElementById('makeAdminBtn').onclick = async () => {
+      await modifyUser(select.value, { admin: true });
+    };
     document.getElementById('revokeAdminBtn').onclick = async () => {
       if (select.value === 'MrSigma') return alert('Нельзя разжаловать основателя');
       await modifyUser(select.value, { admin: false });
     };
-    document.getElementById('givePremiumBtn').onclick = async () => await modifyUser(select.value, { premium: true });
-    document.getElementById('revokePremiumBtn').onclick = async () => await modifyUser(select.value, { premium: false });
+    document.getElementById('givePremiumBtn').onclick = async () => {
+      await modifyUser(select.value, { premium: true });
+    };
+    document.getElementById('revokePremiumBtn').onclick = async () => {
+      await modifyUser(select.value, { premium: false });
+    };
     document.getElementById('deleteUserBtn').onclick = async () => {
       if (select.value === 'MrSigma') return alert('Нельзя удалить основателя');
-      if (confirm(`Удалить ${select.value}?`)) await modifyUser(select.value, { delete: true });
+      if (confirm(`Удалить ${select.value}?`)) {
+        await modifyUser(select.value, { delete: true });
+      }
     };
-  } catch (e) {}
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 async function modifyUser(username, changes) {
@@ -361,22 +375,30 @@ async function modifyUser(username, changes) {
       body: JSON.stringify(changes)
     });
     loadAdminUsers();
-  } catch (e) { alert(e.message); }
+  } catch (e) {
+    alert(e.message);
+  }
 }
 
 document.getElementById('createEventBtn').addEventListener('click', async () => {
   const title = document.getElementById('eventTitle').value.trim();
   const desc = document.getElementById('eventDesc').value.trim();
-  if (!title) return;
+  if (!title) return alert('Введите название ивента');
   try {
-    await request('/events', { method: 'POST', body: JSON.stringify({ title, desc }) });
+    await request('/events', {
+      method: 'POST',
+      body: JSON.stringify({ title, desc })
+    });
     document.getElementById('eventTitle').value = '';
     document.getElementById('eventDesc').value = '';
     loadEvents();
     alert('Ивент создан!');
-  } catch (e) { alert(e.message); }
+  } catch (e) {
+    alert(e.message);
+  }
 });
 
+// Статистика в правой панели
 async function updateStats() {
   try {
     const stats = await request('/stats');
@@ -389,7 +411,7 @@ async function updateStats() {
         <div class="stat-row"><span>👁️</span> <span>${stats.pageviews}</span></div>
         <div class="stat-row"><span>🟢</span> <span>${stats.online}</span></div>`;
     }
-  } catch (e) {}
+  } catch (e) { /* тихо */ }
 }
 updateStats();
 setInterval(updateStats, 10000);
