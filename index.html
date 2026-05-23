@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <!-- Подключаем фавиконку -->
   <link rel="icon" type="image/png" href="favicon.png">
   <title>НБСС — Национальная Быстрая Социальная Сеть</title>
   <link rel="stylesheet" href="style.css">
@@ -12,9 +11,8 @@
   <div class="app-container">
     <!-- Левая панель (навигация) -->
     <aside class="sidebar sidebar-left">
-      <!-- Логотип -->
-      <div class="logo">
-        <img src="logo.png" alt="НБСС" class="logo-img">
+      <div class="sidebar-logo">
+        <img src="logo.png" alt="НБСС">
         <span class="logo-text">НБСС</span>
       </div>
       <nav class="nav">
@@ -31,7 +29,6 @@
 
     <!-- Основной контент -->
     <main class="main-content">
-      <!-- Страница входа -->
       <section id="loginPage" class="page">
         <div class="card auth-card">
           <h2>🔐 Вход в НБСС</h2>
@@ -41,7 +38,6 @@
           <p>Нет аккаунта? <a id="showRegisterLink">Зарегистрироваться</a></p>
         </div>
       </section>
-      <!-- Страница регистрации -->
       <section id="registerPage" class="page">
         <div class="card auth-card">
           <h2>📝 Регистрация</h2>
@@ -50,7 +46,6 @@
           <button id="registerBtn" class="btn primary full-width">Создать аккаунт</button>
         </div>
       </section>
-      <!-- Главная лента -->
       <section id="homePage" class="page active">
         <div id="authBanner" class="auth-banner">
           <span>👋 Добро пожаловать в НБСС! Вы смотрите публичную ленту.</span>
@@ -65,7 +60,6 @@
         </div>
         <div id="feedContainer" class="feed"></div>
       </section>
-      <!-- Профиль -->
       <section id="profilePage" class="page">
         <div class="profile-header">
           <h2 id="profileName">Профиль</h2>
@@ -73,14 +67,12 @@
         </div>
         <div id="profilePosts" class="feed"></div>
       </section>
-      <!-- Ивенты -->
       <section id="eventsPage" class="page">
         <div class="events-container">
           <h2>📅 Активные ивенты</h2>
           <div id="eventsList"></div>
         </div>
       </section>
-      <!-- Админ панель -->
       <section id="adminPage" class="page">
         <div class="admin-container">
           <h2>⚙️ Административная панель</h2>
@@ -113,7 +105,7 @@
       <div class="stat-widget" id="statsWidget"></div>
       <div class="stat-widget">
         <h3>💎 НБСС+</h3>
-        <p>Градиентный ник, приоритетная поддержка. 299₽/мес.</p>
+        <p>Градиентный ник, приоритет. 299₽/мес.</p>
         <p id="premiumStatusUser" class="premium-status"></p>
       </div>
     </aside>
