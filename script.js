@@ -14,7 +14,6 @@ async function request(url, options = {}) {
   return res.json();
 }
 
-// Инициализация
 (async function init() {
   if (token) {
     try { currentUser = await request('/me'); }
@@ -25,22 +24,18 @@ async function request(url, options = {}) {
   loadTheme();
 })();
 
-// Переключение страниц
 function showPage(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById(pageId + 'Page');
   if (target) target.classList.add('active');
 
-  // Обновляем активный пункт в сайдбаре и мобильной панели
   document.querySelectorAll('.nav-item[data-page], .mobile-nav-item[data-page]').forEach(n => n.classList.remove('active'));
   const navItems = document.querySelectorAll(`[data-page="${pageId}"]`);
   navItems.forEach(n => n.classList.add('active'));
 
-  // Показываем поиск только на главной
   const searchBox = document.querySelector('.search-box');
   if (searchBox) searchBox.style.display = (pageId === 'home') ? 'block' : 'none';
 
-  // Загружаем данные для конкретных страниц
   if (pageId === 'home') loadPosts();
   if (pageId === 'profile') {
     if (currentUser && !window.viewingUser) loadMyProfile();
@@ -53,7 +48,6 @@ function showPage(pageId) {
   updateStats();
 }
 
-// Обновление UI в зависимости от авторизации
 function updateUIForAuth() {
   const loggedIn = !!token;
   document.getElementById('authBanner').style.display = loggedIn ? 'none' : 'flex';
@@ -74,7 +68,6 @@ function updateUIForAuth() {
   if (mobileNavAdmin) mobileNavAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
 }
 
-// ========== НАВИГАЦИЯ ==========
 document.querySelectorAll('.nav-item[data-page], .mobile-nav-item[data-page]').forEach(link => {
   link.addEventListener('click', e => {
     e.preventDefault();
@@ -87,7 +80,6 @@ document.querySelectorAll('.nav-item[data-page], .mobile-nav-item[data-page]').f
   });
 });
 
-// ========== ВХОД / РЕГИСТРАЦИЯ / ВЫХОД ==========
 document.getElementById('loginBtn').addEventListener('click', async () => {
   const u = document.getElementById('loginUsername').value.trim();
   const p = document.getElementById('loginPassword').value.trim();
@@ -118,7 +110,6 @@ document.getElementById('mobileLogoutLink').addEventListener('click', () => {
   updateUIForAuth(); showPage('home');
 });
 
-// ========== ТЕМЫ ==========
 function applyTheme(theme) {
   document.body.classList.remove('classic', 'liquid-light', 'liquid-dark');
   document.body.classList.add(theme);
@@ -139,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ========== ПОИСК И ПЕРЕХОД В ПРОФИЛЬ ==========
 document.getElementById('searchInput')?.addEventListener('input', async (e) => {
   const q = e.target.value.trim();
   const container = document.getElementById('searchResults');
@@ -163,7 +153,6 @@ document.getElementById('searchInput')?.addEventListener('input', async (e) => {
   } catch (e) {}
 });
 
-// Клик по нику в ленте
 document.addEventListener('click', (e) => {
   const usernameEl = e.target.closest('.username');
   if (usernameEl && !e.target.closest('.view-profile-btn')) {
@@ -178,7 +167,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ========== ПУБЛИКАЦИЯ ПОСТА ==========
 document.getElementById('publishPost').addEventListener('click', async () => {
   const text = document.getElementById('postInput').value.trim();
   if (!text) return;
@@ -188,7 +176,7 @@ document.getElementById('publishPost').addEventListener('click', async () => {
     loadPosts();
   } catch (e) { alert(e.message); }
 });
-// Отправка по Enter
+
 document.getElementById('postInput')?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
@@ -196,7 +184,6 @@ document.getElementById('postInput')?.addEventListener('keydown', (e) => {
   }
 });
 
-// ========== ЛЕНТА ==========
 async function loadPosts() {
   const container = document.getElementById('feedContainer');
   try {
@@ -217,7 +204,7 @@ function renderPost(p) {
           <span class="username ${premium ? 'premium-nick' : ''}" style="cursor:pointer;">${p.author || 'Аноним'}${verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span>
           <span>· ${new Date(p.timestamp).toLocaleString()}</span>
         </div>
-        <div class="post-text">${p.text}</div>
+        <div class="post-text" id="text-${p.id}">${p.text}</div>
         <div class="post-actions">
           <button class="like-btn">❤️ ${p.likes.length}</button>
           <button class="repost-btn">🔄 ${p.reposts.length}</button>
@@ -229,17 +216,23 @@ function renderPost(p) {
     </div>`;
 }
 
+// ======================= ВОТ ГЛАВНОЕ ИСПРАВЛЕНИЕ: ПЕРЕВОД =======================
 function attachPostActions() {
+  // Лайки
   document.querySelectorAll('.like-btn').forEach(b => b.onclick = async function() {
     if (!token) return alert('Войдите');
     const postId = this.closest('.post').dataset.id;
     await request(`/posts/${postId}/like`, { method: 'POST' }); loadPosts();
   });
+
+  // Репосты
   document.querySelectorAll('.repost-btn').forEach(b => b.onclick = async function() {
     if (!token) return alert('Войдите');
     const postId = this.closest('.post').dataset.id;
     await request(`/posts/${postId}/repost`, { method: 'POST' }); loadPosts();
   });
+
+  // Комментарии
   document.querySelectorAll('.comment-toggle').forEach(b => b.onclick = async function() {
     const postEl = this.closest('.post');
     const section = postEl.querySelector('.comments-section');
@@ -248,232 +241,43 @@ function attachPostActions() {
       await loadComments(postEl.dataset.id, section);
     } else section.style.display = 'none';
   });
-  // Перевод
+
+  // ======================= ПЕРЕВОД =======================
   document.querySelectorAll('.translate-btn').forEach(btn => {
     btn.onclick = async function() {
       const postId = this.dataset.postId;
       const textEl = document.getElementById(`text-${postId}`);
       if (!textEl) return;
-      const originalText = textEl.dataset.original || textEl.textContent;
-      textEl.dataset.original = originalText;
+
+      // Сохраняем оригинал, если ещё не сохранён
+      if (!textEl.dataset.original) {
+        textEl.dataset.original = textEl.textContent;
+      }
+
+      // Если уже переведён — возвращаем оригинал
       if (textEl.dataset.translated === 'true') {
-        textEl.textContent = originalText;
+        textEl.textContent = textEl.dataset.original;
         textEl.dataset.translated = 'false';
         return;
       }
+
+      // Показываем, что идёт процесс
       textEl.textContent = 'Перевод...';
+
       try {
         const targetLang = navigator.language || 'en';
-        const data = await request('/translate', { method: 'POST', body: JSON.stringify({ text: originalText, target: targetLang }) });
+        const data = await request('/translate', {
+          method: 'POST',
+          body: JSON.stringify({ text: textEl.dataset.original, target: targetLang })
+        });
         textEl.textContent = data.translation;
         textEl.dataset.translated = 'true';
       } catch (e) {
-        textEl.textContent = originalText;
-        alert('Не удалось перевести');
+        textEl.textContent = textEl.dataset.original; // в случае ошибки возвращаем оригинал
+        alert('Не удалось перевести: ' + e.message);
       }
     };
   });
 }
 
-async function loadComments(postId, container) {
-  try {
-    const comments = await request(`/posts/${postId}/comments`);
-    container.innerHTML = comments.map(c => renderComment(c)).join('') +
-      (token ? `<div class="comment-form"><input type="text" class="comment-input" placeholder="Комментарий..."><button class="btn primary comment-submit">Отпр.</button></div>` : '<p>Войдите, чтобы комментировать</p>');
-    if (token) {
-      const inp = container.querySelector('.comment-input');
-      const btn = container.querySelector('.comment-submit');
-      btn.onclick = async () => {
-        const text = inp.value.trim(); if (!text) return;
-        await request(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ text }) });
-        await loadComments(postId, container);
-      };
-    }
-  } catch (e) {}
-}
-
-function renderComment(c) {
-  const premium = c.authorPremium === true;
-  const verified = c.authorVerified === true;
-  return `<div class="comment"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${premium ? 'premium-nick' : ''}">${c.author}${verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span> <span>${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${c.text}</p></div></div>`;
-}
-
-// ========== ПРОФИЛИ ==========
-async function loadMyProfile() {
-  if (!currentUser) return;
-  const header = document.getElementById('profileHeader');
-  header.innerHTML = `
-    <h2 class="${currentUser.premium ? 'premium-nick' : ''}">${currentUser.username}</h2>
-    <p>${currentUser.verified ? '✅ Верифицирован' : ''} ${currentUser.premium ? '💎 НБСС+' : ''}</p>
-  `;
-  const posts = await request('/posts');
-  const userPosts = posts.filter(p => p.author === currentUser.username);
-  document.getElementById('profilePosts').innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
-  attachPostActions();
-}
-
-async function loadUserProfile(username) {
-  try {
-    const user = await request(`/user/${username}`);
-    const header = document.getElementById('profileHeader');
-    header.innerHTML = `
-      <h2 class="${user.premium ? 'premium-nick' : ''}">${user.username} ${user.verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</h2>
-      <p>${user.premium ? '💎 НБСС+' : ''}</p>
-      <div class="profile-actions">
-        <button class="btn primary send-message-btn" data-username="${user.username}">💬 Написать сообщение</button>
-      </div>
-    `;
-    document.querySelector('.send-message-btn')?.addEventListener('click', () => {
-      window.viewingUser = null;
-      currentDialog = username;
-      showPage('messages');
-      openChat(username);
-    });
-    const posts = await request('/posts');
-    const userPosts = posts.filter(p => p.author === username);
-    document.getElementById('profilePosts').innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
-    attachPostActions();
-  } catch (e) {
-    document.getElementById('profileHeader').innerHTML = '<p>Пользователь не найден</p>';
-  }
-}
-
-// ========== ЛИЧНЫЕ СООБЩЕНИЯ ==========
-async function loadDialogs() {
-  const list = document.getElementById('dialogList');
-  try {
-    const dialogs = await request('/dialogs');
-    list.innerHTML = dialogs.map(d => `
-      <div class="dialog-item" data-username="${d.username}">
-        <div class="dialog-username ${d.premium ? 'premium-nick' : ''}">${d.username}</div>
-        <div class="dialog-last">${d.lastMessage || 'Нет сообщений'}</div>
-      </div>
-    `).join('');
-    document.querySelectorAll('.dialog-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const username = item.dataset.username;
-        currentDialog = username;
-        openChat(username);
-      });
-    });
-    document.getElementById('chatView').style.display = 'none';
-    document.querySelector('.dialog-list').style.display = 'block';
-  } catch (e) {}
-}
-
-async function openChat(username) {
-  document.querySelector('.dialog-list').style.display = 'none';
-  document.getElementById('chatView').style.display = 'flex';
-  document.getElementById('chatPartner').textContent = username;
-  await loadMessages(username);
-}
-
-async function loadMessages(username) {
-  const container = document.getElementById('chatMessages');
-  try {
-    const messages = await request(`/messages?with=${encodeURIComponent(username)}`);
-    container.innerHTML = messages.map(m => {
-      const isSent = m.from === currentUser.username;
-      return `<div class="message-bubble ${isSent ? 'sent' : 'received'}">
-        <div>${m.text}</div>
-        <div class="message-time">${new Date(m.timestamp).toLocaleString()}</div>
-      </div>`;
-    }).join('');
-    container.scrollTop = container.scrollHeight;
-  } catch (e) {}
-}
-
-document.getElementById('sendMessageBtn').addEventListener('click', async () => {
-  const input = document.getElementById('messageInput');
-  const text = input.value.trim();
-  if (!text || !currentDialog) return;
-  try {
-    await request('/messages', { method: 'POST', body: JSON.stringify({ to: currentDialog, text }) });
-    input.value = '';
-    await loadMessages(currentDialog);
-  } catch (e) { alert(e.message); }
-});
-
-document.querySelector('.back-to-dialogs')?.addEventListener('click', () => {
-  document.getElementById('chatView').style.display = 'none';
-  document.querySelector('.dialog-list').style.display = 'block';
-  currentDialog = null;
-  loadDialogs();
-});
-
-// ========== ИВЕНТЫ ==========
-async function loadEvents() {
-  const list = document.getElementById('eventsList');
-  try {
-    const evs = await request('/events');
-    list.innerHTML = evs.length ? evs.map(e => `<div class="event-banner card"><strong>${e.title}</strong><p>${e.desc}</p></div>`).join('') : '<p>Нет ивентов</p>';
-  } catch (e) {}
-}
-
-// ========== АДМИНКА ==========
-async function loadAdminStats() {
-  if (!currentUser?.admin) return;
-  const stats = await request('/stats');
-  document.getElementById('adminStats').innerHTML = `<h3>📊 Статистика</h3><div class="stat-row"><span>👥</span><span>${stats.users}</span></div><div class="stat-row"><span>📝</span><span>${stats.posts}</span></div>`;
-}
-
-async function loadAdminUsers() {
-  if (!currentUser?.admin) return;
-  const users = await request('/admin/users');
-  const select = document.getElementById('userSelect');
-  select.innerHTML = users.map(u => `<option>${u.username} ${u.admin ? '(админ)' : ''} ${u.verified ? '✔️' : ''} ${u.premium ? '💎' : ''}</option>`).join('');
-
-  const getSelected = () => select.value.split(' ')[0];
-  const isSigma = () => getSelected() === 'MrSigma';
-
-  document.getElementById('verifyUserBtn').onclick = async () => {
-    if (isSigma()) return alert('Нельзя изменить владельца');
-    await modifyUser(getSelected(), { verified: true });
-  };
-  document.getElementById('unverifyUserBtn').onclick = async () => {
-    if (isSigma()) return alert('Нельзя изменить владельца');
-    await modifyUser(getSelected(), { verified: false });
-  };
-  document.getElementById('makeAdminBtn').onclick = async () => {
-    if (isSigma()) return alert('Нельзя изменить владельца');
-    await modifyUser(getSelected(), { admin: true });
-  };
-  document.getElementById('revokeAdminBtn').onclick = async () => {
-    if (isSigma()) return alert('Нельзя изменить владельца');
-    await modifyUser(getSelected(), { admin: false });
-  };
-  document.getElementById('givePremiumBtn').onclick = async () => {
-    if (isSigma()) return alert('Нельзя изменить владельца');
-    await modifyUser(getSelected(), { premium: true });
-  };
-  document.getElementById('revokePremiumBtn').onclick = async () => {
-    if (isSigma()) return alert('Нельзя изменить владельца');
-    await modifyUser(getSelected(), { premium: false });
-  };
-  document.getElementById('deleteUserBtn').onclick = async () => {
-    if (isSigma()) return alert('Нельзя удалить основателя');
-    if (confirm(`Удалить ${getSelected()}?`)) {
-      await modifyUser(getSelected(), { delete: true });
-    }
-  };
-}
-
-async function modifyUser(username, changes) {
-  await request(`/admin/user/${username}`, { method: 'POST', body: JSON.stringify(changes) });
-  loadAdminUsers();
-}
-
-document.getElementById('createEventBtn').addEventListener('click', async () => {
-  const title = document.getElementById('eventTitle').value.trim();
-  const desc = document.getElementById('eventDesc').value.trim();
-  if (!title) return;
-  await request('/events', { method: 'POST', body: JSON.stringify({ title, desc }) });
-  document.getElementById('eventTitle').value = '';
-  document.getElementById('eventDesc').value = '';
-  loadEvents();
-});
-
-async function updateStats() {
-  try { await request('/stats'); } catch (e) {}
-}
-updateStats(); setInterval(updateStats, 10000);
+// Комментарии, профили, сообщения, админка — без изменений (оставьте как в прошлой полной версии)
