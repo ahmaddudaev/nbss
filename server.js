@@ -5,11 +5,14 @@ const path = require('path');
 const crypto = require('crypto');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname));
+app.use(express.static(__dirname));              // раздача статики (index.html, style.css и др.)
 app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' }));
 
+// Папка для хранения данных (создаётся автоматически)
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
@@ -19,125 +22,230 @@ const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
 const STATS_FILE = path.join(DATA_DIR, 'stats.json');
 
+// Утилиты для работы с JSON-файлами
 function loadJSON(file, def = {}) {
-  try { if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) {}
+  try { if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch (e) { console.error('Ошибка загрузки', file, e); }
   return def;
 }
 function saveJSON(file, data) {
-  try { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); } catch (e) {}
+  try { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); }
+  catch (e) { console.error('Ошибка сохранения', file, e); }
 }
 
+// Инициализация данных
 let users = loadJSON(USERS_FILE, {
-  'MrSigma': { username: 'MrSigma', password: crypto.createHash('sha256').update('Mrbeast132!').digest('hex'), verified: true, admin: true, premium: true }
+  'MrSigma': {
+    username: 'MrSigma',
+    password: crypto.createHash('sha256').update('Mrbeast132!').digest('hex'),
+    verified: true,
+    admin: true,
+    premium: true
+  }
 });
 let posts = loadJSON(POSTS_FILE, []);
 let events = loadJSON(EVENTS_FILE, []);
 let comments = loadJSON(COMMENTS_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
+// Автоматически подтверждаем права MrSigma при каждом запуске
 if (users['MrSigma']) {
   users['MrSigma'].admin = true;
   users['MrSigma'].verified = true;
   users['MrSigma'].premium = true;
   saveJSON(USERS_FILE, users);
+  console.log('✅ Права MrSigma гарантированы');
 }
 
-app.use((req, res, next) => { stats.pageviews++; saveJSON(STATS_FILE, stats); next(); });
+// Счётчик посещений
+app.use((req, res, next) => {
+  stats.pageviews = (stats.pageviews || 0) + 1;
+  saveJSON(STATS_FILE, stats);
+  next();
+});
 
-const hash = pw => crypto.createHash('sha256').update(pw).digest('hex');
+// Хеширование пароля
+function hash(pw) {
+  return crypto.createHash('sha256').update(pw).digest('hex');
+}
 
-const auth = (req, res, next) => {
+// Middleware авторизации
+function auth(req, res, next) {
   const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Требуется авторизация' });
+  if (!header || !header.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Требуется авторизация' });
+  }
   const token = header.split(' ')[1];
   const user = Object.values(users).find(u => u.token === token);
   if (!user) return res.status(401).json({ error: 'Неверный токен' });
   req.user = user;
   next();
-};
+}
 
+// ======================= API =======================
+
+// Регистрация
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Заполните поля' });
+  if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
   if (users[username]) return res.status(400).json({ error: 'Пользователь уже существует' });
-  users[username] = { username, password: hash(password), verified: false, admin: false, premium: false };
+  users[username] = {
+    username,
+    password: hash(password),
+    verified: false,
+    admin: false,
+    premium: false
+  };
   saveJSON(USERS_FILE, users);
   res.json({ ok: true });
 });
 
+// Вход
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   const user = users[username];
-  if (!user || user.password !== hash(password)) return res.status(401).json({ error: 'Неверные данные' });
+  if (!user || user.password !== hash(password)) {
+    return res.status(401).json({ error: 'Неверный логин или пароль' });
+  }
   const token = crypto.randomBytes(32).toString('hex');
   user.token = token;
   saveJSON(USERS_FILE, users);
-  res.json({ token, user: { username: user.username, verified: user.verified, admin: user.admin, premium: user.premium } });
+  res.json({
+    token,
+    user: {
+      username: user.username,
+      verified: user.verified,
+      admin: user.admin,
+      premium: user.premium
+    }
+  });
 });
 
-app.get('/api/me', auth, (req, res) => res.json({ username: req.user.username, verified: req.user.verified, admin: req.user.admin, premium: req.user.premium }));
+// Получить данные текущего пользователя (используется при обновлении страницы)
+app.get('/api/me', auth, (req, res) => {
+  res.json({
+    username: req.user.username,
+    verified: req.user.verified,
+    admin: req.user.admin,
+    premium: req.user.premium
+  });
+});
 
+// Поиск пользователей
 app.get('/api/users/search', (req, res) => {
   const q = (req.query.q || '').toLowerCase();
   if (!q) return res.json([]);
-  const result = Object.values(users).filter(u => u.username.toLowerCase().includes(q))
-    .map(u => ({ username: u.username, verified: u.verified, premium: u.premium }));
-  res.json(result);
+  const results = Object.values(users)
+    .filter(u => u.username.toLowerCase().includes(q))
+    .map(u => ({
+      username: u.username,
+      verified: u.verified,
+      premium: u.premium
+    }));
+  res.json(results);
 });
 
+// Получить все посты (обогащённые данными автора)
 app.get('/api/posts', (req, res) => {
   const enriched = posts.map(p => {
     const author = users[p.author] || {};
-    return { ...p, authorVerified: author.verified || false, authorPremium: author.premium || false };
+    return {
+      ...p,
+      authorVerified: author.verified || false,
+      authorPremium: author.premium || false
+    };
   });
   res.json(enriched);
 });
 
+// Создать пост
 app.post('/api/posts', auth, (req, res) => {
   const { text } = req.body;
-  if (!text) return res.status(400).json({ error: 'Пустой пост' });
-  const post = { id: Date.now(), author: req.user.username, text, likes: [], reposts: [], timestamp: new Date().toISOString() };
+  if (!text) return res.status(400).json({ error: 'Текст поста пуст' });
+  const post = {
+    id: Date.now(),
+    author: req.user.username,
+    text,
+    likes: [],
+    reposts: [],
+    timestamp: new Date().toISOString()
+  };
   posts.unshift(post);
   saveJSON(POSTS_FILE, posts);
-  res.json({ ok: true, post: { ...post, authorVerified: req.user.verified, authorPremium: req.user.premium } });
+  res.json({
+    ok: true,
+    post: {
+      ...post,
+      authorVerified: req.user.verified,
+      authorPremium: req.user.premium
+    }
+  });
 });
 
+// Лайк / анлайк
 app.post('/api/posts/:id/like', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
-  const idx = post.likes.indexOf(req.user.username);
-  if (idx >= 0) post.likes.splice(idx, 1);
-  else post.likes.push(req.user.username);
+  const username = req.user.username;
+  if (post.likes.includes(username)) {
+    post.likes = post.likes.filter(u => u !== username);
+  } else {
+    post.likes.push(username);
+  }
   saveJSON(POSTS_FILE, posts);
-  res.json({ ok: true });
+  res.json({ ok: true, likes: post.likes.length });
 });
 
+// Репост
 app.post('/api/posts/:id/repost', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
-  if (!post.reposts.includes(req.user.username)) post.reposts.push(req.user.username);
+  const username = req.user.username;
+  if (!post.reposts.includes(username)) {
+    post.reposts.push(username);
+  }
   saveJSON(POSTS_FILE, posts);
-  res.json({ ok: true });
+  res.json({ ok: true, reposts: post.reposts.length });
 });
 
+// Получить комментарии к посту (обогащённые)
 app.get('/api/posts/:id/comments', (req, res) => {
   const postComments = comments.filter(c => c.postId == req.params.id);
   const enriched = postComments.map(c => {
     const author = users[c.author] || {};
-    return { ...c, authorVerified: author.verified || false, authorPremium: author.premium || false };
+    return {
+      ...c,
+      authorVerified: author.verified || false,
+      authorPremium: author.premium || false
+    };
   });
   res.json(enriched);
 });
 
+// Добавить комментарий
 app.post('/api/posts/:id/comments', auth, (req, res) => {
   const { text } = req.body;
-  if (!text) return res.status(400).json({ error: 'Пустой комментарий' });
-  const comment = { id: Date.now(), postId: Number(req.params.id), author: req.user.username, text, timestamp: new Date().toISOString() };
+  if (!text) return res.status(400).json({ error: 'Текст комментария пуст' });
+  const comment = {
+    id: Date.now(),
+    postId: Number(req.params.id),
+    author: req.user.username,
+    text,
+    timestamp: new Date().toISOString()
+  };
   comments.unshift(comment);
   saveJSON(COMMENTS_FILE, comments);
-  res.json({ ok: true, comment: { ...comment, authorVerified: req.user.verified, authorPremium: req.user.premium } });
+  res.json({
+    ok: true,
+    comment: {
+      ...comment,
+      authorVerified: req.user.verified,
+      authorPremium: req.user.premium
+    }
+  });
 });
 
+// События
 app.get('/api/events', (req, res) => res.json(events));
 app.post('/api/events', auth, (req, res) => {
   if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
@@ -148,11 +256,18 @@ app.post('/api/events', auth, (req, res) => {
   res.json({ ok: true });
 });
 
+// Админка – список пользователей
 app.get('/api/admin/users', auth, (req, res) => {
   if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
-  res.json(Object.values(users).map(u => ({ username: u.username, verified: u.verified, admin: u.admin, premium: u.premium })));
+  res.json(Object.values(users).map(u => ({
+    username: u.username,
+    verified: u.verified,
+    admin: u.admin,
+    premium: u.premium
+  })));
 });
 
+// Админка – изменить пользователя
 app.post('/api/admin/user/:username', auth, (req, res) => {
   if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
   const target = req.params.username;
@@ -164,7 +279,7 @@ app.post('/api/admin/user/:username', auth, (req, res) => {
   } else {
     if (verified !== undefined) users[target].verified = verified;
     if (admin !== undefined) {
-      if (target === 'MrSigma' && !admin) return res.status(400).json({ error: 'Нельзя' });
+      if (target === 'MrSigma' && !admin) return res.status(400).json({ error: 'Нельзя разжаловать основателя' });
       users[target].admin = admin;
     }
     if (premium !== undefined) users[target].premium = premium;
@@ -173,6 +288,28 @@ app.post('/api/admin/user/:username', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/stats', (req, res) => res.json({ users: Object.keys(users).length, posts: posts.length, pageviews: stats.pageviews, online: Math.floor(Math.random()*5)+1 }));
+// Статистика
+app.get('/api/stats', (req, res) => {
+  res.json({
+    users: Object.keys(users).length,
+    posts: posts.length,
+    comments: comments.length,
+    pageviews: stats.pageviews,
+    online: Math.floor(Math.random() * 5) + 1
+  });
+});
 
-app.listen(process.env.PORT || 3000, () => console.log('НБСС сервер запущен'));
+// Запасной публичный маршрут для исправления прав администратора
+app.get('/fix-admin', (req, res) => {
+  if (users['MrSigma']) {
+    users['MrSigma'].admin = true;
+    users['MrSigma'].verified = true;
+    users['MrSigma'].premium = true;
+    saveJSON(USERS_FILE, users);
+    res.send('✅ MrSigma теперь админ!');
+  } else {
+    res.send('❌ Пользователь не найден');
+  }
+});
+
+app.listen(PORT, () => console.log(`🚀 НБСС сервер запущен на порту ${PORT}`));
