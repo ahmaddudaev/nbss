@@ -1,5 +1,5 @@
 /* =============================================
-   НБСС – Modern Liquid UI (центральный blur logo)
+   НБСС – Modern Liquid UI (central blur logo)
    ============================================= */
 :root {
   --bg-primary: #f8fafc;
@@ -170,10 +170,13 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 
 .username { font-weight: 600; display: inline-flex; align-items: center; gap: 5px; color: var(--text-primary); }
 .verified-badge { color: var(--accent); font-size: 1.2em; }
+/* Градиент для ников с подпиской НБСС+ (голубой → белый) */
 .premium-nick {
   background: linear-gradient(135deg, #2563eb, #ffffff);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text; font-weight: 800;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 800;
 }
 
 .post {
