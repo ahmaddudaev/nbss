@@ -168,15 +168,14 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 .btn.danger:hover { background: #dc2626; box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4); transform: translateY(-1px); }
 .btn.full-width { width: 100%; }
 
-/* Никнеймы — сдвинуты правее, градиент для подписчиков */
+/* Никнеймы — отступ padding, градиент для подписчиков */
 .username {
   font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 5px;
   color: var(--text-primary);
-  padding: 4px 10px;
-  margin-left: 8px;
+  padding: 6px 12px;
   word-break: break-word;
   max-width: 100%;
   border-radius: 8px;
@@ -189,8 +188,7 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
   -webkit-text-fill-color: transparent;
   background-clip: text;
   font-weight: 800;
-  padding: 4px 10px;
-  margin-left: 8px;
+  padding: 6px 12px;
   word-break: break-word;
   border-radius: 8px;
 }
