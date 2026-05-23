@@ -193,9 +193,11 @@ function renderComment(c) {
 
 async function loadProfile() {
   if (!currentUser) return;
-  document.getElementById('profileName').textContent = currentUser.username;
-  const status = (currentUser.verified?'✅ Верифицирован ':'') + (currentUser.premium?'💎 НБСС+':'');
-  document.getElementById('profileStatus').textContent = status;
+  const nameEl = document.getElementById('profileName');
+  nameEl.textContent = currentUser.username;
+  nameEl.className = currentUser.premium ? 'premium-nick' : '';
+  const statusEl = document.getElementById('profileStatus');
+  statusEl.textContent = (currentUser.verified ? '✅ Верифицирован ' : '') + (currentUser.premium ? '💎 НБСС+' : '');
   const posts = await request('/posts');
   const userPosts = posts.filter(p => p.author === currentUser.username);
   const container = document.getElementById('profilePosts');
@@ -252,9 +254,8 @@ document.getElementById('createEventBtn').addEventListener('click', async () => 
 
 async function updateStats() {
   try {
-    const stats = await request('/stats');
-    const w = document.getElementById('statsWidget');
-    if (w) w.innerHTML = `<h3>📊 Активность</h3><div class="stat-row"><span>👥</span><span>${stats.users}</span></div><div class="stat-row"><span>📝</span><span>${stats.posts}</span></div><div class="stat-row"><span>👁️</span><span>${stats.pageviews}</span></div>`;
+    await request('/stats'); // данные используются в админке, отдельный виджет убран
   } catch (e) {}
 }
-updateStats(); setInterval(updateStats, 10000);
+updateStats();
+setInterval(updateStats, 10000);
