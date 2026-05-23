@@ -1,5 +1,5 @@
 /* =============================================
-   НБСС – Modern Liquid UI
+   НБСС – Modern Liquid UI (logo fix + lift)
    ============================================= */
 :root {
   --bg-primary: #f8fafc;
@@ -121,12 +121,34 @@ select:focus {
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-lg);
+  /* фон с размытым логотипом */
+  background-image: url('logo.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 80%;
+  background-blend-mode: overlay;
+  opacity: 0.95;
 }
 .sidebar-left {
   align-items: stretch;
 }
 .sidebar-right {
   align-items: stretch;
+}
+
+/* блок с логотипом вверху сайдбара */
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.sidebar-logo img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: var(--shadow-md);
 }
 
 .nav {
