@@ -1,375 +1,131 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-<title>НБСС — Национальная Быстрая Социальная Сеть</title>
-<style>
-/* ========== ВСЕ СТИЛИ ЗДЕСЬ ========== */
-:root {
-  --bg: #f8fafc;
-  --bg2: #ffffff;
-  --text: #0f172a;
-  --text2: #475569;
-  --border: rgba(0,0,0,0.06);
-  --accent: #2563eb;
-  --danger: #ef4444;
-  --radius: 20px;
-  --glass: blur(12px);
-}
-.dark-mode {
-  --bg: #0f172a;
-  --bg2: #1e293b;
-  --text: #f1f5f9;
-  --text2: #94a3b8;
-  --border: rgba(255,255,255,0.06);
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg); color: var(--text);
-  min-height: 100vh; transition: 0.3s;
-  display: flex; flex-direction: column;
-}
-button { cursor: pointer; border: none; background: none; font-family: inherit; color: inherit; transition: 0.2s; }
-input, textarea, select {
-  font-family: inherit; background: var(--bg2); color: var(--text);
-  border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; font-size: 16px;
-  outline: none;
-}
-.app { display: flex; max-width: 1000px; margin: 0 auto; width: 100%; padding: 20px 16px; gap: 20px; flex: 1; }
-.sidebar { width: 240px; position: sticky; top: 20px; height: calc(100vh - 40px); padding: 20px; display: flex; flex-direction: column; gap: 20px; background: var(--bg2); backdrop-filter: var(--glass); border-radius: 28px; border: 1px solid var(--border); box-shadow: 0 10px 20px rgba(0,0,0,0.03); }
-.main-content { flex: 1; max-width: 600px; width: 100%; background: var(--bg2); border-radius: 28px; border: 1px solid var(--border); box-shadow: 0 20px 30px rgba(0,0,0,0.03); min-height: 100vh; padding: 20px; }
-.page { display: none; }
-.page.active { display: block; }
-.card { background: var(--bg2); border-radius: 20px; border: 1px solid var(--border); padding: 20px; margin-bottom: 12px; }
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  border-radius: 16px; padding: 10px 22px; font-weight: 600; font-size: 15px;
-}
-.btn.primary { background: var(--accent); color: white; }
-.btn.outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-.btn.danger { background: var(--danger); color: white; }
-.btn.full-width { width: 100%; }
-.nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 18px; font-size: 17px; color: var(--text); text-decoration: none; }
-.nav-item:hover { background: rgba(37,99,235,0.08); }
-.nav-item.active { background: rgba(37,99,235,0.12); color: var(--accent); font-weight: 600; }
-.username { font-weight: 600; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 12px; }
-.premium-nick { background: linear-gradient(135deg, #2563eb, #ffffff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
-.verified-icon { width: 16px; height: 16px; }
-.post { padding: 16px 0; border-bottom: 1px solid var(--border); display: flex; gap: 12px; }
-.avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #1d4ed8); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; }
-.post-body { flex: 1; }
-.post-actions { display: flex; gap: 24px; margin-top: 8px; color: var(--text2); }
-.post-actions button { font-size: 14px; display: flex; align-items: center; gap: 6px; }
-.hashtag { color: var(--accent); }
-.mention { color: var(--accent); }
-.comments-section { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
-.comment { display: flex; gap: 10px; margin-bottom: 10px; }
-.avatar-small { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #1d4ed8); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: white; }
-.comment-body { flex: 1; background: var(--bg); border-radius: 14px; padding: 8px 12px; }
-@media (max-width: 768px) {
-  .app { flex-direction: column; padding: 0; }
-  .main-content { max-width: 100%; border-radius: 0; margin-bottom: 80px; padding: 16px; }
-  .sidebar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg2); border-radius: 24px 24px 0 0; padding: 10px 0; z-index: 100; display: flex; justify-content: space-around; flex-direction: row; }
-  .sidebar .nav { flex-direction: row; width: 100%; justify-content: space-around; }
-  .sidebar .nav-item { font-size: 0; flex-direction: column; padding: 8px 0; gap: 4px; }
-  .sidebar .nav-item span:first-child { font-size: 24px; }
-  .sidebar-right { display: none; }
-  .theme-btn { position: fixed; top: 16px; right: 16px; z-index: 120; border-radius: 50%; width: 44px; height: 44px; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <title>НБСС — Национальная Быстрая Социальная Сеть</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body class="dark-mode">
-<div class="app">
-  <div class="sidebar" id="sidebarLeft">
-    <div style="font-weight:700; margin-bottom:12px;">⚡ НБСС</div>
-    <nav class="nav">
-      <a class="nav-item active" data-page="home"><span>🏠</span><span>Главная</span></a>
-      <a class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span><span>Профиль</span></a>
-      <a class="nav-item" data-page="events"><span>📅</span><span>Ивенты</span></a>
-      <a class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span><span>Админ</span></a>
-      <a class="nav-item" id="logoutLink" style="display:none"><span>🚪</span><span>Выйти</span></a>
-      <a class="nav-item" id="loginLink" data-page="login"><span>🔑</span><span>Войти</span></a>
-      <a class="nav-item" id="registerLink" data-page="register"><span>📝</span><span>Регистр</span></a>
-    </nav>
-    <button id="themeToggle" class="theme-btn">🌓</button>
+<body>
+  <div class="app-container">
+    <!-- Левая панель (навигация) -->
+    <aside class="sidebar sidebar-left">
+      <div class="sidebar-logo">
+        <img src="logo.png" alt="НБСС">
+        <span class="logo-text">НБСС</span>
+      </div>
+      <nav class="nav">
+        <a class="nav-item active" data-page="home"><span>🏠</span> <span>Главная</span></a>
+        <a class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> <span>Профиль</span></a>
+        <a class="nav-item" data-page="events"><span>📅</span> <span>Ивенты</span></a>
+        <a class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> <span>Админка</span></a>
+        <a class="nav-item" data-page="settings"><span>🎨</span> <span>Тема</span></a>
+        <a class="nav-item" id="logoutLink" style="display:none"><span>🚪</span> <span>Выйти</span></a>
+        <a class="nav-item" id="loginLink" data-page="login"><span>🔑</span> <span>Войти</span></a>
+        <a class="nav-item" id="registerLink" data-page="register"><span>📝</span> <span>Регистрация</span></a>
+      </nav>
+    </aside>
+
+    <!-- Основной контент -->
+    <main class="main-content">
+      <!-- Поиск людей (отображается только на главной) -->
+      <div class="search-box" style="margin:10px 20px;">
+        <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." style="width:100%;">
+        <div id="searchResults" class="search-results"></div>
+      </div>
+
+      <!-- Страница настроек -->
+      <section id="settingsPage" class="page">
+        <div class="card">
+          <h2>🎨 Настройки темы</h2>
+          <div class="theme-options">
+            <label>
+              <input type="radio" name="theme" value="classic"> Классическая
+            </label>
+            <label>
+              <input type="radio" name="theme" value="liquid-light"> Liquid Glass Светлая
+            </label>
+            <label>
+              <input type="radio" name="theme" value="liquid-dark"> Liquid Glass Тёмная
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Остальные страницы: Вход, Регистрация, Главная, Профиль, Ивенты, Админка -->
+      <section id="loginPage" class="page">
+        <div class="card auth-card">
+          <h2>🔐 Вход в НБСС</h2>
+          <input id="loginUsername" placeholder="Логин" autocomplete="username">
+          <input id="loginPassword" type="password" placeholder="Пароль" autocomplete="current-password">
+          <button id="loginBtn" class="btn primary full-width">Войти</button>
+          <p>Нет аккаунта? <a id="showRegisterLink">Зарегистрироваться</a></p>
+        </div>
+      </section>
+      <section id="registerPage" class="page">
+        <div class="card auth-card">
+          <h2>📝 Регистрация</h2>
+          <input id="regUsername" placeholder="Придумайте логин">
+          <input id="regPassword" type="password" placeholder="Пароль">
+          <button id="registerBtn" class="btn primary full-width">Создать аккаунт</button>
+        </div>
+      </section>
+      <section id="homePage" class="page active">
+        <div id="authBanner" class="auth-banner">
+          <span>👋 Добро пожаловать в НБСС! Вы смотрите публичную ленту.</span>
+          <span>
+            <button id="loginFromBanner" class="btn outline">Войти</button>
+            <button id="registerFromBanner" class="btn outline">Регистрация</button>
+          </span>
+        </div>
+        <div id="postComposer" class="post-composer" style="display:none">
+          <textarea id="postInput" placeholder="Что происходит? #хештег @упоминание"></textarea>
+          <button id="publishPost" class="btn primary">Опубликовать</button>
+        </div>
+        <div id="feedContainer" class="feed"></div>
+      </section>
+      <section id="profilePage" class="page">
+        <div class="profile-header">
+          <h2 id="profileName">Профиль</h2>
+          <p id="profileStatus"></p>
+        </div>
+        <div id="profilePosts" class="feed"></div>
+      </section>
+      <section id="eventsPage" class="page">
+        <div class="events-container">
+          <h2>📅 Активные ивенты</h2>
+          <div id="eventsList"></div>
+        </div>
+      </section>
+      <section id="adminPage" class="page">
+        <div class="admin-container">
+          <h2>⚙️ Административная панель</h2>
+          <div class="card" id="adminStats"></div>
+          <div class="card">
+            <h3>Управление пользователями</h3>
+            <select id="userSelect"></select>
+            <div class="admin-actions">
+              <button id="verifyUserBtn" class="btn outline">✅ Галочка</button>
+              <button id="unverifyUserBtn" class="btn outline">❌ Убрать</button>
+              <button id="makeAdminBtn" class="btn outline">👑 Админ</button>
+              <button id="revokeAdminBtn" class="btn outline">🔻 Разжаловать</button>
+              <button id="givePremiumBtn" class="btn outline">💎 НБСС+</button>
+              <button id="revokePremiumBtn" class="btn outline">💔 Отобрать</button>
+              <button id="deleteUserBtn" class="btn danger">🗑 Удалить</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Создать ивент</h3>
+            <input id="eventTitle" placeholder="Название">
+            <textarea id="eventDesc" placeholder="Описание"></textarea>
+            <button id="createEventBtn" class="btn primary">🚀 Запустить</button>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 
-  <main class="main-content">
-    <div id="loginPage" class="page">
-      <div class="card">
-        <h2>Вход</h2>
-        <input id="loginUsername" placeholder="Логин"><br>
-        <input id="loginPassword" type="password" placeholder="Пароль"><br>
-        <button id="loginBtn" class="btn primary full-width" style="margin-top:12px;">Войти</button>
-        <p style="margin-top:8px;">Нет аккаунта? <a id="showRegisterLink">Регистрация</a></p>
-      </div>
-    </div>
-    <div id="registerPage" class="page">
-      <div class="card">
-        <h2>Регистрация</h2>
-        <input id="regUsername" placeholder="Логин"><br>
-        <input id="regPassword" type="password" placeholder="Пароль"><br>
-        <button id="registerBtn" class="btn primary full-width" style="margin-top:12px;">Создать</button>
-      </div>
-    </div>
-    <div id="homePage" class="page active">
-      <div id="authBanner" class="card" style="display:flex; justify-content:space-between; align-items:center;">
-        <span>👋 Добро пожаловать!</span>
-        <span><button id="loginFromBanner" class="btn outline">Войти</button> <button id="registerFromBanner" class="btn outline">Регистрация</button></span>
-      </div>
-      <div id="postComposer" style="display:none; margin-bottom:16px;">
-        <textarea id="postInput" placeholder="Что происходит?" style="width:100%; min-height:80px;"></textarea>
-        <button id="publishPost" class="btn primary" style="margin-top:8px;">Опубликовать</button>
-      </div>
-      <div id="feedContainer"></div>
-    </div>
-    <div id="profilePage" class="page">
-      <h2 id="profileName">Профиль</h2>
-      <p id="profileStatus"></p>
-      <div id="profilePosts"></div>
-    </div>
-    <div id="eventsPage" class="page">
-      <h2>Ивенты</h2>
-      <div id="eventsList"></div>
-    </div>
-    <div id="adminPage" class="page">
-      <h2>Админ панель</h2>
-      <div class="card" id="adminStats"></div>
-      <div class="card">
-        <h3>Пользователи</h3>
-        <select id="userSelect"></select>
-        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
-          <button id="verifyUserBtn" class="btn outline">✅ Галочка</button>
-          <button id="unverifyUserBtn" class="btn outline">❌ Убрать</button>
-          <button id="makeAdminBtn" class="btn outline">👑 Админ</button>
-          <button id="revokeAdminBtn" class="btn outline">🔻 Разжаловать</button>
-          <button id="givePremiumBtn" class="btn outline">💎 НБСС+</button>
-          <button id="revokePremiumBtn" class="btn outline">💔 Отобрать</button>
-          <button id="deleteUserBtn" class="btn danger">🗑 Удалить</button>
-        </div>
-      </div>
-    </div>
-  </main>
-</div>
-
-<script>
-// ========== ВСЯ ЛОГИКА ЗДЕСЬ ==========
-(function() {
-  const LS = {
-    get(k, d) { try { return JSON.parse(localStorage.getItem(k)) || d; } catch(e) { return d; } },
-    set(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
-  };
-
-  if (!LS.get('users')) LS.set('users', {
-    'MrSigma': { username:'MrSigma', password:btoa('Mrbeast132!'), verified:true, admin:true, premium:true }
-  });
-  if (!LS.get('posts')) LS.set('posts', []);
-  if (!LS.get('events')) LS.set('events', []);
-
-  let currentUser = LS.get('currentUser');
-  const users = () => LS.get('users');
-  const posts = () => LS.get('posts');
-  const events = () => LS.get('events');
-
-  function saveUsers(u) { LS.set('users', u); }
-  function savePosts(p) { LS.set('posts', p); }
-  function saveEvents(e) { LS.set('events', e); }
-
-  function showPage(id) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const page = document.getElementById(id + 'Page');
-    if (page) page.classList.add('active');
-    document.querySelectorAll('.nav-item[data-page]').forEach(n => n.classList.remove('active'));
-    const nav = document.querySelector(`.nav-item[data-page="${id}"]`);
-    if (nav) nav.classList.add('active');
-    if (id === 'home') renderFeed();
-    if (id === 'profile') renderProfile();
-    if (id === 'events') renderEvents();
-    if (id === 'admin') renderAdmin();
-  }
-
-  function updateUI() {
-    const loggedIn = !!currentUser;
-    document.getElementById('authBanner').style.display = loggedIn ? 'none' : 'flex';
-    document.getElementById('postComposer').style.display = loggedIn ? 'block' : 'none';
-    document.getElementById('navProfile').style.display = loggedIn ? 'flex' : 'none';
-    document.getElementById('navAdmin').style.display = (currentUser && users()[currentUser]?.admin) ? 'flex' : 'none';
-    document.getElementById('logoutLink').style.display = loggedIn ? 'flex' : 'none';
-    document.getElementById('loginLink').style.display = loggedIn ? 'none' : 'flex';
-    document.getElementById('registerLink').style.display = loggedIn ? 'none' : 'flex';
-  }
-
-  // Навигация
-  document.querySelectorAll('.nav-item[data-page]').forEach(link => {
-    link.addEventListener('click', e => {
-      e.preventDefault();
-      const page = link.dataset.page;
-      if (page === 'profile' && !currentUser) return alert('Войдите');
-      if (page === 'admin' && !(currentUser && users()[currentUser]?.admin)) return alert('Нет прав');
-      showPage(page);
-    });
-  });
-
-  document.getElementById('loginBtn').addEventListener('click', () => {
-    const u = document.getElementById('loginUsername').value.trim();
-    const p = document.getElementById('loginPassword').value.trim();
-    const all = users();
-    if (all[u] && all[u].password === btoa(p)) {
-      currentUser = u; LS.set('currentUser', u); updateUI(); showPage('home');
-    } else alert('Неверные данные');
-  });
-
-  document.getElementById('registerBtn').addEventListener('click', () => {
-    const u = document.getElementById('regUsername').value.trim();
-    const p = document.getElementById('regPassword').value.trim();
-    if (!u || !p) return alert('Заполните поля');
-    if (u.length < 3) return alert('Минимум 3 символа');
-    const all = users();
-    if (all[u]) return alert('Пользователь уже существует');
-    all[u] = { username: u, password: btoa(p), verified: false, admin: false, premium: false };
-    saveUsers(all);
-    alert('Аккаунт создан! Войдите.');
-    showPage('login');
-  });
-
-  document.getElementById('logoutLink').addEventListener('click', () => {
-    currentUser = null; LS.set('currentUser', null); updateUI(); showPage('home');
-  });
-
-  document.getElementById('themeToggle').addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode');
-  });
-
-  document.getElementById('publishPost').addEventListener('click', () => {
-    const text = document.getElementById('postInput').value.trim();
-    if (!text) return;
-    const all = posts();
-    all.unshift({ id: Date.now(), author: currentUser, text, likes: [], reposts: [], timestamp: new Date().toISOString() });
-    savePosts(all);
-    document.getElementById('postInput').value = '';
-    renderFeed();
-  });
-
-  function renderFeed() {
-    const container = document.getElementById('feedContainer');
-    const all = posts();
-    container.innerHTML = all.map(p => renderPost(p)).join('');
-    attachActions();
-  }
-
-  function renderPost(p) {
-    const author = users()[p.author] || {};
-    const premium = author.premium === true;
-    const verified = author.verified === true;
-    return `
-      <div class="post" data-id="${p.id}">
-        <div class="avatar">${p.author[0]?.toUpperCase()}</div>
-        <div class="post-body">
-          <div class="post-header">
-            <span class="username ${premium ? 'premium-nick' : ''}">${p.author}${verified ? '<img src="verification.png" class="verified-icon" onerror="this.style.display=\'none\'">' : ''}</span>
-            <span>· ${new Date(p.timestamp).toLocaleString()}</span>
-          </div>
-          <div class="post-text">${p.text}</div>
-          <div class="post-actions">
-            <button class="like-btn">❤️ ${p.likes.length}</button>
-            <button class="repost-btn">🔄 ${p.reposts.length}</button>
-            <button class="comment-toggle">💬 Комм.</button>
-          </div>
-          <div class="comments-section" style="display:none;"></div>
-        </div>
-      </div>`;
-  }
-
-  function attachActions() {
-    document.querySelectorAll('.like-btn').forEach(b => b.onclick = function() {
-      if (!currentUser) return alert('Войдите');
-      const postId = Number(this.closest('.post').dataset.id);
-      const all = posts();
-      const post = all.find(p => p.id === postId);
-      if (!post) return;
-      if (post.likes.includes(currentUser)) post.likes = post.likes.filter(u => u !== currentUser);
-      else post.likes.push(currentUser);
-      savePosts(all); renderFeed();
-    });
-    document.querySelectorAll('.repost-btn').forEach(b => b.onclick = function() {
-      if (!currentUser) return alert('Войдите');
-      const postId = Number(this.closest('.post').dataset.id);
-      const all = posts();
-      const post = all.find(p => p.id === postId);
-      if (post && !post.reposts.includes(currentUser)) {
-        post.reposts.push(currentUser);
-        savePosts(all); renderFeed();
-      }
-    });
-    document.querySelectorAll('.comment-toggle').forEach(b => b.onclick = function() {
-      const postEl = this.closest('.post');
-      const section = postEl.querySelector('.comments-section');
-      section.style.display = section.style.display === 'none' ? 'block' : 'none';
-      if (section.style.display === 'block' && !section.innerHTML) {
-        section.innerHTML = `<input type="text" placeholder="Комментарий..." style="width:100%; margin-bottom:8px;"><button class="btn primary add-comment">Отпр.</button>`;
-        section.querySelector('.add-comment').onclick = () => {
-          const inp = section.querySelector('input');
-          const text = inp.value.trim();
-          if (!text || !currentUser) return;
-          const all = posts();
-          const post = all.find(p => p.id === postEl.dataset.id);
-          if (post) {
-            if (!post.comments) post.comments = [];
-            post.comments.push({ author: currentUser, text, time: new Date().toISOString() });
-            savePosts(all);
-            renderFeed();
-          }
-        };
-      }
-    });
-  }
-
-  function renderProfile() {
-    if (!currentUser) return;
-    const u = users()[currentUser];
-    document.getElementById('profileName').textContent = currentUser;
-    document.getElementById('profileName').className = u.premium ? 'premium-nick' : '';
-    document.getElementById('profileStatus').innerHTML = (u.verified ? '✅ Верифицирован' : '') + (u.premium ? ' 💎 НБСС+' : '');
-    const container = document.getElementById('profilePosts');
-    const userPosts = posts().filter(p => p.author === currentUser);
-    container.innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
-    attachActions();
-  }
-
-  function renderEvents() {
-    document.getElementById('eventsList').innerHTML = events().map(e => `<div class="card"><strong>${e.title}</strong><p>${e.desc}</p></div>`).join('') || '<p>Нет ивентов</p>';
-  }
-
-  function renderAdmin() {
-    if (!currentUser || !users()[currentUser]?.admin) return;
-    const allUsers = users();
-    document.getElementById('adminStats').innerHTML = `<p>👥 Пользователей: ${Object.keys(allUsers).length}</p><p>📝 Постов: ${posts().length}</p>`;
-    const select = document.getElementById('userSelect');
-    select.innerHTML = Object.keys(allUsers).map(u => `<option>${u}</option>`).join('');
-    document.getElementById('verifyUserBtn').onclick = () => modifyUser(select.value, 'verified', true);
-    document.getElementById('unverifyUserBtn').onclick = () => modifyUser(select.value, 'verified', false);
-    document.getElementById('makeAdminBtn').onclick = () => modifyUser(select.value, 'admin', true);
-    document.getElementById('revokeAdminBtn').onclick = () => { if (select.value !== 'MrSigma') modifyUser(select.value, 'admin', false); };
-    document.getElementById('givePremiumBtn').onclick = () => modifyUser(select.value, 'premium', true);
-    document.getElementById('revokePremiumBtn').onclick = () => modifyUser(select.value, 'premium', false);
-    document.getElementById('deleteUserBtn').onclick = () => { if (select.value !== 'MrSigma') { delete users()[select.value]; saveUsers(users()); renderAdmin(); } };
-  }
-
-  function modifyUser(username, key, value) {
-    const all = users();
-    if (all[username]) {
-      all[username][key] = value;
-      saveUsers(all);
-      renderAdmin();
-    }
-  }
-
-  // Старт
-  updateUI();
-  showPage('home');
-})();
-</script>
+  <script src="script.js" defer></script>
 </body>
 </html>
