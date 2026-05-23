@@ -61,6 +61,21 @@ input, textarea, select {
   outline: none;
 }
 
+/* 👇 Явно задаём стиль для выпадающего списка и его опций, чтобы ники были видны */
+select {
+  background: var(--bg2);
+  color: var(--text);
+  font-size: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+select option {
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+}
+
 .app-container { display: flex; max-width: 1280px; margin: 0 auto; width: 100%; padding: 20px 16px; gap: 20px; flex: 1; }
 
 .sidebar {
@@ -107,7 +122,7 @@ input, textarea, select {
 .sidebar-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .sidebar-logo img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
 
-/* Никнеймы – отступы и градиент */
+/* Никнеймы */
 .username {
   font-weight: 600; display: inline-flex; align-items: center; gap: 5px;
   padding: 6px 12px; border-radius: 12px;
