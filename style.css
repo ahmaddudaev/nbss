@@ -1,77 +1,158 @@
-/* ... все предыдущие стили ... */
-
-/* Профиль */
-.profile-banner {
-  height: 200px;
-  background: linear-gradient(135deg, #1d4ed8, #2563eb);
-  position: relative;
-  cursor: pointer;
-  overflow: hidden;
-  border-bottom: 1px solid var(--border-light);
-}
-.profile-banner img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.banner-upload-hint {
-  position: absolute;
-  bottom: 12px;
-  right: 16px;
-  background: rgba(0,0,0,0.5);
-  color: white;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 13px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-.profile-banner:hover .banner-upload-hint {
-  opacity: 1;
+/* ---------- Тема Classic (по умолчанию) ---------- */
+body.classic {
+  --bg: #000000;
+  --bg2: #16181c;
+  --text: #e7e9ea;
+  --text2: #71767b;
+  --border: #2f3336;
+  --accent: #1d9bf0;
+  --accent-hover: #1a8cd8;
+  --danger: #f4212e;
+  --card: #16181c;
+  --hover: #1a1d23;
+  --shadow: 0 0 15px rgba(29, 155, 240, 0.1);
+  --radius: 16px;
 }
 
-.profile-header {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 24px 20px;
-  border-bottom: 1px solid var(--border-light);
+/* ---------- Тема Liquid Glass Light ---------- */
+body.liquid-light {
+  --bg: #f0f4f8;
+  --bg2: rgba(255, 255, 255, 0.7);
+  --text: #1c1c1e;
+  --text2: #636366;
+  --border: rgba(255, 255, 255, 0.4);
+  --accent: #007aff;
+  --accent-hover: #0056cc;
+  --danger: #ff3b30;
+  --card: rgba(255, 255, 255, 0.65);
+  --hover: rgba(255, 255, 255, 0.9);
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --radius: 24px;
 }
 
-.profile-avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  flex-shrink: 0;
-}
-.profile-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.avatar-placeholder {
-  font-size: 32px;
-  font-weight: 700;
-  color: white;
-}
-.profile-avatar:hover .avatar-placeholder {
-  opacity: 0.8;
+/* ---------- Тема Liquid Glass Dark ---------- */
+body.liquid-dark {
+  --bg: #1c1c1e;
+  --bg2: rgba(44, 44, 46, 0.7);
+  --text: #f0f0f0;
+  --text2: #a1a1a6;
+  --border: rgba(255, 255, 255, 0.15);
+  --accent: #0a84ff;
+  --accent-hover: #409cff;
+  --danger: #ff453a;
+  --card: rgba(44, 44, 46, 0.65);
+  --hover: rgba(44, 44, 46, 0.9);
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --radius: 24px;
 }
 
-.profile-info {
-  flex: 1;
+/* ---------- Общие стили ---------- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; transition: background 0.4s, color 0.4s;
 }
-.profile-info h2 {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
+a { color: var(--accent); text-decoration: none; }
+button { cursor: pointer; border: none; background: none; font-family: inherit; color: inherit; transition: 0.2s; }
+input, textarea, select {
+  font-family: inherit; background: var(--bg2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; font-size: 15px;
+  outline: none;
+}
+
+.app-container { display: flex; max-width: 1280px; margin: 0 auto; width: 100%; padding: 20px 16px; gap: 20px; flex: 1; }
+
+.sidebar {
+  width: 280px; position: sticky; top: 20px; height: calc(100vh - 40px); padding: 20px;
+  display: flex; flex-direction: column; gap: 20px;
+  background: var(--bg2); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+
+.main-content {
+  flex: 1; max-width: 700px; width: 100%;
+  background: var(--bg2); border-radius: var(--radius); border: 1px solid var(--border);
+  box-shadow: var(--shadow); min-height: 100vh;
+  padding: 20px 24px;
+}
+
+.page { display: none; animation: fadeIn 0.3s ease; }
+.page.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.card {
+  background: var(--card); border-radius: var(--radius); border: 1px solid var(--border);
+  padding: 20px; margin-bottom: 12px; backdrop-filter: blur(10px);
+}
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 20px; padding: 10px 22px; font-weight: 600; font-size: 15px;
+}
+.btn.primary { background: var(--accent); color: white; }
+.btn.outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn.outline:hover { background: var(--hover); }
+.btn.danger { background: var(--danger); color: white; }
+.btn.full-width { width: 100%; }
+
+.nav { display: flex; flex-direction: column; gap: 4px; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  border-radius: 18px; font-size: 17px; color: var(--text); text-decoration: none;
+}
+.nav-item:hover { background: var(--hover); }
+.nav-item.active { background: var(--hover); color: var(--accent); font-weight: 600; }
+
+.sidebar-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.sidebar-logo img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+
+.username { font-weight: 600; display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 12px; }
+.premium-nick {
+  background: linear-gradient(135deg, #2563eb, #ffffff); -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent; font-weight: 800;
+}
+.verified-icon { width: 16px; height: 16px; }
+
+/* ---------- Посты ---------- */
+.post { padding: 16px 0; border-bottom: 1px solid var(--border); display: flex; gap: 12px; animation: fadeIn 0.3s ease; }
+.avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #1d4ed8); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; }
+.post-body { flex: 1; }
+.post-header { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.post-text { font-size: 16px; line-height: 1.5; word-break: break-word; margin-bottom: 8px; }
+.post-actions { display: flex; gap: 24px; color: var(--text2); }
+.post-actions button { font-size: 14px; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 12px; }
+.post-actions button:hover { background: var(--hover); color: var(--accent); }
+.hashtag { color: var(--accent); }
+.mention { color: var(--accent); font-weight: 500; }
+
+/* ---------- Комментарии ---------- */
+.comments-section { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
+.comment { display: flex; gap: 8px; margin-bottom: 10px; }
+.avatar-small { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #1d4ed8); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; color: white; }
+.comment-body { flex: 1; background: var(--card); border-radius: 14px; padding: 8px 12px; }
+.comment-text { margin-top: 4px; font-size: 14px; }
+
+/* ---------- Профиль ---------- */
+.profile-header { padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.profile-header h2 { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- Поиск ---------- */
+.search-results { margin-top: 8px; }
+.search-user { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--card); border-radius: 12px; margin-bottom: 6px; }
+
+/* ---------- Адаптивность ---------- */
+@media (max-width: 768px) {
+  .app-container { flex-direction: column; padding: 0; }
+  .main-content { max-width: 100%; border-radius: 0; margin-bottom: 70px; padding: 16px; }
+  .sidebar {
+    position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg2);
+    border-radius: 24px 24px 0 0; padding: 10px 0; z-index: 100;
+    display: flex; flex-direction: row; justify-content: space-around;
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  }
+  .sidebar .nav { flex-direction: row; width: 100%; justify-content: space-around; }
+  .sidebar .nav-item { font-size: 0; flex-direction: column; padding: 8px 0; gap: 4px; }
+  .sidebar .nav-item span:first-child { font-size: 22px; }
+  .sidebar-logo, .search-box { display: none; }
 }
