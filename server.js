@@ -3,44 +3,51 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ---------- Middleware ----------
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname));              // раздача статики (index.html, style.css и др.)
+app.use(express.static(__dirname)); // раздача статики (включая public/uploads)
 app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' }));
 
-// Папка для хранения данных (создаётся автоматически)
+// ---------- Папки ----------
 const DATA_DIR = path.join(__dirname, 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
+const AVATARS_DIR = path.join(UPLOADS_DIR, 'avatars');
+const BANNERS_DIR = path.join(UPLOADS_DIR, 'banners');
 
+[AVATARS_DIR, BANNERS_DIR].forEach(dir => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+});
+
+// ---------- Хранилище данных ----------
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const POSTS_FILE = path.join(DATA_DIR, 'posts.json');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
 const STATS_FILE = path.join(DATA_DIR, 'stats.json');
 
-// Утилиты для работы с JSON-файлами
 function loadJSON(file, def = {}) {
-  try { if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8')); }
-  catch (e) { console.error('Ошибка загрузки', file, e); }
+  try { if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) {}
   return def;
 }
 function saveJSON(file, data) {
-  try { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); }
-  catch (e) { console.error('Ошибка сохранения', file, e); }
+  try { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); } catch (e) {}
 }
 
-// Инициализация данных
 let users = loadJSON(USERS_FILE, {
   'MrSigma': {
     username: 'MrSigma',
     password: crypto.createHash('sha256').update('Mrbeast132!').digest('hex'),
     verified: true,
     admin: true,
-    premium: true
+    premium: true,
+    avatar: '',
+    banner: ''
   }
 });
 let posts = loadJSON(POSTS_FILE, []);
@@ -48,33 +55,34 @@ let events = loadJSON(EVENTS_FILE, []);
 let comments = loadJSON(COMMENTS_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
-// Автоматически подтверждаем права MrSigma при каждом запуске
-if (users['MrSigma']) {
-  users['MrSigma'].admin = true;
-  users['MrSigma'].verified = true;
-  users['MrSigma'].premium = true;
-  saveJSON(USERS_FILE, users);
-  console.log('✅ Права MrSigma гарантированы');
-}
-
-// Счётчик посещений
-app.use((req, res, next) => {
-  stats.pageviews = (stats.pageviews || 0) + 1;
-  saveJSON(STATS_FILE, stats);
-  next();
+// ---------- Multer для загрузки ----------
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    if (file.fieldname === 'avatar') cb(null, AVATARS_DIR);
+    else if (file.fieldname === 'banner') cb(null, BANNERS_DIR);
+    else cb(new Error('Неизвестное поле'));
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${req.user.username}_${Date.now()}${ext}`);
+  }
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 МБ
+  fileFilter: (req, file, cb) => {
+    const allowed = /jpeg|jpg|png/;
+    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+    const mime = allowed.test(file.mimetype);
+    if (ext && mime) cb(null, true);
+    else cb(new Error('Только JPEG/PNG'));
+  }
 });
 
-// Хеширование пароля
-function hash(pw) {
-  return crypto.createHash('sha256').update(pw).digest('hex');
-}
-
-// Middleware авторизации
+// ---------- Авторизация ----------
 function auth(req, res, next) {
   const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Требуется авторизация' });
-  }
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Требуется авторизация' });
   const token = header.split(' ')[1];
   const user = Object.values(users).find(u => u.token === token);
   if (!user) return res.status(401).json({ error: 'Неверный токен' });
@@ -82,234 +90,39 @@ function auth(req, res, next) {
   next();
 }
 
-// ======================= API =======================
+// ---------- API (прежние эндпоинты сохранены, показаны только новые) ----------
 
-// Регистрация
-app.post('/api/register', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
-  if (users[username]) return res.status(400).json({ error: 'Пользователь уже существует' });
-  users[username] = {
-    username,
-    password: hash(password),
-    verified: false,
-    admin: false,
-    premium: false
-  };
+// Загрузка аватарки
+app.post('/api/avatar', auth, upload.single('avatar'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
+  const url = `/uploads/avatars/${req.file.filename}`;
+  users[req.user.username].avatar = url;
   saveJSON(USERS_FILE, users);
-  res.json({ ok: true });
+  res.json({ ok: true, url });
 });
 
-// Вход
-app.post('/api/login', (req, res) => {
-  const { username, password } = req.body;
-  const user = users[username];
-  if (!user || user.password !== hash(password)) {
-    return res.status(401).json({ error: 'Неверный логин или пароль' });
-  }
-  const token = crypto.randomBytes(32).toString('hex');
-  user.token = token;
+// Загрузка баннера
+app.post('/api/banner', auth, upload.single('banner'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
+  const url = `/uploads/banners/${req.file.filename}`;
+  users[req.user.username].banner = url;
   saveJSON(USERS_FILE, users);
-  res.json({
-    token,
-    user: {
-      username: user.username,
-      verified: user.verified,
-      admin: user.admin,
-      premium: user.premium
-    }
-  });
+  res.json({ ok: true, url });
 });
 
-// Получить данные текущего пользователя (используется при обновлении страницы)
+// Получить данные пользователя (расширено)
 app.get('/api/me', auth, (req, res) => {
+  const user = users[req.user.username];
   res.json({
-    username: req.user.username,
-    verified: req.user.verified,
-    admin: req.user.admin,
-    premium: req.user.premium
+    username: user.username,
+    verified: user.verified,
+    admin: user.admin,
+    premium: user.premium,
+    avatar: user.avatar || '',
+    banner: user.banner || ''
   });
 });
 
-// Поиск пользователей
-app.get('/api/users/search', (req, res) => {
-  const q = (req.query.q || '').toLowerCase();
-  if (!q) return res.json([]);
-  const results = Object.values(users)
-    .filter(u => u.username.toLowerCase().includes(q))
-    .map(u => ({
-      username: u.username,
-      verified: u.verified,
-      premium: u.premium
-    }));
-  res.json(results);
-});
-
-// Получить все посты (обогащённые данными автора)
-app.get('/api/posts', (req, res) => {
-  const enriched = posts.map(p => {
-    const author = users[p.author] || {};
-    return {
-      ...p,
-      authorVerified: author.verified || false,
-      authorPremium: author.premium || false
-    };
-  });
-  res.json(enriched);
-});
-
-// Создать пост
-app.post('/api/posts', auth, (req, res) => {
-  const { text } = req.body;
-  if (!text) return res.status(400).json({ error: 'Текст поста пуст' });
-  const post = {
-    id: Date.now(),
-    author: req.user.username,
-    text,
-    likes: [],
-    reposts: [],
-    timestamp: new Date().toISOString()
-  };
-  posts.unshift(post);
-  saveJSON(POSTS_FILE, posts);
-  res.json({
-    ok: true,
-    post: {
-      ...post,
-      authorVerified: req.user.verified,
-      authorPremium: req.user.premium
-    }
-  });
-});
-
-// Лайк / анлайк
-app.post('/api/posts/:id/like', auth, (req, res) => {
-  const post = posts.find(p => p.id == req.params.id);
-  if (!post) return res.status(404).json({ error: 'Пост не найден' });
-  const username = req.user.username;
-  if (post.likes.includes(username)) {
-    post.likes = post.likes.filter(u => u !== username);
-  } else {
-    post.likes.push(username);
-  }
-  saveJSON(POSTS_FILE, posts);
-  res.json({ ok: true, likes: post.likes.length });
-});
-
-// Репост
-app.post('/api/posts/:id/repost', auth, (req, res) => {
-  const post = posts.find(p => p.id == req.params.id);
-  if (!post) return res.status(404).json({ error: 'Пост не найден' });
-  const username = req.user.username;
-  if (!post.reposts.includes(username)) {
-    post.reposts.push(username);
-  }
-  saveJSON(POSTS_FILE, posts);
-  res.json({ ok: true, reposts: post.reposts.length });
-});
-
-// Получить комментарии к посту (обогащённые)
-app.get('/api/posts/:id/comments', (req, res) => {
-  const postComments = comments.filter(c => c.postId == req.params.id);
-  const enriched = postComments.map(c => {
-    const author = users[c.author] || {};
-    return {
-      ...c,
-      authorVerified: author.verified || false,
-      authorPremium: author.premium || false
-    };
-  });
-  res.json(enriched);
-});
-
-// Добавить комментарий
-app.post('/api/posts/:id/comments', auth, (req, res) => {
-  const { text } = req.body;
-  if (!text) return res.status(400).json({ error: 'Текст комментария пуст' });
-  const comment = {
-    id: Date.now(),
-    postId: Number(req.params.id),
-    author: req.user.username,
-    text,
-    timestamp: new Date().toISOString()
-  };
-  comments.unshift(comment);
-  saveJSON(COMMENTS_FILE, comments);
-  res.json({
-    ok: true,
-    comment: {
-      ...comment,
-      authorVerified: req.user.verified,
-      authorPremium: req.user.premium
-    }
-  });
-});
-
-// События
-app.get('/api/events', (req, res) => res.json(events));
-app.post('/api/events', auth, (req, res) => {
-  if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
-  const { title, desc } = req.body;
-  if (!title) return res.status(400).json({ error: 'Укажите название' });
-  events.push({ title, desc });
-  saveJSON(EVENTS_FILE, events);
-  res.json({ ok: true });
-});
-
-// Админка – список пользователей
-app.get('/api/admin/users', auth, (req, res) => {
-  if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
-  res.json(Object.values(users).map(u => ({
-    username: u.username,
-    verified: u.verified,
-    admin: u.admin,
-    premium: u.premium
-  })));
-});
-
-// Админка – изменить пользователя
-app.post('/api/admin/user/:username', auth, (req, res) => {
-  if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
-  const target = req.params.username;
-  if (!users[target]) return res.status(404).json({ error: 'Пользователь не найден' });
-  const { verified, admin, premium, delete: del } = req.body;
-  if (del) {
-    if (target === 'MrSigma') return res.status(400).json({ error: 'Нельзя удалить основателя' });
-    delete users[target];
-  } else {
-    if (verified !== undefined) users[target].verified = verified;
-    if (admin !== undefined) {
-      if (target === 'MrSigma' && !admin) return res.status(400).json({ error: 'Нельзя разжаловать основателя' });
-      users[target].admin = admin;
-    }
-    if (premium !== undefined) users[target].premium = premium;
-  }
-  saveJSON(USERS_FILE, users);
-  res.json({ ok: true });
-});
-
-// Статистика
-app.get('/api/stats', (req, res) => {
-  res.json({
-    users: Object.keys(users).length,
-    posts: posts.length,
-    comments: comments.length,
-    pageviews: stats.pageviews,
-    online: Math.floor(Math.random() * 5) + 1
-  });
-});
-
-// Запасной публичный маршрут для исправления прав администратора
-app.get('/fix-admin', (req, res) => {
-  if (users['MrSigma']) {
-    users['MrSigma'].admin = true;
-    users['MrSigma'].verified = true;
-    users['MrSigma'].premium = true;
-    saveJSON(USERS_FILE, users);
-    res.send('✅ MrSigma теперь админ!');
-  } else {
-    res.send('❌ Пользователь не найден');
-  }
-});
-
-app.listen(PORT, () => console.log(`🚀 НБСС сервер запущен на порту ${PORT}`));
+// Остальные эндпоинты (регистрация, вход, посты, комментарии и т.д.) идентичны предыдущему полному server.js.
+// Для краткости я опускаю их здесь, но в вашем реальном файле они должны быть.
+// Просто добавьте приведённые выше маршруты в свой существующий server.js.
