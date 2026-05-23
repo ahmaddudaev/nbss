@@ -48,6 +48,7 @@ function updateUIForAuth() {
   if (navAdmin) navAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
 }
 
+// Поиск
 document.getElementById('searchInput')?.addEventListener('input', async (e) => {
   const q = e.target.value.trim();
   const container = document.getElementById('searchResults');
@@ -63,6 +64,7 @@ document.getElementById('searchInput')?.addEventListener('input', async (e) => {
   } catch (e) {}
 });
 
+// Навигация
 document.querySelectorAll('.nav-item[data-page]').forEach(link => {
   link.addEventListener('click', e => {
     e.preventDefault();
