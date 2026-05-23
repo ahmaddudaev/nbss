@@ -1,197 +1,282 @@
-const API = '/api';
-let token = localStorage.getItem('nbss_token') || null;
-let currentUser = null;
+/* =============================================
+   НБСС – Modern Liquid UI (central blur logo)
+   ============================================= */
+:root {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: rgba(255, 255, 255, 0.7);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-light: rgba(0, 0, 0, 0.05);
+  --border-medium: rgba(0, 0, 0, 0.08);
+  --accent: #2563eb;
+  --accent-light: rgba(37, 99, 235, 0.1);
+  --accent-hover: #1d4ed8;
+  --danger: #ef4444;
+  --danger-light: rgba(239, 68, 68, 0.1);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --glass-blur: blur(12px);
+}
 
-async function request(url, options = {}) {
-  const headers = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(API + url, { ...options, headers: { ...headers, ...options.headers } });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Ошибка сети' }));
-    throw new Error(err.error || 'Ошибка');
+.dark-mode {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: rgba(30, 41, 59, 0.7);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border-light: rgba(255, 255, 255, 0.05);
+  --border-medium: rgba(255, 255, 255, 0.08);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  transition: background 0.4s, color 0.4s;
+  display: flex;
+  flex-direction: column;
+}
+
+a { color: var(--accent); text-decoration: none; transition: opacity 0.2s; }
+a:hover { opacity: 0.85; }
+
+button { cursor: pointer; border: none; background: none; font-family: inherit; color: inherit; transition: var(--transition); }
+
+input, textarea, select {
+  font-family: inherit;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 15px;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+
+.app-container {
+  display: flex;
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 20px 16px;
+  gap: 20px;
+  flex: 1;
+}
+
+.sidebar {
+  width: 280px;
+  position: sticky;
+  top: 20px;
+  height: calc(100vh - 40px);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--bg-tertiary);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-lg);
+}
+.sidebar-left { align-items: stretch; }
+.sidebar-right { align-items: stretch; }
+
+.sidebar-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.sidebar-logo img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; box-shadow: var(--shadow-md); }
+
+.nav { display: flex; flex-direction: column; gap: 4px; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-radius: var(--radius-md);
+  font-size: 16px; font-weight: 500;
+  color: var(--text-primary); transition: var(--transition); background: transparent;
+}
+.nav-item:hover { background: var(--accent-light); transform: translateX(4px); }
+.nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+
+.theme-toggle-btn {
+  background: var(--bg-secondary); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-md); padding: 12px; font-weight: 600; font-size: 15px;
+  color: var(--text-primary); box-shadow: var(--shadow-md); border: 1px solid var(--border-light); text-align: center;
+}
+.theme-toggle-btn:hover { background: var(--accent-light); box-shadow: var(--shadow-lg); }
+
+.main-content {
+  flex: 1;
+  max-width: 600px;
+  width: 100%;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-xl);
+  min-height: 100vh;
+  overflow: hidden;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  /* размытое лого только здесь */
+  background-image: url('logo.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 60%;
+  background-blend-mode: overlay;
+}
+
+.page { display: none; animation: fadeSlideIn 0.3s ease; }
+.page.active { display: block; }
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card {
+  background: var(--bg-secondary); border-radius: var(--radius-lg); border: 1px solid var(--border-light);
+  padding: 24px; margin-bottom: 16px; box-shadow: var(--shadow-md);
+  transition: var(--transition); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+}
+.card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: var(--radius-md); padding: 12px 24px; font-weight: 600; font-size: 15px;
+  transition: var(--transition); letter-spacing: -0.2px;
+}
+.btn.primary { background: var(--accent); color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+.btn.primary:hover { background: var(--accent-hover); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4); transform: translateY(-1px); }
+.btn.outline { background: transparent; border: 1px solid var(--border-medium); color: var(--text-primary); }
+.btn.outline:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+.btn.danger { background: var(--danger); color: white; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
+.btn.danger:hover { background: #dc2626; box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4); transform: translateY(-1px); }
+.btn.full-width { width: 100%; }
+
+.username { font-weight: 600; display: inline-flex; align-items: center; gap: 5px; color: var(--text-primary); }
+.verified-badge { color: var(--accent); font-size: 1.2em; }
+/* Градиент для ников с подпиской НБСС+ (голубой → белый) */
+.premium-nick {
+  background: linear-gradient(135deg, #2563eb, #ffffff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 800;
+}
+
+.post {
+  padding: 20px; border-bottom: 1px solid var(--border-light);
+  display: flex; gap: 16px; transition: var(--transition);
+  animation: fadeSlideIn 0.3s ease; background: var(--bg-secondary);
+}
+.post:hover { background: var(--bg-tertiary); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); }
+.avatar {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 18px; flex-shrink: 0; color: white; box-shadow: var(--shadow-md);
+}
+.post-body { flex: 1; min-width: 0; }
+.post-header { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.post-text { font-size: 16px; line-height: 1.6; word-break: break-word; margin-bottom: 12px; }
+.post-actions { display: flex; gap: 24px; color: var(--text-secondary); }
+.post-actions button {
+  color: var(--text-secondary); background: none; cursor: pointer;
+  font-size: 14px; display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 20px; transition: var(--transition);
+}
+.post-actions button:hover { color: var(--accent); background: var(--accent-light); }
+
+.hashtag { color: var(--accent); font-weight: 600; }
+.mention { color: var(--accent); font-weight: 600; }
+
+.event-banner {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white; border-radius: var(--radius-lg); padding: 20px;
+  margin: 16px 0; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4); transition: var(--transition);
+}
+.event-banner:hover { transform: scale(1.02); }
+
+.stat-widget {
+  background: var(--bg-secondary); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-md); margin-bottom: 16px;
+}
+.stat-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 15px; font-weight: 500; }
+
+.auth-banner {
+  background: var(--bg-secondary); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 16px 24px;
+  margin: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
+  gap: 12px; box-shadow: var(--shadow-md);
+}
+
+.post-composer { padding: 20px; border-bottom: 1px solid var(--border-light); background: var(--bg-secondary); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); }
+.post-composer textarea { width: 100%; min-height: 90px; resize: none; margin-bottom: 12px; }
+
+.admin-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.admin-actions button { flex: 1 0 auto; min-width: calc(50% - 10px); }
+
+.hidden { display: none !important; }
+
+/* Комментарии */
+.comments-section { margin-top: 16px; border-top: 1px solid var(--border-light); padding-top: 12px; }
+.comment { display: flex; gap: 10px; margin-bottom: 12px; animation: fadeSlideIn 0.2s ease; }
+.avatar-small {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; color: white; flex-shrink: 0;
+}
+.comment-body {
+  flex: 1; background: var(--bg-tertiary); backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur); border-radius: var(--radius-md); padding: 10px 14px;
+}
+.comment-time { font-size: 12px; color: var(--text-secondary); margin-left: 8px; }
+.comment-text { margin-top: 4px; font-size: 14px; }
+.comment-form { display: flex; gap: 8px; margin-top: 12px; }
+.comment-form input { flex: 1; }
+.comment-login-hint { font-size: 14px; color: var(--text-secondary); margin-top: 8px; }
+
+@media (max-width: 768px) {
+  .app-container { flex-direction: column; padding: 0; gap: 0; }
+  .main-content { max-width: 100%; border-radius: 0; margin-bottom: 80px; border: none; box-shadow: none; }
+  .sidebar-left {
+    display: flex; position: fixed; bottom: 0; left: 0; width: 100%;
+    background: var(--bg-tertiary); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+    border-top: 1px solid var(--border-light); border-radius: 24px 24px 0 0;
+    padding: 10px 0; z-index: 100; flex-direction: row; justify-content: space-around;
+    align-items: center; box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.05);
   }
-  return res.json();
-}
-
-(async function init() {
-  if (token) {
-    try { currentUser = await request('/me'); }
-    catch (e) { token = null; currentUser = null; localStorage.removeItem('nbss_token'); }
+  .sidebar-left .nav { flex-direction: row; width: 100%; justify-content: space-around; }
+  .sidebar-left .nav-item {
+    font-size: 0; flex-direction: column; padding: 8px 0; gap: 4px;
+    border-radius: 0; flex: 1; text-align: center; color: var(--text-secondary);
   }
-  updateUIForAuth(); showPage('home');
-})();
-
-function showPage(pageId) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById(pageId + 'Page');
-  if (target) target.classList.add('active');
-  document.querySelectorAll('.nav-item[data-page]').forEach(n => n.classList.remove('active'));
-  const nav = document.querySelector(`.nav-item[data-page="${pageId}"]`);
-  if (nav) nav.classList.add('active');
-  if (pageId === 'home') loadPosts();
-  if (pageId === 'profile') loadProfile();
-  if (pageId === 'events') loadEvents();
-  if (pageId === 'admin') { loadAdminStats(); loadAdminUsers(); }
-  updateStats();
+  .sidebar-left .nav-item.active { color: var(--accent); background: transparent; }
+  .sidebar-left .nav-item span:first-child { font-size: 24px; }
+  .sidebar-left .nav-item span:not(:first-child) { display: none; }
+  .sidebar-right { display: none; }
+  .theme-toggle-btn {
+    position: fixed; bottom: auto; top: 16px; right: 16px; z-index: 120;
+    border-radius: 50%; width: 44px; height: 44px; padding: 0; font-size: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent); color: white; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  }
+  .theme-toggle-btn::before { content: "🌓"; font-size: 22px; }
 }
-
-function updateUIForAuth() {
-  const loggedIn = !!token;
-  document.getElementById('authBanner').style.display = loggedIn ? 'none' : 'flex';
-  document.getElementById('postComposer').style.display = loggedIn ? 'block' : 'none';
-  document.getElementById('navProfile').style.display = loggedIn ? 'flex' : 'none';
-  document.getElementById('logoutLink').style.display = loggedIn ? 'flex' : 'none';
-  document.getElementById('loginLink').style.display = loggedIn ? 'none' : 'flex';
-  document.getElementById('registerLink').style.display = loggedIn ? 'none' : 'flex';
-  const navAdmin = document.getElementById('navAdmin');
-  if (navAdmin) navAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
-  const premStatus = document.getElementById('premiumStatusUser');
-  if (premStatus) premStatus.textContent = (currentUser && currentUser.premium) ? 'Активна' : 'Не активна';
-}
-
-// Навигация
-document.querySelectorAll('.nav-item[data-page]').forEach(link => {
-  link.addEventListener('click', e => {
-    e.preventDefault();
-    const page = link.dataset.page;
-    if (page === 'profile' && !token) return alert('Сначала войдите');
-    if (page === 'admin' && !(currentUser && currentUser.admin)) return alert('Нет прав администратора');
-    showPage(page);
-  });
-});
-document.getElementById('loginFromBanner')?.addEventListener('click', () => showPage('login'));
-document.getElementById('registerFromBanner')?.addEventListener('click', () => showPage('register'));
-
-// Вход
-document.getElementById('loginBtn').addEventListener('click', async () => {
-  const username = document.getElementById('loginUsername').value.trim();
-  const password = document.getElementById('loginPassword').value.trim();
-  try {
-    const data = await request('/login', { method: 'POST', body: JSON.stringify({ username, password }) });
-    token = data.token; currentUser = data.user;
-    localStorage.setItem('nbss_token', token); updateUIForAuth(); showPage('home');
-  } catch (e) { alert(e.message); }
-});
-
-// Регистрация с проверкой уникальности
-document.getElementById('registerBtn').addEventListener('click', async () => {
-  const username = document.getElementById('regUsername').value.trim();
-  const password = document.getElementById('regPassword').value.trim();
-  if (!username || !password) return alert('Заполните все поля');
-  if (username.length < 3) return alert('Логин должен быть минимум 3 символа');
-  try {
-    await request('/register', { method: 'POST', body: JSON.stringify({ username, password }) });
-    alert('Аккаунт создан! Теперь войдите.'); showPage('login');
-  } catch (e) { alert(e.message); } // "Пользователь уже существует" если дубликат
-});
-
-document.getElementById('showRegisterLink').addEventListener('click', (e) => { e.preventDefault(); showPage('register'); });
-
-// Выход
-document.getElementById('logoutLink').addEventListener('click', () => {
-  token = null; currentUser = null; localStorage.removeItem('nbss_token');
-  updateUIForAuth(); showPage('home');
-});
-
-// Смена темы
-document.getElementById('themeToggle').addEventListener('click', () => {
-  document.body.classList.toggle('dark-mode');
-  localStorage.setItem('nbss_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-});
-if (localStorage.getItem('nbss_theme') === 'light') document.body.classList.remove('dark-mode');
-
-// Публикация поста (Enter)
-const postInput = document.getElementById('postInput');
-postInput?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('publishPost').click(); }
-});
-document.getElementById('publishPost').addEventListener('click', async () => {
-  const text = postInput.value.trim();
-  if (!text) return;
-  try {
-    await request('/posts', { method: 'POST', body: JSON.stringify({ text }) });
-    postInput.value = ''; loadPosts();
-  } catch (e) { alert(e.message); }
-});
-
-// Загрузка постов
-async function loadPosts() {
-  const container = document.getElementById('feedContainer');
-  try {
-    const posts = await request('/posts');
-    container.innerHTML = posts.map(p => renderPost(p)).join('');
-    attachPostActions();
-  } catch (e) { container.innerHTML = '<p>Ошибка загрузки ленты</p>'; }
-}
-
-function renderPost(p) {
-  const nickClass = p.authorPremium ? 'premium-nick' : '';
-  const verifiedIcon = p.authorVerified ? '<span class="verified-badge">✔️</span>' : '';
-  const formatted = p.text.replace(/#(\w+)/g, '<span class="hashtag">#$1</span>').replace(/@(\w+)/g, '<span class="mention">@$1</span>');
-  return `
-    <div class="post" data-id="${p.id}">
-      <div class="avatar">${p.author[0]?.toUpperCase()}</div>
-      <div class="post-body">
-        <div class="post-header"><span class="username ${nickClass}">${p.author}${verifiedIcon}</span><span>· ${new Date(p.timestamp).toLocaleString()}</span></div>
-        <div class="post-text">${formatted}</div>
-        <div class="post-actions">
-          <button class="like-btn">❤️ ${p.likes.length}</button>
-          <button class="repost-btn">🔄 ${p.reposts.length}</button>
-          <button class="comment-toggle">💬 Комментарии</button>
-        </div>
-        <div class="comments-section" style="display:none;"></div>
-      </div>
-    </div>`;
-}
-
-function attachPostActions() {
-  document.querySelectorAll('.like-btn').forEach(btn => {
-    btn.onclick = async function() {
-      if (!token) return alert('Войдите');
-      const postId = this.closest('.post').dataset.id;
-      try { await request(`/posts/${postId}/like`, { method: 'POST' }); loadPosts(); } catch (e) { alert(e.message); }
-    };
-  });
-  document.querySelectorAll('.repost-btn').forEach(btn => {
-    btn.onclick = async function() {
-      if (!token) return alert('Войдите');
-      const postId = this.closest('.post').dataset.id;
-      try { await request(`/posts/${postId}/repost`, { method: 'POST' }); loadPosts(); } catch (e) { alert(e.message); }
-    };
-  });
-  document.querySelectorAll('.comment-toggle').forEach(btn => {
-    btn.onclick = async function() {
-      const postEl = this.closest('.post'); const postId = postEl.dataset.id;
-      const section = postEl.querySelector('.comments-section');
-      if (section.style.display === 'none') { section.style.display = 'block'; await loadComments(postId, section); }
-      else section.style.display = 'none';
-    };
-  });
-}
-
-async function loadComments(postId, container) {
-  try {
-    const comments = await request(`/posts/${postId}/comments`);
-    container.innerHTML = `
-      <div class="comments-list">${comments.map(c => renderComment(c)).join('')}</div>
-      ${token ? `<div class="comment-form"><input type="text" class="comment-input" placeholder="Ваш комментарий..."><button class="btn primary comment-submit">Отправить</button></div>` : '<p class="comment-login-hint">Войдите, чтобы комментировать.</p>'}
-    `;
-    if (token) {
-      const input = container.querySelector('.comment-input');
-      const submit = container.querySelector('.comment-submit');
-      submit.onclick = async () => {
-        const text = input.value.trim(); if (!text) return;
-        try { await request(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ text }) }); await loadComments(postId, container); } catch (e) { alert(e.message); }
-      };
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit.click(); } });
-    }
-  } catch (e) { container.innerHTML = '<p class="error">Ошибка загрузки комментариев</p>'; }
-}
-
-function renderComment(c) {
-  const nickClass = c.authorPremium ? 'premium-nick' : '';
-  const verifiedIcon = c.authorVerified ? '<span class="verified-badge">✔️</span>' : '';
-  return `<div class="comment"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${nickClass}">${c.author}${verifiedIcon}</span><span class="comment-time">${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${c.text}</p></div></div>`;
-}
-
-// Профиль, ивенты, админка – остальной код без изменений
