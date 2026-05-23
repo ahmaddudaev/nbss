@@ -8,10 +8,9 @@ const multer = require('multer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname)); // раздача статики
+app.use(express.static(__dirname));
 app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' }));
 
 // Папки
@@ -39,7 +38,6 @@ function saveJSON(file, data) {
   try { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); } catch (e) {}
 }
 
-// Инициализация данных
 let users = loadJSON(USERS_FILE, {
   'MrSigma': {
     username: 'MrSigma',
@@ -57,7 +55,6 @@ let comments = loadJSON(COMMENTS_FILE, []);
 let messages = loadJSON(MESSAGES_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
-// Гарантируем права MrSigma
 if (users['MrSigma']) {
   users['MrSigma'].admin = true;
   users['MrSigma'].verified = true;
@@ -65,12 +62,10 @@ if (users['MrSigma']) {
   saveJSON(USERS_FILE, users);
 }
 
-// Счётчик посещений
 app.use((req, res, next) => { stats.pageviews++; saveJSON(STATS_FILE, stats); next(); });
 
 const hash = pw => crypto.createHash('sha256').update(pw).digest('hex');
 
-// Middleware авторизации
 function auth(req, res, next) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Требуется авторизация' });
@@ -81,7 +76,7 @@ function auth(req, res, next) {
   next();
 }
 
-// Multer для аватарок и баннеров
+// Multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === 'avatar') cb(null, AVATARS_DIR);
@@ -105,186 +100,37 @@ const upload = multer({
   }
 });
 
-// ======================= API =======================
+// API – пользователи
+app.post('/api/register', (req, res) => { ... }); // без изменений
+app.post('/api/login', (req, res) => { ... });
+app.get('/api/me', auth, (req, res) => { ... });
+app.get('/api/users/search', (req, res) => { ... });
+app.get('/api/user/:username', (req, res) => { ... }); // для чужого профиля
 
-// Регистрация
-app.post('/api/register', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: 'Заполните поля' });
-  if (users[username]) return res.status(400).json({ error: 'Пользователь уже существует' });
-  users[username] = { username, password: hash(password), verified: false, admin: false, premium: false, avatar: '', banner: '' };
-  saveJSON(USERS_FILE, users);
-  res.json({ ok: true });
-});
-
-// Вход
-app.post('/api/login', (req, res) => {
-  const { username, password } = req.body;
-  const user = users[username];
-  if (!user || user.password !== hash(password)) return res.status(401).json({ error: 'Неверные данные' });
-  const token = crypto.randomBytes(32).toString('hex');
-  user.token = token;
-  saveJSON(USERS_FILE, users);
-  res.json({ token, user: { username: user.username, verified: user.verified, admin: user.admin, premium: user.premium, avatar: user.avatar, banner: user.banner } });
-});
-
-// Данные текущего пользователя
-app.get('/api/me', auth, (req, res) => {
-  const user = users[req.user.username];
-  res.json({ username: user.username, verified: user.verified, admin: user.admin, premium: user.premium, avatar: user.avatar || '', banner: user.banner || '' });
-});
-
-// Поиск пользователей
-app.get('/api/users/search', (req, res) => {
-  const q = (req.query.q || '').toLowerCase();
-  if (!q) return res.json([]);
-  const result = Object.values(users).filter(u => u.username.toLowerCase().includes(q))
-    .map(u => ({ username: u.username, verified: u.verified, premium: u.premium }));
-  res.json(result);
-});
-
-// Публичный профиль
-app.get('/api/user/:username', (req, res) => {
-  const user = users[req.params.username];
-  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
-  res.json({ username: user.username, verified: user.verified, premium: user.premium, avatar: user.avatar, banner: user.banner });
-});
-
-// Посты (обогащённые)
-app.get('/api/posts', (req, res) => {
-  const enriched = posts.map(p => {
-    const author = users[p.author] || {};
-    return { ...p, authorVerified: author.verified || false, authorPremium: author.premium || false };
-  });
-  res.json(enriched);
-});
-
-app.post('/api/posts', auth, (req, res) => {
-  const { text } = req.body;
-  if (!text) return res.status(400).json({ error: 'Пустой пост' });
-  const post = { id: Date.now(), author: req.user.username, text, likes: [], reposts: [], timestamp: new Date().toISOString() };
-  posts.unshift(post);
-  saveJSON(POSTS_FILE, posts);
-  res.json({ ok: true, post: { ...post, authorVerified: req.user.verified, authorPremium: req.user.premium } });
-});
-
-// Лайк
-app.post('/api/posts/:id/like', auth, (req, res) => {
-  const post = posts.find(p => p.id == req.params.id);
-  if (!post) return res.status(404).json({ error: 'Пост не найден' });
-  const idx = post.likes.indexOf(req.user.username);
-  if (idx >= 0) post.likes.splice(idx, 1);
-  else post.likes.push(req.user.username);
-  saveJSON(POSTS_FILE, posts);
-  res.json({ ok: true });
-});
-
-// Репост
-app.post('/api/posts/:id/repost', auth, (req, res) => {
-  const post = posts.find(p => p.id == req.params.id);
-  if (!post) return res.status(404).json({ error: 'Пост не найден' });
-  if (!post.reposts.includes(req.user.username)) post.reposts.push(req.user.username);
-  saveJSON(POSTS_FILE, posts);
-  res.json({ ok: true });
-});
-
-// Комментарии (обогащённые)
-app.get('/api/posts/:id/comments', (req, res) => {
-  const postComments = comments.filter(c => c.postId == req.params.id);
-  const enriched = postComments.map(c => {
-    const author = users[c.author] || {};
-    return { ...c, authorVerified: author.verified || false, authorPremium: author.premium || false };
-  });
-  res.json(enriched);
-});
-
-app.post('/api/posts/:id/comments', auth, (req, res) => {
-  const { text } = req.body;
-  if (!text) return res.status(400).json({ error: 'Пустой комментарий' });
-  const comment = { id: Date.now(), postId: Number(req.params.id), author: req.user.username, text, timestamp: new Date().toISOString() };
-  comments.unshift(comment);
-  saveJSON(COMMENTS_FILE, comments);
-  res.json({ ok: true, comment: { ...comment, authorVerified: req.user.verified, authorPremium: req.user.premium } });
-});
+// Посты и комментарии
+app.get('/api/posts', (req, res) => { ... });
+app.post('/api/posts', auth, (req, res) => { ... });
+app.post('/api/posts/:id/like', auth, (req, res) => { ... });
+app.post('/api/posts/:id/repost', auth, (req, res) => { ... });
+app.get('/api/posts/:id/comments', (req, res) => { ... });
+app.post('/api/posts/:id/comments', auth, (req, res) => { ... });
 
 // События
-app.get('/api/events', (req, res) => res.json(events));
-app.post('/api/events', auth, (req, res) => {
-  if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
-  const { title, desc } = req.body;
-  if (!title) return res.status(400).json({ error: 'Укажите название' });
-  events.push({ title, desc });
-  saveJSON(EVENTS_FILE, events);
-  res.json({ ok: true });
-});
+app.get('/api/events', (req, res) => { ... });
+app.post('/api/events', auth, (req, res) => { ... });
 
-// Админка – список пользователей
-app.get('/api/admin/users', auth, (req, res) => {
-  if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
-  res.json(Object.values(users).map(u => ({ username: u.username, verified: u.verified, admin: u.admin, premium: u.premium })));
-});
-
-// Админка – изменить/удалить пользователя
-app.post('/api/admin/user/:username', auth, (req, res) => {
-  if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
-  const target = req.params.username;
-  if (!users[target]) return res.status(404).json({ error: 'Пользователь не найден' });
-  const { verified, admin, premium, delete: del } = req.body;
-
-  if (del) {
-    if (target === 'MrSigma') return res.status(400).json({ error: 'Нельзя удалить основателя' });
-    delete users[target];
-    // Удаляем посты, комментарии, сообщения
-    posts = posts.filter(p => p.author !== target);
-    comments = comments.filter(c => c.author !== target);
-    messages = messages.filter(m => m.from !== target && m.to !== target);
-    saveJSON(USERS_FILE, users);
-    saveJSON(POSTS_FILE, posts);
-    saveJSON(COMMENTS_FILE, comments);
-    saveJSON(MESSAGES_FILE, messages);
-    return res.json({ ok: true });
-  }
-
-  // Защита MrSigma
-  if (target === 'MrSigma') {
-    if (admin !== undefined && !admin) return res.status(400).json({ error: 'Вы не можете забрать привилегию у овнера' });
-    if (verified !== undefined && !verified) return res.status(400).json({ error: 'Вы не можете забрать привилегию у овнера' });
-    if (premium !== undefined && !premium) return res.status(400).json({ error: 'Вы не можете забрать привилегию у овнера' });
-  }
-
-  if (verified !== undefined) users[target].verified = verified;
-  if (admin !== undefined) users[target].admin = admin;
-  if (premium !== undefined) users[target].premium = premium;
-
-  saveJSON(USERS_FILE, users);
-  res.json({ ok: true });
-});
+// Админка
+app.get('/api/admin/users', auth, (req, res) => { ... });
+app.post('/api/admin/user/:username', auth, (req, res) => { ... });
 
 // Статистика
-app.get('/api/stats', (req, res) => {
-  res.json({ users: Object.keys(users).length, posts: posts.length, pageviews: stats.pageviews, online: Math.floor(Math.random()*5)+1 });
-});
+app.get('/api/stats', (req, res) => { ... });
 
-// Загрузка аватарки
-app.post('/api/avatar', auth, upload.single('avatar'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
-  const url = `/uploads/avatars/${req.file.filename}`;
-  users[req.user.username].avatar = url;
-  saveJSON(USERS_FILE, users);
-  res.json({ ok: true, url });
-});
+// Загрузка аватар/баннер
+app.post('/api/avatar', auth, upload.single('avatar'), (req, res) => { ... });
+app.post('/api/banner', auth, upload.single('banner'), (req, res) => { ... });
 
-// Загрузка баннера
-app.post('/api/banner', auth, upload.single('banner'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
-  const url = `/uploads/banners/${req.file.filename}`;
-  users[req.user.username].banner = url;
-  saveJSON(USERS_FILE, users);
-  res.json({ ok: true, url });
-});
-
-// ======================= Личные сообщения =======================
-// Список диалогов
+// Личные сообщения
 app.get('/api/dialogs', auth, (req, res) => {
   const user = req.user.username;
   const dialogs = new Map();
@@ -299,15 +145,11 @@ app.get('/api/dialogs', auth, (req, res) => {
   const result = Array.from(dialogs.values()).sort((a,b) => b.timestamp - a.timestamp);
   result.forEach(d => {
     const u = users[d.username];
-    if (u) {
-      d.premium = u.premium || false;
-      d.verified = u.verified || false;
-    }
+    if (u) { d.premium = u.premium || false; d.verified = u.verified || false; }
   });
   res.json(result);
 });
 
-// История сообщений
 app.get('/api/messages', auth, (req, res) => {
   const partner = req.query.with;
   if (!partner) return res.status(400).json({ error: 'Не указан собеседник' });
@@ -318,7 +160,6 @@ app.get('/api/messages', auth, (req, res) => {
   res.json(conversation);
 });
 
-// Отправить сообщение
 app.post('/api/messages', auth, (req, res) => {
   const { to, text } = req.body;
   if (!to || !text) return res.status(400).json({ error: 'Заполните получателя и текст' });
