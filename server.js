@@ -204,17 +204,36 @@ app.post('/api/admin/user/:username', auth, (req, res) => {
   const target = req.params.username;
   if (!users[target]) return res.status(404).json({ error: 'Пользователь не найден' });
   const { verified, admin, premium, delete: del } = req.body;
+
   if (del) {
-    if (target === 'MrSigma') return res.status(400).json({ error: 'Нельзя удалить основателя' });
+    if (target === 'MrSigma') return res.status(400).json({ error: 'Вы не можете удалить основателя' });
+
+    // Удаляем пользователя
     delete users[target];
-  } else {
-    if (verified !== undefined) users[target].verified = verified;
-    if (admin !== undefined) {
-      if (target === 'MrSigma' && !admin) return res.status(400).json({ error: 'Нельзя разжаловать основателя' });
-      users[target].admin = admin;
-    }
-    if (premium !== undefined) users[target].premium = premium;
+
+    // Удаляем все его посты и комментарии
+    posts = posts.filter(p => p.author !== target);
+    comments = comments.filter(c => c.author !== target);
+
+    saveJSON(USERS_FILE, users);
+    saveJSON(POSTS_FILE, posts);
+    saveJSON(COMMENTS_FILE, comments);
+    return res.json({ ok: true, message: 'Аккаунт и все его публикации удалены' });
   }
+
+  if (verified !== undefined) {
+    if (target === 'MrSigma' && !verified) return res.status(400).json({ error: 'Вы не можете забрать привилегию у овнера' });
+    users[target].verified = verified;
+  }
+  if (admin !== undefined) {
+    if (target === 'MrSigma' && !admin) return res.status(400).json({ error: 'Вы не можете забрать привилегию у овнера' });
+    users[target].admin = admin;
+  }
+  if (premium !== undefined) {
+    if (target === 'MrSigma' && !premium) return res.status(400).json({ error: 'Вы не можете забрать привилегию у овнера' });
+    users[target].premium = premium;
+  }
+
   saveJSON(USERS_FILE, users);
   res.json({ ok: true });
 });
@@ -223,7 +242,6 @@ app.get('/api/stats', (req, res) => {
   res.json({ users: Object.keys(users).length, posts: posts.length, pageviews: stats.pageviews, online: Math.floor(Math.random()*5)+1 });
 });
 
-// Загрузка аватарки и баннера
 app.post('/api/avatar', auth, upload.single('avatar'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Файл не загружен' });
   const url = `/uploads/avatars/${req.file.filename}`;
@@ -238,16 +256,6 @@ app.post('/api/banner', auth, upload.single('banner'), (req, res) => {
   users[req.user.username].banner = url;
   saveJSON(USERS_FILE, users);
   res.json({ ok: true, url });
-});
-
-app.get('/fix-admin', (req, res) => {
-  if (users['MrSigma']) {
-    users['MrSigma'].admin = true;
-    users['MrSigma'].verified = true;
-    users['MrSigma'].premium = true;
-    saveJSON(USERS_FILE, users);
-    res.send('✅ MrSigma теперь админ!');
-  } else res.send('❌ Пользователь не найден');
 });
 
 app.listen(PORT, () => console.log(`🚀 НБСС запущен на порту ${PORT}`));
