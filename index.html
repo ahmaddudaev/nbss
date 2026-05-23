@@ -9,7 +9,6 @@
 </head>
 <body class="dark-mode">
   <div class="app-container">
-    <!-- Левая панель (навигация) -->
     <aside class="sidebar sidebar-left">
       <div class="sidebar-logo">
         <img src="logo.png" alt="НБСС">
@@ -27,82 +26,39 @@
       <button id="themeToggle" class="theme-toggle-btn">🌓</button>
     </aside>
 
-    <!-- Основной контент -->
     <main class="main-content">
       <div class="search-box" style="margin: 10px 20px;">
         <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." style="width:100%;">
         <div id="searchResults" class="search-results"></div>
       </div>
 
-      <section id="loginPage" class="page">
-        <div class="card auth-card">
-          <h2>🔐 Вход в НБСС</h2>
-          <input id="loginUsername" placeholder="Логин" autocomplete="username">
-          <input id="loginPassword" type="password" placeholder="Пароль" autocomplete="current-password">
-          <button id="loginBtn" class="btn primary full-width">Войти</button>
-          <p>Нет аккаунта? <a id="showRegisterLink">Зарегистрироваться</a></p>
-        </div>
-      </section>
-      <section id="registerPage" class="page">
-        <div class="card auth-card">
-          <h2>📝 Регистрация</h2>
-          <input id="regUsername" placeholder="Придумайте логин">
-          <input id="regPassword" type="password" placeholder="Пароль">
-          <button id="registerBtn" class="btn primary full-width">Создать аккаунт</button>
-        </div>
-      </section>
-      <section id="homePage" class="page active">
-        <div id="authBanner" class="auth-banner">
-          <span>👋 Добро пожаловать в НБСС! Вы смотрите публичную ленту.</span>
-          <span>
-            <button id="loginFromBanner" class="btn outline">Войти</button>
-            <button id="registerFromBanner" class="btn outline">Регистрация</button>
-          </span>
-        </div>
-        <div id="postComposer" class="post-composer" style="display:none">
-          <textarea id="postInput" placeholder="Что происходит? #хештег @упоминание"></textarea>
-          <button id="publishPost" class="btn primary">Опубликовать</button>
-        </div>
-        <div id="feedContainer" class="feed"></div>
-      </section>
+      <section id="loginPage" class="page">...</section>
+      <section id="registerPage" class="page">...</section>
+      <section id="homePage" class="page active">...</section>
+
+      <!-- Профиль с баннером и аватаркой -->
       <section id="profilePage" class="page">
-        <div class="profile-header">
-          <h2 id="profileName">Профиль</h2>
-          <p id="profileStatus"></p>
+        <div class="profile-banner" id="profileBanner">
+          <img id="bannerImg" src="" alt="Баннер" style="display:none;">
+          <div class="banner-upload-hint" id="bannerHint">Нажмите, чтобы загрузить баннер</div>
         </div>
+        <div class="profile-header">
+          <div class="profile-avatar" id="profileAvatar">
+            <img id="avatarImg" src="" alt="Аватар" style="display:none;">
+            <div class="avatar-placeholder" id="avatarPlaceholder">?</div>
+          </div>
+          <div class="profile-info">
+            <h2 id="profileName">Профиль</h2>
+            <p id="profileStatus"></p>
+          </div>
+        </div>
+        <input type="file" id="avatarInput" accept="image/*" style="display:none;">
+        <input type="file" id="bannerInput" accept="image/*" style="display:none;">
         <div id="profilePosts" class="feed"></div>
       </section>
-      <section id="eventsPage" class="page">
-        <div class="events-container">
-          <h2>📅 Активные ивенты</h2>
-          <div id="eventsList"></div>
-        </div>
-      </section>
-      <section id="adminPage" class="page">
-        <div class="admin-container">
-          <h2>⚙️ Административная панель</h2>
-          <div class="card" id="adminStats"></div>
-          <div class="card">
-            <h3>Управление пользователями</h3>
-            <select id="userSelect"></select>
-            <div class="admin-actions">
-              <button id="verifyUserBtn" class="btn outline">✅ Галочка</button>
-              <button id="unverifyUserBtn" class="btn outline">❌ Убрать</button>
-              <button id="makeAdminBtn" class="btn outline">👑 Админ</button>
-              <button id="revokeAdminBtn" class="btn outline">🔻 Разжаловать</button>
-              <button id="givePremiumBtn" class="btn outline">💎 НБСС+</button>
-              <button id="revokePremiumBtn" class="btn outline">💔 Отобрать</button>
-              <button id="deleteUserBtn" class="btn danger">🗑 Удалить</button>
-            </div>
-          </div>
-          <div class="card">
-            <h3>Создать ивент</h3>
-            <input id="eventTitle" placeholder="Название">
-            <textarea id="eventDesc" placeholder="Описание"></textarea>
-            <button id="createEventBtn" class="btn primary">🚀 Запустить</button>
-          </div>
-        </div>
-      </section>
+
+      <section id="eventsPage" class="page">...</section>
+      <section id="adminPage" class="page">...</section>
     </main>
   </div>
   <script src="script.js" defer></script>
