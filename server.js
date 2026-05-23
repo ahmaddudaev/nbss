@@ -8,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
-app.get('/server.js', (req, res) => res.status(404).send('Not found'));
+app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' }));
 
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
@@ -35,7 +35,6 @@ let events = loadJSON(EVENTS_FILE, []);
 let comments = loadJSON(COMMENTS_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
-// гарантируем админские права MrSigma
 if (users['MrSigma']) {
   users['MrSigma'].admin = true;
   users['MrSigma'].verified = true;
@@ -86,7 +85,6 @@ app.get('/api/users/search', (req, res) => {
   res.json(result);
 });
 
-// посты — добавляем authorPremium и authorVerified
 app.get('/api/posts', (req, res) => {
   const enriched = posts.map(p => {
     const author = users[p.author] || {};
@@ -106,7 +104,7 @@ app.post('/api/posts', auth, (req, res) => {
 
 app.post('/api/posts/:id/like', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
-  if (!post) return res.status(404).end();
+  if (!post) return res.status(404).json({ error: 'Пост не найден' });
   const idx = post.likes.indexOf(req.user.username);
   if (idx >= 0) post.likes.splice(idx, 1);
   else post.likes.push(req.user.username);
@@ -116,13 +114,12 @@ app.post('/api/posts/:id/like', auth, (req, res) => {
 
 app.post('/api/posts/:id/repost', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
-  if (!post) return res.status(404).end();
+  if (!post) return res.status(404).json({ error: 'Пост не найден' });
   if (!post.reposts.includes(req.user.username)) post.reposts.push(req.user.username);
   saveJSON(POSTS_FILE, posts);
   res.json({ ok: true });
 });
 
-// комментарии — тоже обогащаем
 app.get('/api/posts/:id/comments', (req, res) => {
   const postComments = comments.filter(c => c.postId == req.params.id);
   const enriched = postComments.map(c => {
@@ -145,21 +142,21 @@ app.get('/api/events', (req, res) => res.json(events));
 app.post('/api/events', auth, (req, res) => {
   if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
   const { title, desc } = req.body;
-  if (!title) return res.status(400).end();
+  if (!title) return res.status(400).json({ error: 'Укажите название' });
   events.push({ title, desc });
   saveJSON(EVENTS_FILE, events);
   res.json({ ok: true });
 });
 
 app.get('/api/admin/users', auth, (req, res) => {
-  if (!req.user.admin) return res.status(403).end();
+  if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
   res.json(Object.values(users).map(u => ({ username: u.username, verified: u.verified, admin: u.admin, premium: u.premium })));
 });
 
 app.post('/api/admin/user/:username', auth, (req, res) => {
-  if (!req.user.admin) return res.status(403).end();
+  if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
   const target = req.params.username;
-  if (!users[target]) return res.status(404).end();
+  if (!users[target]) return res.status(404).json({ error: 'Пользователь не найден' });
   const { verified, admin, premium, delete: del } = req.body;
   if (del) {
     if (target === 'MrSigma') return res.status(400).json({ error: 'Нельзя удалить основателя' });
