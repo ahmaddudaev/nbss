@@ -1,30 +1,43 @@
-/* ========== НБСС — iOS 26 Liquid Glass Edition ========== */
+/* =============================================
+   НБСС – Modern Liquid UI
+   ============================================= */
 :root {
-  --bg: #f0f4f8;
-  --bg2: rgba(255, 255, 255, 0.7);
-  --bg3: rgba(255, 255, 255, 0.5);
-  --text: #1c1c1e;
-  --text2: #636366;
-  --border: rgba(255, 255, 255, 0.4);
-  --accent: #007aff;
-  --accent-hover: #0056cc;
-  --danger: #ff3b30;
-  --card: rgba(255, 255, 255, 0.65);
-  --hover: rgba(255, 255, 255, 0.9);
-  --radius: 24px;
-  --shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  --glass-blur: saturate(180%) blur(20px);
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: rgba(255, 255, 255, 0.7);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-light: rgba(0, 0, 0, 0.05);
+  --border-medium: rgba(0, 0, 0, 0.08);
+  --accent: #2563eb;
+  --accent-light: rgba(37, 99, 235, 0.1);
+  --accent-hover: #1d4ed8;
+  --danger: #ef4444;
+  --danger-light: rgba(239, 68, 68, 0.1);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --glass-blur: blur(12px);
 }
 
-.light-mode {
-  --bg: #e8edf2;
-  --bg2: rgba(255, 255, 255, 0.7);
-  --bg3: rgba(255, 255, 255, 0.4);
-  --text: #1c1c1e;
-  --text2: #636366;
-  --border: rgba(255, 255, 255, 0.5);
-  --card: rgba(255, 255, 255, 0.6);
-  --hover: rgba(255, 255, 255, 0.95);
+.dark-mode {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: rgba(30, 41, 59, 0.7);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border-light: rgba(255, 255, 255, 0.05);
+  --border-medium: rgba(255, 255, 255, 0.08);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -34,25 +47,23 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-  background: linear-gradient(135deg, #dce2e8 0%, #f5f7fa 100%);
-  background-attachment: fixed;
-  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
   min-height: 100vh;
-  transition: background 0.4s ease, color 0.4s ease;
+  transition: background 0.4s, color 0.4s;
   display: flex;
   flex-direction: column;
-  backdrop-filter: blur(10px);
 }
 
 a {
   color: var(--accent);
   text-decoration: none;
-  font-weight: 500;
   transition: opacity 0.2s;
 }
 a:hover {
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 button {
@@ -61,54 +72,55 @@ button {
   background: none;
   font-family: inherit;
   color: inherit;
-  transition: all 0.25s ease;
+  transition: var(--transition);
 }
 
-input, textarea, select {
+input,
+textarea,
+select {
   font-family: inherit;
-  background: var(--card);
-  backdrop-filter: var(--glass-blur);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
   padding: 12px 16px;
-  font-size: 16px;
-  transition: all 0.2s;
-  box-shadow: var(--shadow);
+  font-size: 15px;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
 }
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.2);
+  box-shadow: 0 0 0 3px var(--accent-light);
 }
 
-/* Основной контейнер */
 .app-container {
   display: flex;
-  max-width: 1260px;
+  max-width: 1280px;
   margin: 0 auto;
   width: 100%;
   padding: 20px 16px;
   gap: 20px;
   flex: 1;
-  backdrop-filter: blur(10px);
 }
 
-/* Боковые панели — эффект жидкого стекла */
 .sidebar {
   width: 280px;
   position: sticky;
   top: 20px;
   height: calc(100vh - 40px);
-  padding: 16px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  background: var(--bg2);
+  background: var(--bg-tertiary);
   backdrop-filter: var(--glass-blur);
-  border-radius: 32px;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-lg);
 }
 .sidebar-left {
   align-items: stretch;
@@ -117,67 +129,63 @@ input:focus, textarea:focus, select:focus {
   align-items: stretch;
 }
 
-/* Навигация */
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 18px;
-  border-radius: 20px;
-  font-size: 17px;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: 16px;
   font-weight: 500;
-  transition: all 0.25s ease;
-  color: var(--text);
+  color: var(--text-primary);
+  transition: var(--transition);
   background: transparent;
 }
 .nav-item:hover {
-  background: var(--hover);
-  backdrop-filter: blur(10px);
+  background: var(--accent-light);
   transform: translateX(4px);
 }
 .nav-item.active {
-  font-weight: 700;
-  background: rgba(0, 122, 255, 0.15);
+  background: var(--accent-light);
   color: var(--accent);
-  backdrop-filter: blur(10px);
+  font-weight: 600;
 }
 
 .theme-toggle-btn {
-  background: var(--card);
+  background: var(--bg-secondary);
   backdrop-filter: var(--glass-blur);
-  border-radius: 20px;
-  padding: 12px 18px;
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-md);
+  padding: 12px;
   font-weight: 600;
-  font-size: 16px;
-  color: var(--text);
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
-  transition: all 0.2s;
-  width: 100%;
+  font-size: 15px;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-light);
   text-align: center;
 }
 .theme-toggle-btn:hover {
-  background: var(--hover);
-  transform: scale(1.02);
+  background: var(--accent-light);
+  box-shadow: var(--shadow-lg);
 }
 
-/* Центральная лента */
 .main-content {
   flex: 1;
   max-width: 600px;
   width: 100%;
-  background: var(--bg2);
-  backdrop-filter: var(--glass-blur);
-  border-radius: 32px;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-xl);
   min-height: 100vh;
   overflow: hidden;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .page {
@@ -199,110 +207,106 @@ input:focus, textarea:focus, select:focus {
   }
 }
 
-/* Карточки */
 .card {
-  background: var(--card);
-  backdrop-filter: var(--glass-blur);
-  border-radius: 24px;
-  border: 1px solid var(--border);
-  padding: 20px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  padding: 24px;
   margin-bottom: 16px;
-  box-shadow: var(--shadow);
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-md);
+  transition: var(--transition);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 .card:hover {
+  box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
 }
 
-/* Кнопки */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border-radius: 20px;
+  border-radius: var(--radius-md);
   padding: 12px 24px;
   font-weight: 600;
-  font-size: 16px;
-  transition: all 0.2s ease;
-  letter-spacing: -0.3px;
-  backdrop-filter: blur(10px);
+  font-size: 15px;
+  transition: var(--transition);
+  letter-spacing: -0.2px;
 }
 .btn.primary {
   background: var(--accent);
   color: white;
-  box-shadow: 0 4px 15px rgba(0, 122, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 .btn.primary:hover {
   background: var(--accent-hover);
-  box-shadow: 0 6px 20px rgba(0, 122, 255, 0.5);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
   transform: translateY(-1px);
 }
 .btn.outline {
   background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
-  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
 }
 .btn.outline:hover {
-  background: var(--hover);
+  background: var(--accent-light);
   border-color: var(--accent);
   color: var(--accent);
 }
 .btn.danger {
   background: var(--danger);
   color: white;
-  box-shadow: 0 4px 15px rgba(255, 59, 48, 0.3);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 .btn.danger:hover {
-  box-shadow: 0 6px 20px rgba(255, 59, 48, 0.5);
+  background: #dc2626;
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
   transform: translateY(-1px);
 }
 .btn.full-width {
   width: 100%;
 }
 
-/* Никнеймы */
 .username {
   font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: var(--text);
+  color: var(--text-primary);
 }
 .verified-badge {
   color: var(--accent);
   font-size: 1.2em;
-  filter: drop-shadow(0 0 6px rgba(0, 122, 255, 0.5));
 }
 .premium-nick {
-  background: linear-gradient(135deg, #007aff, #ffffff);
+  background: linear-gradient(135deg, #2563eb, #38bdf8);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   font-weight: 800;
-  text-shadow: 0 0 20px rgba(0, 122, 255, 0.4);
 }
 
-/* Посты */
 .post {
-  padding: 18px 20px;
-  border-bottom: 1px solid var(--border);
+  padding: 20px;
+  border-bottom: 1px solid var(--border-light);
   display: flex;
-  gap: 14px;
-  transition: background 0.2s ease, transform 0.2s;
+  gap: 16px;
+  transition: var(--transition);
   animation: fadeSlideIn 0.3s ease;
+  background: var(--bg-secondary);
 }
 .post:hover {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px);
+  background: var(--bg-tertiary);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 .avatar {
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #007aff, #0056cc);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -310,7 +314,7 @@ input:focus, textarea:focus, select:focus {
   font-size: 18px;
   flex-shrink: 0;
   color: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
 }
 .post-body {
   flex: 1;
@@ -321,21 +325,21 @@ input:focus, textarea:focus, select:focus {
   gap: 6px;
   align-items: center;
   flex-wrap: wrap;
+  margin-bottom: 8px;
 }
 .post-text {
-  margin: 8px 0;
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.6;
   word-break: break-word;
+  margin-bottom: 12px;
 }
 .post-actions {
   display: flex;
-  gap: 28px;
-  margin-top: 12px;
-  color: var(--text2);
+  gap: 24px;
+  color: var(--text-secondary);
 }
 .post-actions button {
-  color: var(--text2);
+  color: var(--text-secondary);
   background: none;
   cursor: pointer;
   font-size: 14px;
@@ -343,15 +347,14 @@ input:focus, textarea:focus, select:focus {
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border-radius: 16px;
-  transition: all 0.2s;
+  border-radius: 20px;
+  transition: var(--transition);
 }
 .post-actions button:hover {
   color: var(--accent);
-  background: rgba(0, 122, 255, 0.1);
+  background: var(--accent-light);
 }
 
-/* Хештеги и упоминания */
 .hashtag {
   color: var(--accent);
   font-weight: 600;
@@ -361,30 +364,28 @@ input:focus, textarea:focus, select:focus {
   font-weight: 600;
 }
 
-/* Ивенты */
 .event-banner {
-  background: linear-gradient(135deg, #007aff, #0056cc);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
   color: white;
-  border-radius: 24px;
-  padding: 18px 22px;
-  margin: 14px 0;
-  box-shadow: 0 8px 30px rgba(0, 122, 255, 0.4);
-  backdrop-filter: blur(5px);
-  transition: transform 0.2s;
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin: 16px 0;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+  transition: var(--transition);
 }
 .event-banner:hover {
   transform: scale(1.02);
 }
 
-/* Виджеты статистики */
 .stat-widget {
-  background: var(--card);
+  background: var(--bg-secondary);
   backdrop-filter: var(--glass-blur);
-  border-radius: 24px;
-  padding: 18px;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  margin-bottom: 14px;
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-md);
+  margin-bottom: 16px;
 }
 .stat-row {
   display: flex;
@@ -394,37 +395,36 @@ input:focus, textarea:focus, select:focus {
   font-weight: 500;
 }
 
-/* Баннер для гостей */
 .auth-banner {
-  background: var(--card);
+  background: var(--bg-secondary);
   backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 16px 22px;
-  margin-bottom: 18px;
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 16px 24px;
+  margin: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-md);
 }
 
-/* Композер поста */
 .post-composer {
-  padding: 18px;
-  border-bottom: 1px solid var(--border);
-  background: var(--card);
+  padding: 20px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-secondary);
   backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 .post-composer textarea {
   width: 100%;
-  min-height: 80px;
+  min-height: 90px;
   resize: none;
   margin-bottom: 12px;
 }
 
-/* Админка */
 .admin-actions {
   display: flex;
   flex-wrap: wrap;
@@ -436,12 +436,10 @@ input:focus, textarea:focus, select:focus {
   min-width: calc(50% - 10px);
 }
 
-/* Скрытие и отображение */
 .hidden {
   display: none !important;
 }
 
-/* Адаптация для телефонов (сохраняем стиль Liquid Glass) */
 @media (max-width: 768px) {
   .app-container {
     flex-direction: column;
@@ -457,23 +455,23 @@ input:focus, textarea:focus, select:focus {
     box-shadow: none;
   }
 
-  /* Нижняя навигация — тоже стекло */
   .sidebar-left {
     display: flex;
     position: fixed;
     bottom: 0;
     left: 0;
     width: 100%;
-    background: var(--bg2);
+    background: var(--bg-tertiary);
     backdrop-filter: var(--glass-blur);
-    border-top: 1px solid var(--border);
-    border-radius: 32px 32px 0 0;
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-top: 1px solid var(--border-light);
+    border-radius: 24px 24px 0 0;
     padding: 10px 0;
     z-index: 100;
     flex-direction: row;
     justify-content: space-around;
     align-items: center;
-    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.05);
   }
 
   .sidebar-left .nav {
@@ -490,6 +488,11 @@ input:focus, textarea:focus, select:focus {
     border-radius: 0;
     flex: 1;
     text-align: center;
+    color: var(--text-secondary);
+  }
+  .sidebar-left .nav-item.active {
+    color: var(--accent);
+    background: transparent;
   }
 
   .sidebar-left .nav-item span:first-child {
@@ -519,7 +522,7 @@ input:focus, textarea:focus, select:focus {
     justify-content: center;
     background: var(--accent);
     color: white;
-    box-shadow: 0 4px 15px rgba(0, 122, 255, 0.4);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
   }
   .theme-toggle-btn::before {
     content: "🌓";
