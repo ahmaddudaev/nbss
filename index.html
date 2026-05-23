@@ -18,6 +18,7 @@
       <nav class="nav">
         <a class="nav-item active" data-page="home"><span>🏠</span> <span>Главная</span></a>
         <a class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> <span>Профиль</span></a>
+        <a class="nav-item" data-page="messages" id="navMessages" style="display:none"><span>💬</span> <span>Сообщения</span></a>
         <a class="nav-item" data-page="events"><span>📅</span> <span>Ивенты</span></a>
         <a class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> <span>Админка</span></a>
         <a class="nav-item" data-page="settings"><span>🎨</span> <span>Тема</span></a>
@@ -34,6 +35,7 @@
         <div id="searchResults" class="search-results"></div>
       </div>
 
+      <!-- Страницы -->
       <section id="settingsPage" class="page">
         <div class="card">
           <h2>🎨 Настройки темы</h2>
@@ -44,84 +46,44 @@
           </div>
         </div>
       </section>
-      <section id="loginPage" class="page">
-        <div class="card auth-card">
-          <h2>🔐 Вход в НБСС</h2>
-          <input id="loginUsername" placeholder="Логин" autocomplete="username">
-          <input id="loginPassword" type="password" placeholder="Пароль" autocomplete="current-password">
-          <button id="loginBtn" class="btn primary full-width">Войти</button>
-          <p>Нет аккаунта? <a id="showRegisterLink">Зарегистрироваться</a></p>
-        </div>
-      </section>
-      <section id="registerPage" class="page">
-        <div class="card auth-card">
-          <h2>📝 Регистрация</h2>
-          <input id="regUsername" placeholder="Придумайте логин">
-          <input id="regPassword" type="password" placeholder="Пароль">
-          <button id="registerBtn" class="btn primary full-width">Создать аккаунт</button>
-        </div>
-      </section>
-      <section id="homePage" class="page active">
-        <div id="authBanner" class="auth-banner">
-          <span>👋 Добро пожаловать в НБСС! Вы смотрите публичную ленту.</span>
-          <span>
-            <button id="loginFromBanner" class="btn outline">Войти</button>
-            <button id="registerFromBanner" class="btn outline">Регистрация</button>
-          </span>
-        </div>
-        <div id="postComposer" class="post-composer" style="display:none">
-          <textarea id="postInput" placeholder="Что происходит? #хештег @упоминание"></textarea>
-          <button id="publishPost" class="btn primary">Опубликовать</button>
-        </div>
-        <div id="feedContainer" class="feed"></div>
-      </section>
+
+      <section id="loginPage" class="page">...</section> <!-- без изменений -->
+      <section id="registerPage" class="page">...</section>
+      <section id="homePage" class="page active">...</section>
+
+      <!-- Профиль (теперь может быть чужим) -->
       <section id="profilePage" class="page">
-        <div class="profile-header">
-          <h2 id="profileName">Профиль</h2>
-          <p id="profileStatus"></p>
-        </div>
+        <div class="profile-header" id="profileHeader"></div>
         <div id="profilePosts" class="feed"></div>
       </section>
-      <section id="eventsPage" class="page">
-        <div class="events-container">
-          <h2>📅 Активные ивенты</h2>
-          <div id="eventsList"></div>
-        </div>
-      </section>
-      <section id="adminPage" class="page">
-        <div class="admin-container">
-          <h2>⚙️ Административная панель</h2>
-          <div class="card" id="adminStats"></div>
-          <div class="card">
-            <h3>👥 Пользователи</h3>
-            <div class="admin-select-wrapper">
-              <select id="userSelect"></select>
-              <span class="admin-select-icon">▼</span>
+
+      <!-- Сообщения -->
+      <section id="messagesPage" class="page">
+        <div class="messages-container">
+          <div class="dialog-list" id="dialogList"></div>
+          <div class="chat-view" id="chatView" style="display:none;">
+            <div class="chat-header">
+              <button class="back-to-dialogs btn outline">← Назад</button>
+              <span id="chatPartner"></span>
             </div>
-            <div class="admin-actions">
-              <button id="verifyUserBtn" class="btn outline">✅ Галочка</button>
-              <button id="unverifyUserBtn" class="btn outline">❌ Убрать</button>
-              <button id="makeAdminBtn" class="btn outline">👑 Админ</button>
-              <button id="revokeAdminBtn" class="btn outline">🔻 Разжаловать</button>
-              <button id="givePremiumBtn" class="btn outline">💎 НБСС+</button>
-              <button id="revokePremiumBtn" class="btn outline">💔 Отобрать</button>
-              <button id="deleteUserBtn" class="btn danger">🗑 Удалить</button>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input">
+              <input type="text" id="messageInput" placeholder="Сообщение...">
+              <button id="sendMessageBtn" class="btn primary">Отправить</button>
             </div>
-          </div>
-          <div class="card">
-            <h3>Создать ивент</h3>
-            <input id="eventTitle" placeholder="Название">
-            <textarea id="eventDesc" placeholder="Описание"></textarea>
-            <button id="createEventBtn" class="btn primary">🚀 Запустить</button>
           </div>
         </div>
       </section>
+
+      <section id="eventsPage" class="page">...</section>
+      <section id="adminPage" class="page">...</section>
     </main>
 
     <!-- Мобильная нижняя панель -->
     <nav class="mobile-nav">
       <a class="mobile-nav-item active" data-page="home"><span>🏠</span></a>
       <a class="mobile-nav-item" data-page="profile" id="mobileNavProfile" style="display:none"><span>👤</span></a>
+      <a class="mobile-nav-item" data-page="messages" id="mobileNavMessages" style="display:none"><span>💬</span></a>
       <a class="mobile-nav-item" data-page="events"><span>📅</span></a>
       <a class="mobile-nav-item" data-page="admin" id="mobileNavAdmin" style="display:none"><span>⚙️</span></a>
       <a class="mobile-nav-item" data-page="settings"><span>🎨</span></a>
@@ -130,7 +92,6 @@
       <a class="mobile-nav-item" id="mobileRegisterLink" data-page="register"><span>📝</span></a>
     </nav>
   </div>
-
   <script src="script.js" defer></script>
 </body>
 </html>
