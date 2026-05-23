@@ -9,8 +9,6 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-
-// Раздача статических файлов из корня
 app.use(express.static(__dirname));
 app.get('/server.js', (req, res) => res.status(404).send('Not found'));
 
@@ -20,6 +18,7 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const POSTS_FILE = path.join(DATA_DIR, 'posts.json');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
+const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
 const STATS_FILE = path.join(DATA_DIR, 'stats.json');
 
 function loadJSON(file, def = {}) {
@@ -43,14 +42,15 @@ let users = loadJSON(USERS_FILE, {
 });
 let posts = loadJSON(POSTS_FILE, []);
 let events = loadJSON(EVENTS_FILE, []);
+let comments = loadJSON(COMMENTS_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
-// Автоматически восстанавливаем права MrSigma при каждом запуске
 if (users['MrSigma']) {
   users['MrSigma'].admin = true;
   users['MrSigma'].verified = true;
   users['MrSigma'].premium = true;
   saveJSON(USERS_FILE, users);
+  console.log('✅ Права MrSigma подтверждены');
 }
 
 app.use((req, res, next) => {
@@ -61,7 +61,6 @@ app.use((req, res, next) => {
 
 function hash(pw) { return crypto.createHash('sha256').update(pw).digest('hex'); }
 
-// Middleware авторизации
 function auth(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
@@ -75,6 +74,7 @@ function auth(req, res, next) {
 }
 
 // ---------- API ----------
+
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
@@ -110,7 +110,6 @@ app.post('/api/login', (req, res) => {
   });
 });
 
-// Новый endpoint – получить данные о себе
 app.get('/api/me', auth, (req, res) => {
   res.json({
     username: req.user.username,
@@ -120,7 +119,32 @@ app.get('/api/me', auth, (req, res) => {
   });
 });
 
-app.get('/api/posts', (req, res) => res.json(posts));
+// Поиск пользователей
+app.get('/api/users/search', (req, res) => {
+  const q = (req.query.q || '').toLowerCase();
+  if (!q) return res.json([]);
+  const results = Object.values(users)
+    .filter(u => u.username.toLowerCase().includes(q))
+    .map(u => ({
+      username: u.username,
+      verified: u.verified,
+      premium: u.premium
+    }));
+  res.json(results);
+});
+
+// Посты с обогащением
+app.get('/api/posts', (req, res) => {
+  const enriched = posts.map(p => {
+    const author = users[p.author] || {};
+    return {
+      ...p,
+      authorVerified: author.verified || false,
+      authorPremium: author.premium || false
+    };
+  });
+  res.json(enriched);
+});
 
 app.post('/api/posts', auth, (req, res) => {
   const { text } = req.body;
@@ -135,7 +159,14 @@ app.post('/api/posts', auth, (req, res) => {
   };
   posts.unshift(post);
   saveJSON(POSTS_FILE, posts);
-  res.json({ ok: true, post });
+  res.json({
+    ok: true,
+    post: {
+      ...post,
+      authorVerified: req.user.verified,
+      authorPremium: req.user.premium
+    }
+  });
 });
 
 app.post('/api/posts/:id/like', auth, (req, res) => {
@@ -162,8 +193,43 @@ app.post('/api/posts/:id/repost', auth, (req, res) => {
   res.json({ ok: true, reposts: post.reposts.length });
 });
 
-app.get('/api/events', (req, res) => res.json(events));
+// Комментарии с обогащением
+app.get('/api/posts/:id/comments', (req, res) => {
+  const postComments = comments.filter(c => c.postId == req.params.id);
+  const enriched = postComments.map(c => {
+    const author = users[c.author] || {};
+    return {
+      ...c,
+      authorVerified: author.verified || false,
+      authorPremium: author.premium || false
+    };
+  });
+  res.json(enriched);
+});
 
+app.post('/api/posts/:id/comments', auth, (req, res) => {
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ error: 'Текст комментария пуст' });
+  const comment = {
+    id: Date.now(),
+    postId: Number(req.params.id),
+    author: req.user.username,
+    text,
+    timestamp: new Date().toISOString()
+  };
+  comments.unshift(comment);
+  saveJSON(COMMENTS_FILE, comments);
+  res.json({
+    ok: true,
+    comment: {
+      ...comment,
+      authorVerified: req.user.verified,
+      authorPremium: req.user.premium
+    }
+  });
+});
+
+app.get('/api/events', (req, res) => res.json(events));
 app.post('/api/events', auth, (req, res) => {
   if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
   const { title, desc } = req.body;
@@ -207,12 +273,12 @@ app.get('/api/stats', (req, res) => {
   res.json({
     users: Object.keys(users).length,
     posts: posts.length,
+    comments: comments.length,
     pageviews: stats.pageviews,
     online: Math.floor(Math.random() * 5) + 1
   });
 });
 
-// Публичный fix-admin (запасной)
 app.get('/fix-admin', (req, res) => {
   if (users['MrSigma']) {
     users['MrSigma'].admin = true;
