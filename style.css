@@ -17,7 +17,6 @@
   --transition: 0.25s ease;
   --glass-blur: blur(12px);
 }
-
 .dark-mode {
   --bg-primary: #0f172a;
   --bg-secondary: #1e293b;
@@ -35,27 +34,22 @@ body {
   background: var(--bg-primary); color: var(--text-primary);
   min-height: 100vh; transition: background 0.4s, color 0.4s;
 }
-
 a { color: var(--accent); text-decoration: none; }
 button { cursor: pointer; border: none; background: none; font-family: inherit; color: inherit; transition: var(--transition); }
 input, textarea, select {
   font-family: inherit; background: var(--bg-secondary); color: var(--text-primary);
   border: 1px solid var(--border-medium); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 15px;
+  outline: none;
 }
 
-.app-container {
-  display: flex; max-width: 1280px; margin: 0 auto; width: 100%; padding: 20px 16px; gap: 20px; flex: 1;
-}
+.app-container { display: flex; max-width: 1280px; margin: 0 auto; width: 100%; padding: 20px 16px; gap: 20px; flex: 1; }
 
-/* Боковые панели */
 .sidebar {
   width: 280px; position: sticky; top: 20px; height: calc(100vh - 40px); padding: 20px;
   display: flex; flex-direction: column; gap: 20px;
   background: var(--bg-tertiary); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   border-radius: var(--radius-xl); border: 1px solid var(--border-light); box-shadow: 0 10px 20px rgba(0,0,0,0.05);
 }
-
-/* Центральная лента */
 .main-content {
   flex: 1; max-width: 600px; width: 100%;
   background: var(--bg-secondary); border-radius: var(--radius-xl); border: 1px solid var(--border-light);
@@ -65,21 +59,19 @@ input, textarea, select {
   background-size: 60%; background-blend-mode: overlay;
 }
 
-/* Страницы */
 .page { display: none; animation: fadeIn 0.3s ease; }
 .page.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Карточки */
 .card {
   background: var(--bg-secondary); border-radius: var(--radius-lg); border: 1px solid var(--border-light);
   padding: 24px; margin-bottom: 16px; backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
 }
 
-/* Кнопки – явно задаём, чтобы не выглядели как ссылки */
+/* Кнопки */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  border-radius: var(--radius-md); padding: 12px 24px; font-weight: 600; font-size: 15px;
+  border-radius: var(--radius-md); padding: 10px 20px; font-weight: 600; font-size: 15px;
   border: none; background: transparent; color: var(--text-primary); transition: var(--transition);
 }
 .btn.primary { background: var(--accent); color: white; }
@@ -89,22 +81,18 @@ input, textarea, select {
 .btn.danger { background: var(--danger); color: white; }
 .btn.full-width { width: 100%; }
 
-/* Навигация (элементы a должны вести себя как кнопки) */
-.nav {
-  display: flex; flex-direction: column; gap: 4px;
-}
+/* Навигация */
+.nav { display: flex; flex-direction: column; gap: 4px; }
 .nav-item {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 16px; border-radius: var(--radius-md);
   font-size: 16px; font-weight: 500; color: var(--text-primary);
   transition: var(--transition); background: transparent;
-  text-decoration: none; /* убираем подчёркивание */
-  user-select: none;
+  text-decoration: none; user-select: none;
 }
 .nav-item:hover { background: var(--accent-light); transform: translateX(4px); }
 .nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
 
-/* Кнопка смены темы */
 .theme-toggle-btn {
   background: var(--bg-secondary); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
   border-radius: var(--radius-md); padding: 12px; font-weight: 600; font-size: 15px;
@@ -113,35 +101,58 @@ input, textarea, select {
 }
 .theme-toggle-btn:hover { background: var(--accent-light); box-shadow: 0 6px 16px rgba(37,99,235,0.2); }
 
-/* Логотип — маленький */
 .sidebar-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .sidebar-logo img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 
-/* Никнеймы */
+/* Никнеймы – просторнее, с градиентом */
 .post-header .username,
 .comment-body .username,
 .search-user .username {
   display: inline-flex; align-items: center; gap: 5px;
-  padding: 6px 14px; margin: 2px 0; word-break: break-word;
-  max-width: 100%; border-radius: 8px; font-weight: 600;
+  padding: 8px 16px; margin: 2px 0; word-break: break-word;
+  max-width: 100%; border-radius: 12px; font-weight: 600;
   color: var(--text-primary);
 }
 .premium-nick {
   background: linear-gradient(135deg, #2563eb, #ffffff) !important;
-  -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important;
-  background-clip: text !important; font-weight: 800;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  font-weight: 800;
 }
 .verified-badge { color: var(--accent); font-size: 1.1em; }
 
 /* Посты */
-.post { padding: 20px; border-bottom: 1px solid var(--border-light); display: flex; gap: 16px; animation: fadeIn 0.3s; }
+.post {
+  padding: 20px; border-bottom: 1px solid var(--border-light);
+  display: flex; gap: 16px; animation: fadeIn 0.3s; background: var(--bg-secondary);
+}
 .avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #1d4ed8); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; color: white; flex-shrink: 0; }
-.post-body { flex: 1; }
-.post-actions { display: flex; gap: 24px; color: var(--text-secondary); margin-top: 12px; }
-.post-actions button { font-size: 14px; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; }
+.post-body { flex: 1; min-width: 0; }
+.post-header { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.post-text { font-size: 16px; line-height: 1.6; word-break: break-word; margin-bottom: 12px; }
+
+/* Кнопки действий – всегда в строку */
+.post-actions {
+  display: flex; gap: 20px; color: var(--text-secondary); margin-top: 12px;
+  flex-wrap: nowrap;          /* не переносить на новую строку */
+  overflow-x: auto;           /* если не помещается, скролл */
+}
+.post-actions button {
+  font-size: 14px; display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 20px; white-space: nowrap; background: none;
+  transition: var(--transition);
+}
 .post-actions button:hover { color: var(--accent); background: var(--accent-light); }
 .hashtag { color: var(--accent); font-weight: 600; }
 .mention { color: var(--accent); font-weight: 600; }
+
+/* Строка публикации – шире */
+.post-composer { padding: 20px; border-bottom: 1px solid var(--border-light); background: var(--bg-secondary); }
+.post-composer textarea {
+  width: 100%; min-height: 100px; resize: vertical; margin-bottom: 12px;
+  font-size: 16px; line-height: 1.5;
+}
 
 /* Комментарии */
 .comments-section { margin-top: 16px; border-top: 1px solid var(--border-light); padding-top: 12px; }
