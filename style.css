@@ -1,5 +1,5 @@
 /* =============================================
-   НБСС – Modern Liquid UI (logo fix + lift)
+   НБСС – Modern Liquid UI (blue-white gradient fix)
    ============================================= */
 :root {
   --bg-primary: #f8fafc;
@@ -121,12 +121,6 @@ select:focus {
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-lg);
-  background-image: url('logo.png');
-  background-repeat: no-repeat;
-  background-position: center center;
-  background-size: 80%;
-  background-blend-mode: overlay;
-  opacity: 0.95;
 }
 .sidebar-left {
   align-items: stretch;
@@ -206,6 +200,12 @@ select:focus {
   overflow: hidden;
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
+  /* размытое лого только здесь */
+  background-image: url('logo.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 60%;
+  background-blend-mode: overlay;
 }
 
 .page {
@@ -300,8 +300,9 @@ select:focus {
   color: var(--accent);
   font-size: 1.2em;
 }
+/* Градиентные ники НБСС+ (голубой → белый) */
 .premium-nick {
-  background: linear-gradient(135deg, #2563eb, #38bdf8);
+  background: linear-gradient(135deg, #2563eb, #ffffff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
