@@ -30,20 +30,66 @@
 
     <!-- Основной контент -->
     <main class="main-content">
+      <!-- Поиск -->
       <div class="search-box" style="margin:10px 20px;">
         <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." style="width:100%;">
         <div id="searchResults" class="search-results"></div>
       </div>
 
-      <!-- Страницы -->
-      <section id="settingsPage" class="page">...</section>
-      <section id="loginPage" class="page">...</section>
-      <section id="registerPage" class="page">...</section>
+      <!-- Страница настроек -->
+      <section id="settingsPage" class="page">
+        <div class="card settings-card">
+          <h2>🎨 Настройки темы</h2>
+          <p class="settings-subtitle">Выберите внешний вид вашей социальной сети</p>
+          <div class="theme-options">
+            <label class="theme-option-label">
+              <input type="radio" name="theme" value="classic">
+              <span class="theme-preview classic-preview"></span>
+              <span class="theme-name">Классическая</span>
+            </label>
+            <label class="theme-option-label">
+              <input type="radio" name="theme" value="liquid-light">
+              <span class="theme-preview liquid-light-preview"></span>
+              <span class="theme-name">Liquid Glass Светлая</span>
+            </label>
+            <label class="theme-option-label">
+              <input type="radio" name="theme" value="liquid-dark">
+              <span class="theme-preview liquid-dark-preview"></span>
+              <span class="theme-name">Liquid Glass Тёмная</span>
+            </label>
+          </div>
+        </div>
+      </section>
 
-      <!-- Главная (лента) -->
+      <!-- Страница входа (центрирована) -->
+      <section id="loginPage" class="page">
+        <div class="auth-center">
+          <div class="card auth-card">
+            <h2>🔐 Вход в НБСС</h2>
+            <input id="loginUsername" placeholder="Логин" autocomplete="username">
+            <input id="loginPassword" type="password" placeholder="Пароль" autocomplete="current-password">
+            <button id="loginBtn" class="btn primary full-width">Войти</button>
+            <p>Нет аккаунта? <a id="showRegisterLink">Зарегистрироваться</a></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Страница регистрации (центрирована) -->
+      <section id="registerPage" class="page">
+        <div class="auth-center">
+          <div class="card auth-card">
+            <h2>📝 Регистрация</h2>
+            <input id="regUsername" placeholder="Придумайте логин">
+            <input id="regPassword" type="password" placeholder="Пароль">
+            <button id="registerBtn" class="btn primary full-width">Создать аккаунт</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Главная страница (лента) с однострочным композером -->
       <section id="homePage" class="page active">
         <div id="authBanner" class="auth-banner card" style="display:flex; justify-content:space-between; align-items:center;">
-          <span>👋 Добро пожаловать в НБСС!</span>
+          <span>👋 Добро пожаловать в НБСС! Вы смотрите публичную ленту.</span>
           <span>
             <button id="loginFromBanner" class="btn outline">Войти</button>
             <button id="registerFromBanner" class="btn outline">Регистрация</button>
@@ -52,15 +98,7 @@
         <div id="postComposer" class="post-composer" style="display:none">
           <div class="composer-row">
             <input type="text" id="postInput" placeholder="Что происходит? #хештег @упоминание" class="composer-input" autocomplete="off">
-            <label class="composer-file-label">
-              🖼️
-              <input type="file" id="postImageInput" accept="image/*" style="display:none;">
-            </label>
             <button id="publishPost" class="btn primary composer-btn">Опубликовать</button>
-          </div>
-          <div id="imagePreviewContainer" style="margin-top:8px; display:none;">
-            <img id="imagePreview" src="" alt="Предпросмотр" style="max-width:200px; border-radius:12px;">
-            <button id="removeImageBtn" class="btn outline" style="margin-left:8px;">Удалить</button>
           </div>
         </div>
         <div id="feedContainer" class="feed"></div>
@@ -73,18 +111,63 @@
       </section>
 
       <!-- Сообщения -->
-      <section id="messagesPage" class="page">...</section>
-      <section id="eventsPage" class="page">...</section>
-      <section id="adminPage" class="page">...</section>
+      <section id="messagesPage" class="page">
+        <div class="messages-container">
+          <div class="dialog-list" id="dialogList"></div>
+          <div class="chat-view" id="chatView" style="display:none;">
+            <div class="chat-header">
+              <button class="back-to-dialogs btn outline">← Назад</button>
+              <span id="chatPartner"></span>
+            </div>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input">
+              <input type="text" id="messageInput" placeholder="Сообщение...">
+              <button id="sendMessageBtn" class="btn primary">Отправить</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ивенты -->
+      <section id="eventsPage" class="page">
+        <div class="events-container">
+          <h2>📅 Активные ивенты</h2>
+          <div id="eventsList"></div>
+        </div>
+      </section>
+
+      <!-- Админка -->
+      <section id="adminPage" class="page">
+        <div class="admin-container">
+          <h2>⚙️ Административная панель</h2>
+          <div class="card" id="adminStats"></div>
+          <div class="card">
+            <h3>👥 Пользователи</h3>
+            <div class="admin-select-wrapper">
+              <select id="userSelect"></select>
+              <span class="admin-select-icon">▼</span>
+            </div>
+            <div class="admin-actions">
+              <button id="verifyUserBtn" class="btn outline">✅ Галочка</button>
+              <button id="unverifyUserBtn" class="btn outline">❌ Убрать</button>
+              <button id="makeAdminBtn" class="btn outline">👑 Админ</button>
+              <button id="revokeAdminBtn" class="btn outline">🔻 Разжаловать</button>
+              <button id="givePremiumBtn" class="btn outline">💎 НБСС+</button>
+              <button id="revokePremiumBtn" class="btn outline">💔 Отобрать</button>
+              <button id="deleteUserBtn" class="btn danger">🗑 Удалить</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Создать ивент</h3>
+            <input id="eventTitle" placeholder="Название">
+            <textarea id="eventDesc" placeholder="Описание"></textarea>
+            <button id="createEventBtn" class="btn primary">🚀 Запустить</button>
+          </div>
+        </div>
+      </section>
     </main>
 
-    <!-- Модальное окно для картинки -->
-    <div id="imageModal" class="modal" style="display:none;">
-      <span class="modal-close" id="closeModal">&times;</span>
-      <img class="modal-content" id="modalImage">
-    </div>
-
-    <!-- Мобильная навигация -->
+    <!-- Мобильная нижняя панель -->
     <nav class="mobile-nav">
       <a class="mobile-nav-item active" data-page="home"><span>🏠</span></a>
       <a class="mobile-nav-item" data-page="profile" id="mobileNavProfile" style="display:none"><span>👤</span></a>
