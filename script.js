@@ -266,20 +266,86 @@ async function loadUserProfile(username) {
 }
 
 // Сообщения
-async function loadDialogs() { /* ... без изменений */ }
-async function openChat(username) { /* ... */ }
-async function loadMessages(username) { /* ... */ }
-document.getElementById('sendMessageBtn').addEventListener('click', async () => { /* ... */ });
-document.querySelector('.back-to-dialogs')?.addEventListener('click', () => { /* ... */ });
+async function loadDialogs() {
+  const list = document.getElementById('dialogList');
+  try {
+    const dialogs = await request('/dialogs');
+    list.innerHTML = dialogs.map(d => `<div class="dialog-item" data-username="${d.username}"><div class="dialog-username ${d.premium ? 'premium-nick' : ''}">${d.username}</div><div class="dialog-last">${d.lastMessage || 'Нет сообщений'}</div></div>`).join('');
+    document.querySelectorAll('.dialog-item').forEach(item => { item.addEventListener('click', () => { currentDialog = item.dataset.username; openChat(currentDialog); }); });
+    document.getElementById('chatView').style.display = 'none';
+    document.querySelector('.dialog-list').style.display = 'block';
+  } catch (e) {}
+}
+async function openChat(username) {
+  document.querySelector('.dialog-list').style.display = 'none';
+  document.getElementById('chatView').style.display = 'flex';
+  document.getElementById('chatPartner').textContent = username;
+  await loadMessages(username);
+}
+async function loadMessages(username) {
+  const container = document.getElementById('chatMessages');
+  try {
+    const msgs = await request(`/messages?with=${encodeURIComponent(username)}`);
+    container.innerHTML = msgs.map(m => `<div class="message-bubble ${m.from === currentUser.username ? 'sent' : 'received'}"><div>${m.text}</div><div class="message-time">${new Date(m.timestamp).toLocaleString()}</div></div>`).join('');
+    container.scrollTop = container.scrollHeight;
+  } catch (e) {}
+}
+document.getElementById('sendMessageBtn').addEventListener('click', async () => {
+  const input = document.getElementById('messageInput');
+  const text = input.value.trim();
+  if (!text || !currentDialog) return;
+  await request('/messages', { method: 'POST', body: JSON.stringify({ to: currentDialog, text }) });
+  input.value = '';
+  await loadMessages(currentDialog);
+});
+document.querySelector('.back-to-dialogs')?.addEventListener('click', () => {
+  document.getElementById('chatView').style.display = 'none';
+  document.querySelector('.dialog-list').style.display = 'block';
+  currentDialog = null;
+  loadDialogs();
+});
 
 // Ивенты
-async function loadEvents() { /* ... */ }
+async function loadEvents() {
+  const list = document.getElementById('eventsList');
+  try { const evs = await request('/events'); list.innerHTML = evs.length ? evs.map(e => `<div class="event-banner card"><strong>${e.title}</strong><p>${e.desc}</p></div>`).join('') : '<p>Нет ивентов</p>'; } catch (e) {}
+}
 
 // Админка
-async function loadAdminStats() { /* ... */ }
-async function loadAdminUsers() { /* ... */ }
-async function modifyUser(username, changes) { /* ... */ }
-document.getElementById('createEventBtn').addEventListener('click', async () => { /* ... */ });
+async function loadAdminStats() {
+  if (!currentUser?.admin) return;
+  const stats = await request('/stats');
+  document.getElementById('adminStats').innerHTML = `<h3>📊 Статистика</h3><div class="stat-row"><span>👥</span><span>${stats.users}</span></div><div class="stat-row"><span>📝</span><span>${stats.posts}</span></div>`;
+}
+async function loadAdminUsers() {
+  if (!currentUser?.admin) return;
+  const select = document.getElementById('userSelect');
+  try {
+    const usersList = await request('/admin/users');
+    select.innerHTML = usersList.map(u => `<option>${u.username} ${u.admin ? '(админ)' : ''} ${u.verified ? '✔️' : ''} ${u.premium ? '💎' : ''}</option>`).join('');
+    const getSelected = () => select.value.split(' ')[0];
+    const isSigma = () => getSelected() === 'MrSigma';
+    document.getElementById('verifyUserBtn').onclick = () => { if (isSigma()) return alert('Нельзя изменить владельца'); modifyUser(getSelected(), { verified: true }); };
+    document.getElementById('unverifyUserBtn').onclick = () => { if (isSigma()) return alert('Нельзя изменить владельца'); modifyUser(getSelected(), { verified: false }); };
+    document.getElementById('makeAdminBtn').onclick = () => { if (isSigma()) return alert('Нельзя изменить владельца'); modifyUser(getSelected(), { admin: true }); };
+    document.getElementById('revokeAdminBtn').onclick = () => { if (isSigma()) return alert('Нельзя изменить владельца'); modifyUser(getSelected(), { admin: false }); };
+    document.getElementById('givePremiumBtn').onclick = () => { if (isSigma()) return alert('Нельзя изменить владельца'); modifyUser(getSelected(), { premium: true }); };
+    document.getElementById('revokePremiumBtn').onclick = () => { if (isSigma()) return alert('Нельзя изменить владельца'); modifyUser(getSelected(), { premium: false }); };
+    document.getElementById('deleteUserBtn').onclick = () => { if (isSigma()) return alert('Нельзя удалить основателя'); if (confirm(`Удалить ${getSelected()}?`)) modifyUser(getSelected(), { delete: true }); };
+  } catch (e) { select.innerHTML = '<option>Ошибка загрузки</option>'; }
+}
+async function modifyUser(username, changes) {
+  await request(`/admin/user/${username}`, { method: 'POST', body: JSON.stringify(changes) });
+  loadAdminUsers();
+}
+document.getElementById('createEventBtn').addEventListener('click', async () => {
+  const title = document.getElementById('eventTitle').value.trim();
+  const desc = document.getElementById('eventDesc').value.trim();
+  if (!title) return;
+  await request('/events', { method: 'POST', body: JSON.stringify({ title, desc }) });
+  document.getElementById('eventTitle').value = ''; document.getElementById('eventDesc').value = '';
+  loadEvents();
+});
 
 // Статистика
 async function updateStats() {
@@ -289,4 +355,39 @@ updateStats();
 setInterval(updateStats, 10000);
 
 // Поиск
-document.getElementById('searchInput')?.addEventListener('input', async (e) => { /* ... */ });
+document.getElementById('searchInput')?.addEventListener('input', async (e) => {
+  const q = e.target.value.trim();
+  const container = document.getElementById('searchResults');
+  if (!container) return;
+  if (!q) { container.innerHTML = ''; return; }
+  try {
+    const users = await request(`/users/search?q=${encodeURIComponent(q)}`);
+    container.innerHTML = users.map(u => `
+      <div class="search-user">
+        <span class="username ${u.premium ? 'premium-nick' : ''}">${u.username}${u.verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span>
+        <button class="btn outline view-profile-btn" data-username="${u.username}">→</button>
+      </div>
+    `).join('');
+    document.querySelectorAll('.view-profile-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        window.viewingUser = btn.dataset.username;
+        showPage('profile');
+      });
+    });
+  } catch (e) {}
+});
+
+// Клик по нику в ленте
+document.addEventListener('click', (e) => {
+  const usernameEl = e.target.closest('.username');
+  if (usernameEl && !e.target.closest('.view-profile-btn')) {
+    const postEl = usernameEl.closest('.post');
+    if (postEl) {
+      const author = postEl.dataset.author;
+      if (author && author !== currentUser?.username) {
+        window.viewingUser = author;
+        showPage('profile');
+      }
+    }
+  }
+});
