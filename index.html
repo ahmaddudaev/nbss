@@ -15,14 +15,14 @@
         <img src="logo.png" alt="НБСС">
         <span class="logo-text">НБСС</span>
       </div>
-      <nav class="nav">
+      <nav class="nav" id="mainNav">
         <a class="nav-item active" data-page="home"><span>🏠</span> <span>Главная</span></a>
         <a class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> <span>Профиль</span></a>
         <a class="nav-item" data-page="messages" id="navMessages" style="display:none"><span>💬</span> <span>Сообщения</span></a>
         <a class="nav-item" data-page="events"><span>📅</span> <span>Ивенты</span></a>
         <a class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> <span>Админка</span></a>
         <a class="nav-item" data-page="settings"><span>🎨</span> <span>Тема</span></a>
-        <a class="nav-item" id="logoutLink" style="display:none"><span>🚪</span> <span>Выйти</span></a>
+        <a class="nav-item" id="logoutLink" data-page="logout" style="display:none"><span>🚪</span> <span>Выйти</span></a>
         <a class="nav-item" id="loginLink" data-page="login"><span>🔑</span> <span>Войти</span></a>
         <a class="nav-item" id="registerLink" data-page="register"><span>📝</span> <span>Регистрация</span></a>
       </nav>
@@ -30,13 +30,12 @@
 
     <!-- Основной контент -->
     <main class="main-content">
-      <!-- Поиск -->
       <div class="search-box" style="margin:10px 20px;">
         <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." style="width:100%;">
         <div id="searchResults" class="search-results"></div>
       </div>
 
-      <!-- Страница настроек -->
+      <!-- Настройки -->
       <section id="settingsPage" class="page">
         <div class="card settings-card">
           <h2>🎨 Настройки темы</h2>
@@ -61,7 +60,7 @@
         </div>
       </section>
 
-      <!-- Страница входа (центрирована) -->
+      <!-- Вход -->
       <section id="loginPage" class="page">
         <div class="auth-center">
           <div class="card auth-card">
@@ -74,7 +73,7 @@
         </div>
       </section>
 
-      <!-- Страница регистрации (центрирована) -->
+      <!-- Регистрация -->
       <section id="registerPage" class="page">
         <div class="auth-center">
           <div class="card auth-card">
@@ -86,13 +85,13 @@
         </div>
       </section>
 
-      <!-- Главная страница (лента) с однострочным композером -->
+      <!-- Главная -->
       <section id="homePage" class="page active">
         <div id="authBanner" class="auth-banner card" style="display:flex; justify-content:space-between; align-items:center;">
           <span>👋 Добро пожаловать в НБСС! Вы смотрите публичную ленту.</span>
           <span>
-            <button id="loginFromBanner" class="btn outline">Войти</button>
-            <button id="registerFromBanner" class="btn outline">Регистрация</button>
+            <button id="loginFromBanner" class="btn outline" data-page="login">Войти</button>
+            <button id="registerFromBanner" class="btn outline" data-page="register">Регистрация</button>
           </span>
         </div>
         <div id="postComposer" class="post-composer" style="display:none">
@@ -168,14 +167,14 @@
     </main>
 
     <!-- Мобильная нижняя панель -->
-    <nav class="mobile-nav">
+    <nav class="mobile-nav" id="mobileNav">
       <a class="mobile-nav-item active" data-page="home"><span>🏠</span></a>
       <a class="mobile-nav-item" data-page="profile" id="mobileNavProfile" style="display:none"><span>👤</span></a>
       <a class="mobile-nav-item" data-page="messages" id="mobileNavMessages" style="display:none"><span>💬</span></a>
       <a class="mobile-nav-item" data-page="events"><span>📅</span></a>
       <a class="mobile-nav-item" data-page="admin" id="mobileNavAdmin" style="display:none"><span>⚙️</span></a>
       <a class="mobile-nav-item" data-page="settings"><span>🎨</span></a>
-      <a class="mobile-nav-item" id="mobileLogoutLink" style="display:none"><span>🚪</span></a>
+      <a class="mobile-nav-item" id="mobileLogoutLink" data-page="logout" style="display:none"><span>🚪</span></a>
       <a class="mobile-nav-item" id="mobileLoginLink" data-page="login"><span>🔑</span></a>
       <a class="mobile-nav-item" id="mobileRegisterLink" data-page="register"><span>📝</span></a>
     </nav>
