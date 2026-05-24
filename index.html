@@ -18,7 +18,6 @@
       <nav class="nav">
         <a class="nav-item active" data-page="home"><span>🏠</span> <span>Главная</span></a>
         <a class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> <span>Профиль</span></a>
-        <a class="nav-item" data-page="messages" id="navMessages" style="display:none"><span>💬</span> <span>Сообщения</span></a>
         <a class="nav-item" data-page="events"><span>📅</span> <span>Ивенты</span></a>
         <a class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> <span>Админка</span></a>
         <a class="nav-item" data-page="settings"><span>🎨</span> <span>Тема</span></a>
@@ -109,24 +108,6 @@
         <div id="profilePosts" class="feed"></div>
       </section>
 
-      <!-- Сообщения -->
-      <section id="messagesPage" class="page">
-        <div class="messages-container">
-          <div class="dialog-list" id="dialogList"></div>
-          <div class="chat-view" id="chatView" style="display:none;">
-            <div class="chat-header">
-              <button class="back-to-dialogs btn outline">← Назад</button>
-              <span id="chatPartner"></span>
-            </div>
-            <div class="chat-messages" id="chatMessages"></div>
-            <div class="chat-input">
-              <input type="text" id="messageInput" placeholder="Сообщение...">
-              <button id="sendMessageBtn" class="btn primary">Отправить</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <!-- Ивенты -->
       <section id="eventsPage" class="page">
         <div class="events-container">
@@ -170,7 +151,6 @@
     <nav class="mobile-nav">
       <a class="mobile-nav-item active" data-page="home"><span>🏠</span></a>
       <a class="mobile-nav-item" data-page="profile" id="mobileNavProfile" style="display:none"><span>👤</span></a>
-      <a class="mobile-nav-item" data-page="messages" id="mobileNavMessages" style="display:none"><span>💬</span></a>
       <a class="mobile-nav-item" data-page="events"><span>📅</span></a>
       <a class="mobile-nav-item" data-page="admin" id="mobileNavAdmin" style="display:none"><span>⚙️</span></a>
       <a class="mobile-nav-item" data-page="settings"><span>🎨</span></a>
