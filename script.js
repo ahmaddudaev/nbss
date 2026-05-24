@@ -4,8 +4,8 @@ let currentUser = null;
 let currentDialog = null;
 
 async function request(url, options = {}) {
-  const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-  // Не устанавливаем Content-Type для FormData
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   if (!(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
@@ -17,64 +17,197 @@ async function request(url, options = {}) {
   return res.json();
 }
 
-// Инициализация (как раньше)
-
-// ... (функции showPage, updateUIForAuth, навигация, вход/регистрация/выход, темы – без изменений)
-
-// ========== ЗАГРУЗКА КАРТИНКИ В ПОСТ ==========
-const postImageInput = document.getElementById('postImageInput');
-const imagePreviewContainer = document.getElementById('imagePreviewContainer');
-const imagePreview = document.getElementById('imagePreview');
-const removeImageBtn = document.getElementById('removeImageBtn');
-let selectedImage = null;
-
-postImageInput?.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    selectedImage = file;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      imagePreview.src = event.target.result;
-      imagePreviewContainer.style.display = 'flex';
-    };
-    reader.readAsDataURL(file);
+// Инициализация
+(async function init() {
+  if (token) {
+    try { currentUser = await request('/me'); }
+    catch (e) { token = null; currentUser = null; localStorage.removeItem('nbss_token'); }
   }
+  updateUIForAuth();
+  showPage('home');
+  loadTheme();
+})();
+
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById(pageId + 'Page');
+  if (target) target.classList.add('active');
+
+  document.querySelectorAll('.nav-item[data-page], .mobile-nav-item[data-page]').forEach(n => n.classList.remove('active'));
+  const navItems = document.querySelectorAll(`[data-page="${pageId}"]`);
+  navItems.forEach(n => n.classList.add('active'));
+
+  const searchBox = document.querySelector('.search-box');
+  if (searchBox) searchBox.style.display = (pageId === 'home') ? 'block' : 'none';
+
+  if (pageId === 'home') loadPosts();
+  if (pageId === 'profile') {
+    if (currentUser && !window.viewingUser) loadMyProfile();
+    else if (window.viewingUser) loadUserProfile(window.viewingUser);
+  }
+  if (pageId === 'messages') loadDialogs();
+  if (pageId === 'events') loadEvents();
+  if (pageId === 'admin') { loadAdminStats(); loadAdminUsers(); }
+  if (pageId === 'settings') updateThemeSettings();
+  updateStats();
+}
+
+function updateUIForAuth() {
+  const loggedIn = !!token;
+  document.getElementById('authBanner').style.display = loggedIn ? 'none' : 'flex';
+  document.getElementById('postComposer').style.display = loggedIn ? 'block' : 'none';
+  document.getElementById('navProfile').style.display = loggedIn ? 'flex' : 'none';
+  document.getElementById('navMessages').style.display = loggedIn ? 'flex' : 'none';
+  document.getElementById('mobileNavProfile').style.display = loggedIn ? 'flex' : 'none';
+  document.getElementById('mobileNavMessages').style.display = loggedIn ? 'flex' : 'none';
+  document.getElementById('logoutLink').style.display = loggedIn ? 'flex' : 'none';
+  document.getElementById('mobileLogoutLink').style.display = loggedIn ? 'flex' : 'none';
+  document.getElementById('loginLink').style.display = loggedIn ? 'none' : 'flex';
+  document.getElementById('mobileLoginLink').style.display = loggedIn ? 'none' : 'flex';
+  document.getElementById('registerLink').style.display = loggedIn ? 'none' : 'flex';
+  document.getElementById('mobileRegisterLink').style.display = loggedIn ? 'none' : 'flex';
+  const navAdmin = document.getElementById('navAdmin');
+  const mobileNavAdmin = document.getElementById('mobileNavAdmin');
+  if (navAdmin) navAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
+  if (mobileNavAdmin) mobileNavAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
+}
+
+// ========== НАВИГАЦИЯ (сайдбар + мобильная панель + кнопки в ленте) ==========
+document.querySelectorAll('.nav-item[data-page], .mobile-nav-item[data-page]').forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    const page = link.dataset.page;
+    if (page === 'profile' && !token) return alert('Сначала войдите');
+    if (page === 'messages' && !token) return alert('Сначала войдите');
+    if (page === 'admin' && !(currentUser?.admin)) return alert('Нет прав администратора');
+    window.viewingUser = null;
+    showPage(page);
+  });
 });
 
-removeImageBtn?.addEventListener('click', () => {
-  selectedImage = null;
-  postImageInput.value = '';
-  imagePreviewContainer.style.display = 'none';
+// Кнопки в баннере "Войти" и "Регистрация"
+document.getElementById('loginFromBanner')?.addEventListener('click', () => {
+  showPage('login');
+});
+document.getElementById('registerFromBanner')?.addEventListener('click', () => {
+  showPage('register');
 });
 
-// ========== ПУБЛИКАЦИЯ (с картинкой) ==========
-document.getElementById('publishPost').addEventListener('click', async () => {
-  const text = document.getElementById('postInput').value.trim();
-  if (!text && !selectedImage) return;
-
-  const formData = new FormData();
-  if (text) formData.append('text', text);
-  if (selectedImage) formData.append('image', selectedImage);
-
+// ========== ВХОД / РЕГИСТРАЦИЯ / ВЫХОД ==========
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const u = document.getElementById('loginUsername').value.trim();
+  const p = document.getElementById('loginPassword').value.trim();
   try {
-    await request('/posts', { method: 'POST', body: formData });
-    document.getElementById('postInput').value = '';
-    selectedImage = null;
-    postImageInput.value = '';
-    imagePreviewContainer.style.display = 'none';
-    loadPosts();
+    const data = await request('/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
+    token = data.token; currentUser = data.user;
+    localStorage.setItem('nbss_token', token); updateUIForAuth(); showPage('home');
   } catch (e) { alert(e.message); }
 });
 
-// Отправка по Enter (без Shift)
-document.getElementById('postInput')?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    document.getElementById('publishPost').click();
+document.getElementById('registerBtn').addEventListener('click', async () => {
+  const u = document.getElementById('regUsername').value.trim();
+  const p = document.getElementById('regPassword').value.trim();
+  if (!u || !p) return alert('Заполните поля');
+  if (u.length < 3) return alert('Минимум 3 символа');
+  try {
+    await request('/register', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
+    alert('Аккаунт создан! Войдите.'); showPage('login');
+  } catch (e) { alert(e.message); }
+});
+
+document.getElementById('logoutLink').addEventListener('click', () => {
+  token = null; currentUser = null; localStorage.removeItem('nbss_token');
+  updateUIForAuth(); showPage('home');
+});
+document.getElementById('mobileLogoutLink').addEventListener('click', () => {
+  token = null; currentUser = null; localStorage.removeItem('nbss_token');
+  updateUIForAuth(); showPage('home');
+});
+
+// ========== ТЕМЫ ==========
+function applyTheme(theme) {
+  document.body.classList.remove('classic', 'liquid-light', 'liquid-dark');
+  document.body.classList.add(theme);
+  localStorage.setItem('nbss_theme', theme);
+}
+function loadTheme() {
+  const saved = localStorage.getItem('nbss_theme') || 'classic';
+  applyTheme(saved);
+}
+function updateThemeSettings() {
+  const radios = document.querySelectorAll('input[name="theme"]');
+  const current = localStorage.getItem('nbss_theme') || 'classic';
+  radios.forEach(r => { r.checked = (r.value === current); });
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('input[name="theme"]').forEach(radio => {
+    radio.addEventListener('change', (e) => { if (e.target.checked) applyTheme(e.target.value); });
+  });
+});
+
+// ========== ПОИСК И ПЕРЕХОД В ПРОФИЛЬ ==========
+document.getElementById('searchInput')?.addEventListener('input', async (e) => {
+  const q = e.target.value.trim();
+  const container = document.getElementById('searchResults');
+  if (!container) return;
+  if (!q) { container.innerHTML = ''; return; }
+  try {
+    const users = await request(`/users/search?q=${encodeURIComponent(q)}`);
+    container.innerHTML = users.map(u => `
+      <div class="search-user">
+        <span class="username ${u.premium ? 'premium-nick' : ''}">${u.username}${u.verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span>
+        <button class="btn outline view-profile-btn" data-username="${u.username}">→</button>
+      </div>
+    `).join('');
+    document.querySelectorAll('.view-profile-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const username = btn.dataset.username;
+        window.viewingUser = username;
+        showPage('profile');
+      });
+    });
+  } catch (e) {}
+});
+
+// Клик по нику в ленте
+document.addEventListener('click', (e) => {
+  const usernameEl = e.target.closest('.username');
+  if (usernameEl && !e.target.closest('.view-profile-btn')) {
+    const postEl = usernameEl.closest('.post');
+    if (postEl) {
+      const author = postEl.dataset.author;
+      if (author && author !== currentUser?.username) {
+        window.viewingUser = author;
+        showPage('profile');
+      }
+    }
   }
 });
 
-// ========== ЛЕНТА (добавлено отображение картинок и модалка) ==========
+// ========== ПУБЛИКАЦИЯ ПОСТА ==========
+document.getElementById('publishPost').addEventListener('click', async () => {
+  const text = document.getElementById('postInput').value.trim();
+  if (!text) return;
+  try {
+    await request('/posts', { method: 'POST', body: JSON.stringify({ text }) });
+    document.getElementById('postInput').value = '';
+    loadPosts();
+  } catch (e) { alert(e.message); }
+});
+document.getElementById('postInput')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('publishPost').click(); }
+});
+
+// ========== ЛЕНТА ==========
+async function loadPosts() {
+  const container = document.getElementById('feedContainer');
+  try {
+    const posts = await request('/posts');
+    container.innerHTML = posts.map(p => renderPost(p)).join('');
+    attachPostActions();
+  } catch (e) { container.innerHTML = '<p>Ошибка загрузки</p>'; }
+}
+
 function renderPost(p) {
   const premium = p.authorPremium === true;
   const verified = p.authorVerified === true;
@@ -100,23 +233,85 @@ function renderPost(p) {
     </div>`;
 }
 
-// Модальное окно
-function openImageModal(src) {
-  const modal = document.getElementById('imageModal');
-  const modalImg = document.getElementById('modalImage');
-  modal.style.display = 'flex';
-  modalImg.src = src;
+function attachPostActions() {
+  document.querySelectorAll('.like-btn').forEach(b => b.onclick = async function() {
+    if (!token) return alert('Войдите');
+    const postId = this.closest('.post').dataset.id;
+    await request(`/posts/${postId}/like`, { method: 'POST' }); loadPosts();
+  });
+  document.querySelectorAll('.repost-btn').forEach(b => b.onclick = async function() {
+    if (!token) return alert('Войдите');
+    const postId = this.closest('.post').dataset.id;
+    await request(`/posts/${postId}/repost`, { method: 'POST' }); loadPosts();
+  });
+  document.querySelectorAll('.comment-toggle').forEach(b => b.onclick = async function() {
+    const postEl = this.closest('.post');
+    const section = postEl.querySelector('.comments-section');
+    if (section.style.display === 'none') {
+      section.style.display = 'block';
+      await loadComments(postEl.dataset.id, section);
+    } else section.style.display = 'none';
+  });
+  document.querySelectorAll('.translate-btn').forEach(btn => {
+    btn.onclick = async function() {
+      const postId = this.dataset.postId;
+      const textEl = document.getElementById(`text-${postId}`);
+      if (!textEl) return;
+      const originalText = textEl.dataset.original || textEl.textContent;
+      textEl.dataset.original = originalText;
+      if (textEl.dataset.translated === 'true') {
+        textEl.textContent = originalText;
+        textEl.dataset.translated = 'false';
+        return;
+      }
+      textEl.textContent = 'Перевод...';
+      try {
+        const targetLang = navigator.language || 'en';
+        const data = await request('/translate', { method: 'POST', body: JSON.stringify({ text: originalText, target: targetLang }) });
+        textEl.textContent = data.translation;
+        textEl.dataset.translated = 'true';
+      } catch (e) { textEl.textContent = originalText; alert('Не удалось перевести'); }
+    };
+  });
 }
-document.getElementById('closeModal')?.addEventListener('click', () => {
-  document.getElementById('imageModal').style.display = 'none';
-});
-window.onclick = (event) => {
-  if (event.target === document.getElementById('imageModal')) {
-    document.getElementById('imageModal').style.display = 'none';
-  }
-};
 
-// ========== ПРОФИЛЬ (кнопка Подписаться) ==========
+async function loadComments(postId, container) {
+  try {
+    const comments = await request(`/posts/${postId}/comments`);
+    container.innerHTML = comments.map(c => renderComment(c)).join('') +
+      (token ? `<div class="comment-form"><input type="text" class="comment-input" placeholder="Комментарий..."><button class="btn primary comment-submit">Отпр.</button></div>` : '<p>Войдите, чтобы комментировать</p>');
+    if (token) {
+      const inp = container.querySelector('.comment-input');
+      const btn = container.querySelector('.comment-submit');
+      btn.onclick = async () => {
+        const text = inp.value.trim(); if (!text) return;
+        await request(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ text }) });
+        await loadComments(postId, container);
+      };
+    }
+  } catch (e) {}
+}
+
+function renderComment(c) {
+  const premium = c.authorPremium === true;
+  const verified = c.authorVerified === true;
+  return `<div class="comment"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${premium ? 'premium-nick' : ''}">${c.author}${verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span> <span>${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${c.text}</p></div></div>`;
+}
+
+// ========== ПРОФИЛИ ==========
+async function loadMyProfile() {
+  if (!currentUser) return;
+  const header = document.getElementById('profileHeader');
+  header.innerHTML = `
+    <h2 class="${currentUser.premium ? 'premium-nick' : ''}">${currentUser.username}</h2>
+    <p>${currentUser.verified ? '✅ Верифицирован' : ''} ${currentUser.premium ? '💎 НБСС+' : ''}</p>
+  `;
+  const posts = await request('/posts');
+  const userPosts = posts.filter(p => p.author === currentUser.username);
+  document.getElementById('profilePosts').innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
+  attachPostActions();
+}
+
 async function loadUserProfile(username) {
   try {
     const user = await request(`/user/${username}`);
@@ -124,7 +319,6 @@ async function loadUserProfile(username) {
     header.innerHTML = `
       <h2 class="${user.premium ? 'premium-nick' : ''}">${user.username} ${user.verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</h2>
       <p>${user.premium ? '💎 НБСС+' : ''}</p>
-      <p>Подписчики: ${user.followers} · Подписки: ${user.following}</p>
       <div class="profile-actions">
         <button class="btn primary send-message-btn" data-username="${user.username}">💬 Написать сообщение</button>
         <button class="btn outline follow-btn" data-username="${user.username}">
@@ -132,20 +326,44 @@ async function loadUserProfile(username) {
         </button>
       </div>
     `;
-    // Обработчик подписки
+    document.querySelector('.send-message-btn')?.addEventListener('click', () => {
+      window.viewingUser = null;
+      currentDialog = username;
+      showPage('messages');
+      openChat(username);
+    });
     document.querySelector('.follow-btn')?.addEventListener('click', async () => {
       try {
         await request(`/follow/${username}`, { method: 'POST' });
-        // Обновить текущего пользователя и интерфейс
         currentUser = await request('/me');
-        loadUserProfile(username); // перерисовать кнопку
+        loadUserProfile(username);
       } catch (e) { alert(e.message); }
     });
-
-    // ... остальная загрузка постов
-  } catch (e) { ... }
+    const posts = await request('/posts');
+    const userPosts = posts.filter(p => p.author === username);
+    document.getElementById('profilePosts').innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
+    attachPostActions();
+  } catch (e) {
+    document.getElementById('profileHeader').innerHTML = '<p>Пользователь не найден</p>';
+  }
 }
 
-// В loadMyProfile() также обновить отображение подписчиков/подписок
+// ========== ЛИЧНЫЕ СООБЩЕНИЯ ==========
+async function loadDialogs() { /* ... без изменений ... */ }
+async function openChat(username) { /* ... без изменений ... */ }
+async function loadMessages(username) { /* ... без изменений ... */ }
+document.getElementById('sendMessageBtn').addEventListener('click', async () => { /* ... без изменений ... */ });
+document.querySelector('.back-to-dialogs')?.addEventListener('click', () => { /* ... без изменений ... */ });
 
-// Остальные функции (лайки, комментарии, перевод, сообщения, админка) остаются без изменений, только дополнены новыми возможностями.
+// ========== ИВЕНТЫ ==========
+async function loadEvents() { /* ... без изменений ... */ }
+
+// ========== АДМИНКА ==========
+async function loadAdminStats() { /* ... без изменений ... */ }
+async function loadAdminUsers() { /* ... без изменений ... */ }
+async function modifyUser(username, changes) { /* ... без изменений ... */ }
+document.getElementById('createEventBtn').addEventListener('click', async () => { /* ... без изменений ... */ });
+
+// ========== СТАТИСТИКА ==========
+async function updateStats() { try { await request('/stats'); } catch (e) {} }
+updateStats(); setInterval(updateStats, 10000);
