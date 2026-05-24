@@ -22,7 +22,6 @@ const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const POSTS_FILE = path.join(DATA_DIR, 'posts.json');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
-const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
 const STATS_FILE = path.join(DATA_DIR, 'stats.json');
 
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
@@ -57,7 +56,6 @@ let users = loadJSON(USERS_FILE, {
 let posts = loadJSON(POSTS_FILE, []);
 let events = loadJSON(EVENTS_FILE, []);
 let comments = loadJSON(COMMENTS_FILE, []);
-let messages = loadJSON(MESSAGES_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
 // Инициализация недостающих полей у всех пользователей
@@ -118,6 +116,8 @@ const upload = multer({
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
+  // Проверка на пробелы
+  if (/\s/.test(username)) return res.status(400).json({ error: 'Логин не должен содержать пробелы' });
   if (users[username]) return res.status(400).json({ error: 'Пользователь уже существует' });
   users[username] = {
     username,
@@ -137,12 +137,9 @@ app.post('/api/register', (req, res) => {
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   const user = users[username];
-  if (!user || user.password !== hash(password)) {
-    return res.status(401).json({ error: 'Неверный логин или пароль' });
-  }
+  if (!user || user.password !== hash(password)) return res.status(401).json({ error: 'Неверный логин или пароль' });
   const token = crypto.randomBytes(32).toString('hex');
   user.token = token;
-  // Гарантируем наличие массивов
   if (!user.followers) user.followers = [];
   if (!user.following) user.following = [];
   saveJSON(USERS_FILE, users);
@@ -341,11 +338,9 @@ app.post('/api/admin/user/:username', auth, (req, res) => {
     delete users[target];
     posts = posts.filter(p => p.author !== target);
     comments = comments.filter(c => c.author !== target);
-    messages = messages.filter(m => m.from !== target && m.to !== target);
     saveJSON(USERS_FILE, users);
     saveJSON(POSTS_FILE, posts);
     saveJSON(COMMENTS_FILE, comments);
-    saveJSON(MESSAGES_FILE, messages);
     return res.json({ ok: true });
   }
 
@@ -393,54 +388,6 @@ app.post('/api/follow/:username', auth, (req, res) => {
 
   saveJSON(USERS_FILE, users);
   res.json({ ok: true, followers: them.followers.length, following: me.following.length });
-});
-
-app.get('/api/dialogs', auth, (req, res) => {
-  const user = req.user.username;
-  const dialogs = new Map();
-  messages.forEach(m => {
-    if (m.from === user || m.to === user) {
-      const partner = m.from === user ? m.to : m.from;
-      if (!dialogs.has(partner) || m.timestamp > dialogs.get(partner).timestamp) {
-        dialogs.set(partner, { username: partner, lastMessage: m.text, timestamp: m.timestamp });
-      }
-    }
-  });
-  const result = Array.from(dialogs.values()).sort((a, b) => b.timestamp - a.timestamp);
-  result.forEach(d => {
-    const u = users[d.username];
-    if (u) { d.premium = u.premium || false; d.verified = u.verified || false; }
-  });
-  res.json(result);
-});
-
-app.get('/api/messages', auth, (req, res) => {
-  const partner = req.query.with;
-  if (!partner) return res.status(400).json({ error: 'Не указан собеседник' });
-  const user = req.user.username;
-  const conversation = messages
-    .filter(m => (m.from === user && m.to === partner) || (m.from === partner && m.to === user))
-    .sort((a, b) => a.timestamp - b.timestamp);
-  res.json(conversation);
-});
-
-app.post('/api/messages', auth, (req, res) => {
-  const { to, text } = req.body;
-  if (!to || !text) return res.status(400).json({ error: 'Заполните получателя и текст' });
-  const msg = { id: Date.now(), from: req.user.username, to, text, timestamp: new Date().toISOString() };
-  messages.push(msg);
-  saveJSON(MESSAGES_FILE, messages);
-  res.json({ ok: true, message: msg });
-});
-
-app.get('/fix-admin', (req, res) => {
-  if (users['MrSigma']) {
-    users['MrSigma'].admin = true;
-    users['MrSigma'].verified = true;
-    users['MrSigma'].premium = true;
-    saveJSON(USERS_FILE, users);
-    res.send('✅ MrSigma теперь админ!');
-  } else res.send('❌ Пользователь не найден');
 });
 
 app.listen(PORT, () => console.log(`🚀 НБСС запущен на порту ${PORT}`));
