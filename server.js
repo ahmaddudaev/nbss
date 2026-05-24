@@ -60,6 +60,13 @@ let comments = loadJSON(COMMENTS_FILE, []);
 let messages = loadJSON(MESSAGES_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
+// Инициализация недостающих полей у всех пользователей
+Object.values(users).forEach(u => {
+  if (!u.followers) u.followers = [];
+  if (!u.following) u.following = [];
+});
+saveJSON(USERS_FILE, users);
+
 if (users['MrSigma']) {
   users['MrSigma'].admin = true;
   users['MrSigma'].verified = true;
@@ -130,9 +137,14 @@ app.post('/api/register', (req, res) => {
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   const user = users[username];
-  if (!user || user.password !== hash(password)) return res.status(401).json({ error: 'Неверный логин или пароль' });
+  if (!user || user.password !== hash(password)) {
+    return res.status(401).json({ error: 'Неверный логин или пароль' });
+  }
   const token = crypto.randomBytes(32).toString('hex');
   user.token = token;
+  // Гарантируем наличие массивов
+  if (!user.followers) user.followers = [];
+  if (!user.following) user.following = [];
   saveJSON(USERS_FILE, users);
   res.json({
     token,
@@ -158,8 +170,8 @@ app.get('/api/me', auth, (req, res) => {
     premium: user.premium,
     avatar: user.avatar || '',
     banner: user.banner || '',
-    followers: user.followers.length,
-    following: user.following.length
+    followers: user.followers ? user.followers.length : 0,
+    following: user.following ? user.following.length : 0
   });
 });
 
@@ -181,8 +193,8 @@ app.get('/api/user/:username', (req, res) => {
     premium: user.premium,
     avatar: user.avatar,
     banner: user.banner,
-    followers: user.followers.length,
-    following: user.following.length
+    followers: user.followers ? user.followers.length : 0,
+    following: user.following ? user.following.length : 0
   });
 });
 
