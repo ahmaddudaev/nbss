@@ -274,8 +274,10 @@ async function loadAdminUsers() {
   const select = document.getElementById('userSelect');
   try {
     const usersList = await request('/admin/users');
-    select.innerHTML = usersList.map(u => `<option>${u.username} ${u.admin ? '(админ)' : ''} ${u.verified ? '✔️' : ''} ${u.premium ? '💎' : ''}</option>`).join('');
-    const getSelected = () => select.value.split(' ')[0];
+    select.innerHTML = usersList.map(u => 
+      `<option value="${u.username}">${u.username} ${u.admin ? '(админ)' : ''} ${u.verified ? '✔️' : ''} ${u.premium ? '💎' : ''}</option>`
+    ).join('');
+    const getSelected = () => select.value;
     const isSigma = () => getSelected() === 'MrSigma';
     document.getElementById('verifyUserBtn').onclick = () => { if (isSigma()) return alert('Нельзя изменить владельца'); modifyUser(getSelected(), { verified: true }); };
     document.getElementById('unverifyUserBtn').onclick = () => { if (isSigma()) return alert('Нельзя изменить владельца'); modifyUser(getSelected(), { verified: false }); };
