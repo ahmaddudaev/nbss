@@ -58,12 +58,18 @@ let events = loadJSON(EVENTS_FILE, []);
 let comments = loadJSON(COMMENTS_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
-// Инициализация недостающих полей
+// Инициализация недостающих полей у пользователей
 Object.values(users).forEach(u => {
   if (!u.followers) u.followers = [];
   if (!u.following) u.following = [];
 });
 saveJSON(USERS_FILE, users);
+
+// Даём старым ивентам ID, если их нет
+events.forEach((e, i) => {
+  if (!e.id) e.id = Date.now() + i;
+});
+if (events.some(e => !e.id)) saveJSON(EVENTS_FILE, events);
 
 if (users['MrSigma']) {
   users['MrSigma'].admin = true;
@@ -369,7 +375,6 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-// Восстановление админки
 app.get('/fix-admin', (req, res) => {
   if (users['MrSigma']) {
     users['MrSigma'].admin = true;
