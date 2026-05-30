@@ -26,6 +26,7 @@ async function request(url, options = {}) {
   updateUIForAuth();
   showPage('home');
   loadTheme();
+  if (token) loadNotifications();
 })();
 
 function showPage(pageId) {
@@ -46,6 +47,7 @@ function showPage(pageId) {
     else if (window.viewingUser) loadUserProfile(window.viewingUser);
   }
   if (pageId === 'messages') loadDialogs();
+  if (pageId === 'notifications') loadNotifications();
   if (pageId === 'events') loadEvents();
   if (pageId === 'admin') { loadAdminStats(); loadAdminUsers(); }
   if (pageId === 'settings') updateThemeSettings();
@@ -58,8 +60,10 @@ function updateUIForAuth() {
   document.getElementById('postComposer').style.display = loggedIn ? 'block' : 'none';
   document.getElementById('navProfile').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('navMessages').style.display = loggedIn ? 'flex' : 'none';
+  document.getElementById('navNotifications').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('mobileNavProfile').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('mobileNavMessages').style.display = loggedIn ? 'flex' : 'none';
+  document.getElementById('mobileNavNotifications').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('logoutLink').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('mobileLogoutLink').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('loginLink').style.display = loggedIn ? 'none' : 'flex';
@@ -80,6 +84,7 @@ document.addEventListener('click', (e) => {
     const page = navItem.dataset.page;
     if (page === 'profile' && !token) return alert('Сначала войдите');
     if (page === 'messages' && !token) return alert('Сначала войдите');
+    if (page === 'notifications' && !token) return alert('Сначала войдите');
     if (page === 'admin' && !(currentUser?.admin)) return alert('Нет прав администратора');
     if (page === 'logout') {
       token = null; currentUser = null; localStorage.removeItem('nbss_token');
@@ -125,6 +130,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     const data = await request('/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
     token = data.token; currentUser = data.user;
     localStorage.setItem('nbss_token', token); updateUIForAuth(); showPage('home');
+    loadNotifications();
   } catch (e) { alert(e.message); }
 });
 
@@ -322,6 +328,10 @@ async function loadDialogs() {
   const list = document.getElementById('dialogList');
   try {
     const dialogs = await request('/dialogs');
+    if (dialogs.length === 0) {
+      list.innerHTML = '<p class="empty-hint">Нет диалогов</p>';
+      return;
+    }
     list.innerHTML = dialogs.map(d => `
       <div class="dialog-item" data-username="${d.username}">
         <div class="dialog-username ${d.premium ? 'premium-nick' : ''}">${d.username}</div>
@@ -337,7 +347,9 @@ async function loadDialogs() {
     });
     document.getElementById('chatView').style.display = 'none';
     document.querySelector('.dialog-list').style.display = 'block';
-  } catch (e) {}
+  } catch (e) {
+    list.innerHTML = '<p class="empty-hint">Ошибка загрузки диалогов</p>';
+  }
 }
 
 async function openChat(username) {
@@ -379,6 +391,40 @@ document.querySelector('.back-to-dialogs')?.addEventListener('click', () => {
   currentDialog = null;
   loadDialogs();
 });
+
+// ========== УВЕДОМЛЕНИЯ ==========
+async function loadNotifications() {
+  const container = document.getElementById('notificationsList');
+  if (!container) return;
+  try {
+    const notifs = await request('/notifications');
+    if (notifs.length === 0) {
+      container.innerHTML = '<p class="empty-hint">Нет уведомлений</p>';
+      updateNotifBadge(0);
+      return;
+    }
+    container.innerHTML = notifs.map(n => `
+      <div class="notification-item">
+        <div class="notification-text">${n.text}</div>
+        <div class="notification-time">${new Date(n.timestamp).toLocaleString()}</div>
+      </div>
+    `).join('');
+    updateNotifBadge(notifs.filter(n => !n.read).length);
+  } catch (e) {
+    container.innerHTML = '<p class="empty-hint">Ошибка загрузки уведомлений</p>';
+  }
+}
+
+function updateNotifBadge(count) {
+  const badge = document.getElementById('notifBadge');
+  if (!badge) return;
+  if (count > 0) {
+    badge.style.display = 'inline';
+    badge.textContent = count;
+  } else {
+    badge.style.display = 'none';
+  }
+}
 
 // Ивенты (с удалением)
 async function loadEvents() {
