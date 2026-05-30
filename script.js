@@ -1,6 +1,7 @@
 const API = '/api';
 let token = localStorage.getItem('nbss_token') || null;
 let currentUser = null;
+let currentDialog = null;
 const translatedPosts = {};
 
 async function request(url, options = {}) {
@@ -44,6 +45,7 @@ function showPage(pageId) {
     if (currentUser && !window.viewingUser) loadMyProfile();
     else if (window.viewingUser) loadUserProfile(window.viewingUser);
   }
+  if (pageId === 'messages') loadDialogs();
   if (pageId === 'events') loadEvents();
   if (pageId === 'admin') { loadAdminStats(); loadAdminUsers(); }
   if (pageId === 'settings') updateThemeSettings();
@@ -55,7 +57,9 @@ function updateUIForAuth() {
   document.getElementById('authBanner').style.display = loggedIn ? 'none' : 'flex';
   document.getElementById('postComposer').style.display = loggedIn ? 'block' : 'none';
   document.getElementById('navProfile').style.display = loggedIn ? 'flex' : 'none';
+  document.getElementById('navMessages').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('mobileNavProfile').style.display = loggedIn ? 'flex' : 'none';
+  document.getElementById('mobileNavMessages').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('logoutLink').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('mobileLogoutLink').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('loginLink').style.display = loggedIn ? 'none' : 'flex';
@@ -75,6 +79,7 @@ document.addEventListener('click', (e) => {
     e.preventDefault();
     const page = navItem.dataset.page;
     if (page === 'profile' && !token) return alert('Сначала войдите');
+    if (page === 'messages' && !token) return alert('Сначала войдите');
     if (page === 'admin' && !(currentUser?.admin)) return alert('Нет прав администратора');
     if (page === 'logout') {
       token = null; currentUser = null; localStorage.removeItem('nbss_token');
@@ -182,7 +187,6 @@ function renderPost(p) {
   const premium = p.authorPremium === true;
   const verified = p.authorVerified === true;
   const canDelete = currentUser && (currentUser.admin || currentUser.username === p.author);
-  // Преобразуем @упоминания в кликабельные span
   const textWithMentions = p.text.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
   return `
     <div class="post" data-id="${p.id}" data-author="${p.author}">
@@ -244,7 +248,6 @@ function attachPostActions() {
     };
   });
 
-  // Удаление постов
   document.querySelectorAll('.delete-post-btn').forEach(btn => {
     btn.onclick = async function(e) {
       e.stopPropagation();
@@ -298,13 +301,84 @@ async function loadUserProfile(username) {
     header.innerHTML = `
       <h2 class="${user.premium ? 'premium-nick' : ''}">${user.username} ${user.verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</h2>
       <p>${user.premium ? '💎 НБСС+' : ''}</p>
-      <div class="profile-actions"><button class="btn primary" disabled>💬 Сообщения отключены</button></div>`;
+      <div class="profile-actions">
+        <button class="btn primary send-message-btn" data-username="${user.username}">💬 Написать сообщение</button>
+      </div>`;
+    document.querySelector('.send-message-btn')?.addEventListener('click', () => {
+      window.viewingUser = null;
+      currentDialog = username;
+      showPage('messages');
+      openChat(username);
+    });
     const posts = await request('/posts');
     const userPosts = posts.filter(p => p.author === username);
     document.getElementById('profilePosts').innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
     attachPostActions();
   } catch (e) { document.getElementById('profileHeader').innerHTML = '<p>Пользователь не найден</p>'; }
 }
+
+// ========== ЛИЧНЫЕ СООБЩЕНИЯ ==========
+async function loadDialogs() {
+  const list = document.getElementById('dialogList');
+  try {
+    const dialogs = await request('/dialogs');
+    list.innerHTML = dialogs.map(d => `
+      <div class="dialog-item" data-username="${d.username}">
+        <div class="dialog-username ${d.premium ? 'premium-nick' : ''}">${d.username}</div>
+        <div class="dialog-last">${d.lastMessage || 'Нет сообщений'}</div>
+      </div>
+    `).join('');
+    document.querySelectorAll('.dialog-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const username = item.dataset.username;
+        currentDialog = username;
+        openChat(username);
+      });
+    });
+    document.getElementById('chatView').style.display = 'none';
+    document.querySelector('.dialog-list').style.display = 'block';
+  } catch (e) {}
+}
+
+async function openChat(username) {
+  document.querySelector('.dialog-list').style.display = 'none';
+  document.getElementById('chatView').style.display = 'flex';
+  document.getElementById('chatPartner').textContent = username;
+  await loadMessages(username);
+}
+
+async function loadMessages(username) {
+  const container = document.getElementById('chatMessages');
+  try {
+    const messages = await request(`/messages?with=${encodeURIComponent(username)}`);
+    container.innerHTML = messages.map(m => {
+      const isSent = m.from === currentUser.username;
+      return `<div class="message-bubble ${isSent ? 'sent' : 'received'}">
+        <div>${m.text}</div>
+        <div class="message-time">${new Date(m.timestamp).toLocaleString()}</div>
+      </div>`;
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+  } catch (e) {}
+}
+
+document.getElementById('sendMessageBtn').addEventListener('click', async () => {
+  const input = document.getElementById('messageInput');
+  const text = input.value.trim();
+  if (!text || !currentDialog) return;
+  try {
+    await request('/messages', { method: 'POST', body: JSON.stringify({ to: currentDialog, text }) });
+    input.value = '';
+    await loadMessages(currentDialog);
+  } catch (e) { alert(e.message); }
+});
+
+document.querySelector('.back-to-dialogs')?.addEventListener('click', () => {
+  document.getElementById('chatView').style.display = 'none';
+  document.querySelector('.dialog-list').style.display = 'block';
+  currentDialog = null;
+  loadDialogs();
+});
 
 // Ивенты (с удалением)
 async function loadEvents() {
