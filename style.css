@@ -54,7 +54,6 @@ input, textarea, select {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
   border-radius: 18px; font-size: 17px; color: var(--text); text-decoration: none;
   transition: background 0.15s, transform 0.15s;
-  position: relative;
 }
 .nav-item:hover { background: var(--hover); transform: translateX(4px); }
 .nav-item.active { background: var(--hover); color: var(--accent); font-weight: 600; }
@@ -124,7 +123,6 @@ input, textarea, select {
 }
 .mention:hover { text-decoration: underline; }
 
-/* Кнопка удаления поста */
 .delete-post-btn {
   margin-left: auto;
   color: var(--danger) !important;
@@ -216,9 +214,7 @@ input, textarea, select {
 }
 
 /* ========== ИВЕНТЫ (кнопка удаления) ========== */
-.event-banner .btn.danger {
-  margin-top: 8px;
-}
+.event-banner .btn.danger { margin-top: 8px; }
 
 /* ========== ЛИЧНЫЕ СООБЩЕНИЯ ========== */
 .messages-container { display: flex; gap: 20px; height: calc(100vh - 200px); min-height: 400px; }
@@ -244,53 +240,52 @@ input, textarea, select {
 }
 
 /* ========== УВЕДОМЛЕНИЯ ========== */
-.notification-badge {
-  background: var(--notification-badge);
-  color: white;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 10px;
-  margin-left: auto;
-  min-width: 20px;
-  text-align: center;
-  display: inline-block;
+.notification-bell { cursor: pointer; position: relative; }
+.notification-bell .badge {
+  position: absolute; top: 4px; right: 4px;
+  background: var(--notification-badge); color: white;
+  font-size: 11px; padding: 2px 6px; border-radius: 10px;
+  min-width: 18px; text-align: center;
 }
 .notification-panel {
-  position: fixed;
-  top: 60px;
-  right: 20px;
-  width: 320px;
-  max-height: 70vh;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  z-index: 200;
-  overflow-y: auto;
-  display: none;
+  display: none; position: fixed; top: 60px; right: 20px;
+  width: 320px; max-height: 70vh; background: var(--card);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); z-index: 200; overflow-y: auto;
 }
 .notification-panel.active { display: block; }
-.notification-item {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: background 0.2s;
-}
+.notification-item { padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s; }
 .notification-item:hover { background: var(--hover); }
 .notification-text { font-size: 14px; }
 .notification-time { font-size: 12px; color: var(--text2); margin-top: 4px; }
-.notification-bell {
-  position: relative;
-  cursor: pointer;
+
+/* ========== ВСПЛЫВАЮЩИЕ ТОСТЫ ========== */
+.toast-container {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-.notification-bell .badge {
-  position: absolute;
-  top: -4px;
-  right: -6px;
-  background: var(--notification-badge);
+.toast {
+  background: var(--accent);
   color: white;
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 8px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  font-size: 14px;
+  font-weight: 500;
+  max-width: 300px;
+  animation: slideInRight 0.3s ease, fadeOut 0.3s ease 4.7s forwards;
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes fadeOut {
+  to { opacity: 0; }
 }
