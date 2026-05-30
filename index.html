@@ -25,22 +25,24 @@
         <a class="nav-item" id="logoutLink" data-page="logout" style="display:none"><span>🚪</span> <span>Выйти</span></a>
         <a class="nav-item" id="loginLink" data-page="login"><span>🔑</span> <span>Войти</span></a>
         <a class="nav-item" id="registerLink" data-page="register"><span>📝</span> <span>Регистрация</span></a>
-        <a class="nav-item notification-bell" id="notificationBell" style="display:none">
-          <span>🔔</span>
-          <span class="badge" id="notificationCount" style="display:none">0</span>
-        </a>
       </nav>
     </aside>
 
     <!-- Основной контент -->
     <main class="main-content">
+      <!-- Колокольчик уведомлений -->
+      <div id="notificationBell" class="notification-bell" style="display:none;">
+        <span>🔔</span>
+        <span id="notifBadge" class="badge" style="display:none;">0</span>
+      </div>
+
+      <!-- Панель истории уведомлений -->
+      <div id="notificationPanel" class="notification-panel"></div>
+
       <div class="search-box" style="margin:10px 20px;">
         <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." style="width:100%;">
         <div id="searchResults" class="search-results"></div>
       </div>
-
-      <!-- Панель уведомлений -->
-      <div class="notification-panel" id="notificationPanel"></div>
 
       <!-- Настройки -->
       <section id="settingsPage" class="page">
@@ -186,10 +188,6 @@
       <a class="mobile-nav-item" id="mobileRegisterLink" data-page="register"><span>📝</span></a>
     </nav>
   </div>
-
-  <!-- Контейнер для всплывающих уведомлений -->
-  <div class="toast-container" id="toastContainer"></div>
-
   <script src="script.js" defer></script>
 </body>
 </html>
