@@ -54,7 +54,6 @@ input, textarea, select {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
   border-radius: 18px; font-size: 17px; color: var(--text); text-decoration: none;
   transition: background 0.15s, transform 0.15s;
-  position: relative;
 }
 .nav-item:hover { background: var(--hover); transform: translateX(4px); }
 .nav-item.active { background: var(--hover); color: var(--accent); font-weight: 600; }
@@ -243,30 +242,28 @@ input, textarea, select {
   .dialog-list { border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 12px; max-height: 200px; }
 }
 
-/* ========== КОЛОКОЛЬЧИК (правый верхний угол) ========== */
+/* ========== КОЛОКОЛЬЧИК ========== */
 .notification-bell {
   position: fixed;
   top: 20px;
   right: 20px;
   z-index: 300;
-  font-size: 24px;
-  cursor: pointer;
+  font-size: 20px;
+  width: 44px;
+  height: 44px;
   background: var(--bg2);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: 50%;
-  width: 44px;
-  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
   box-shadow: var(--shadow);
   transition: transform 0.2s;
 }
-.notification-bell:hover {
-  transform: scale(1.1);
-}
+.notification-bell:hover { transform: scale(1.1); }
 .notification-bell .badge {
   position: absolute;
   top: -4px;
@@ -280,7 +277,41 @@ input, textarea, select {
   line-height: 1;
 }
 
-/* ========== ВСПЛЫВАЮЩИЕ УВЕДОМЛЕНИЯ (правый нижний угол) ========== */
+/* ========== ИСТОРИЯ УВЕДОМЛЕНИЙ ========== */
+.notification-history {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  width: 320px;
+  max-height: 60vh;
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 299;
+  overflow-y: auto;
+  display: none;
+}
+.notification-history.active { display: block; }
+.notification-history-header {
+  font-weight: 600;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.notification-history-list { padding: 8px 0; }
+.notification-history-item {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.notification-history-item:hover { background: var(--hover); }
+.notification-history-item .time { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+/* ========== ВСПЛЫВАЮЩИЕ УВЕДОМЛЕНИЯ (TOAST) ========== */
 .toast-container {
   position: fixed;
   bottom: 20px;
