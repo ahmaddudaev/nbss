@@ -19,15 +19,16 @@
         <a class="nav-item active" data-page="home"><span>🏠</span> <span>Главная</span></a>
         <a class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> <span>Профиль</span></a>
         <a class="nav-item" data-page="messages" id="navMessages" style="display:none"><span>💬</span> <span>Сообщения</span></a>
-        <a class="nav-item" data-page="notifications" id="navNotifications" style="display:none">
-          <span>🔔</span> <span>Уведомления</span> <span id="notifBadge" class="badge" style="display:none">0</span>
-        </a>
         <a class="nav-item" data-page="events"><span>📅</span> <span>Ивенты</span></a>
         <a class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> <span>Админка</span></a>
         <a class="nav-item" data-page="settings"><span>🎨</span> <span>Тема</span></a>
         <a class="nav-item" id="logoutLink" data-page="logout" style="display:none"><span>🚪</span> <span>Выйти</span></a>
         <a class="nav-item" id="loginLink" data-page="login"><span>🔑</span> <span>Войти</span></a>
         <a class="nav-item" id="registerLink" data-page="register"><span>📝</span> <span>Регистрация</span></a>
+        <a class="nav-item notification-bell" id="notificationBell" style="display:none">
+          <span>🔔</span>
+          <span class="badge" id="notificationCount" style="display:none">0</span>
+        </a>
       </nav>
     </aside>
 
@@ -37,6 +38,9 @@
         <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." style="width:100%;">
         <div id="searchResults" class="search-results"></div>
       </div>
+
+      <!-- Панель уведомлений -->
+      <div class="notification-panel" id="notificationPanel"></div>
 
       <!-- Настройки -->
       <section id="settingsPage" class="page">
@@ -115,9 +119,7 @@
       <!-- Сообщения -->
       <section id="messagesPage" class="page">
         <div class="messages-container">
-          <div class="dialog-list" id="dialogList">
-            <p class="empty-hint">Нет диалогов</p>
-          </div>
+          <div class="dialog-list" id="dialogList"></div>
           <div class="chat-view" id="chatView" style="display:none;">
             <div class="chat-header">
               <button class="back-to-dialogs btn outline">← Назад</button>
@@ -129,14 +131,6 @@
               <button id="sendMessageBtn" class="btn primary">Отправить</button>
             </div>
           </div>
-        </div>
-      </section>
-
-      <!-- Уведомления -->
-      <section id="notificationsPage" class="page">
-        <div class="notifications-container">
-          <h2>🔔 Уведомления</h2>
-          <div id="notificationsList"></div>
         </div>
       </section>
 
@@ -184,7 +178,6 @@
       <a class="mobile-nav-item active" data-page="home"><span>🏠</span></a>
       <a class="mobile-nav-item" data-page="profile" id="mobileNavProfile" style="display:none"><span>👤</span></a>
       <a class="mobile-nav-item" data-page="messages" id="mobileNavMessages" style="display:none"><span>💬</span></a>
-      <a class="mobile-nav-item" data-page="notifications" id="mobileNavNotifications" style="display:none"><span>🔔</span></a>
       <a class="mobile-nav-item" data-page="events"><span>📅</span></a>
       <a class="mobile-nav-item" data-page="admin" id="mobileNavAdmin" style="display:none"><span>⚙️</span></a>
       <a class="mobile-nav-item" data-page="settings"><span>🎨</span></a>
@@ -193,6 +186,10 @@
       <a class="mobile-nav-item" id="mobileRegisterLink" data-page="register"><span>📝</span></a>
     </nav>
   </div>
+
+  <!-- Контейнер для всплывающих уведомлений -->
+  <div class="toast-container" id="toastContainer"></div>
+
   <script src="script.js" defer></script>
 </body>
 </html>
