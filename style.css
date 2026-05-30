@@ -131,8 +131,6 @@ input, textarea, select {
 .profile-header h2 { display: inline-flex; align-items: center; gap: 6px; }
 .profile-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* ========== СООБЩЕНИЯ (убраны, но стили можно оставить на будущее) ========== */
-
 /* ========== АДМИНКА ========== */
 .admin-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .admin-actions button { flex: 1 0 auto; min-width: calc(33% - 10px); }
@@ -192,10 +190,13 @@ input, textarea, select {
   .mobile-nav-item span:first-child { font-size: 22px; }
   .mobile-nav-item.active { color: var(--accent); }
   .search-box { margin: 10px 0; }
-  .messages-container { flex-direction: column; height: auto; }
-  .dialog-list { border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 12px; max-height: 200px; }
   .composer-row { flex-wrap: wrap; }
   .composer-file-label { margin-right: 0; margin-bottom: 8px; }
   .composer-btn { margin-top: 8px; width: 100%; }
   .post-actions { gap: 12px; }
+}
+
+/* ========== ИВЕНТЫ (кнопка удаления) ========== */
+.event-banner .btn.danger {
+  margin-top: 8px;
 }
