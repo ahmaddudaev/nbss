@@ -100,6 +100,7 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
   const u = document.getElementById('regUsername').value.trim();
   const p = document.getElementById('regPassword').value.trim();
   if (!u || !p) return alert('Заполните поля');
+  if (/\s/.test(u)) return alert('Логин не должен содержать пробелы');
   if (u.length < 3) return alert('Минимум 3 символа');
   try {
     await request('/register', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
@@ -257,10 +258,33 @@ async function loadUserProfile(username) {
   } catch (e) { document.getElementById('profileHeader').innerHTML = '<p>Пользователь не найден</p>'; }
 }
 
-// Ивенты
+// Ивенты (с удалением)
 async function loadEvents() {
   const list = document.getElementById('eventsList');
-  try { const evs = await request('/events'); list.innerHTML = evs.length ? evs.map(e => `<div class="event-banner card"><strong>${e.title}</strong><p>${e.desc}</p></div>`).join('') : '<p>Нет ивентов</p>'; } catch (e) {}
+  try {
+    const evs = await request('/events');
+    list.innerHTML = evs.length
+      ? evs.map(e => `
+          <div class="event-banner card" id="event-${e.id}">
+            <strong>${e.title}</strong>
+            <p>${e.desc}</p>
+            ${currentUser?.admin ? `<button class="btn danger delete-event-btn" data-event-id="${e.id}">🗑 Удалить</button>` : ''}
+          </div>
+        `).join('')
+      : '<p>Нет ивентов</p>';
+
+    document.querySelectorAll('.delete-event-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const eventId = btn.dataset.eventId;
+        if (confirm('Удалить этот ивент?')) {
+          try {
+            await request(`/events/${eventId}`, { method: 'DELETE' });
+            loadEvents();
+          } catch (e) { alert('Ошибка при удалении: ' + e.message); }
+        }
+      });
+    });
+  } catch (e) { list.innerHTML = '<p>Ошибка загрузки ивентов</p>'; }
 }
 
 // Админка
@@ -274,9 +298,7 @@ async function loadAdminUsers() {
   const select = document.getElementById('userSelect');
   try {
     const usersList = await request('/admin/users');
-    select.innerHTML = usersList.map(u => 
-      `<option value="${u.username}">${u.username} ${u.admin ? '(админ)' : ''} ${u.verified ? '✔️' : ''} ${u.premium ? '💎' : ''}</option>`
-    ).join('');
+    select.innerHTML = usersList.map(u => `<option value="${u.username}">${u.username} ${u.admin ? '(админ)' : ''} ${u.verified ? '✔️' : ''} ${u.premium ? '💎' : ''}</option>`).join('');
     const getSelected = () => select.value;
     const isSigma = () => getSelected() === 'MrSigma';
     document.getElementById('verifyUserBtn').onclick = () => { if (isSigma()) return alert('Нельзя изменить владельца'); modifyUser(getSelected(), { verified: true }); };
