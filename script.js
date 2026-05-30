@@ -3,8 +3,10 @@ let token = localStorage.getItem('nbss_token') || null;
 let currentUser = null;
 let currentDialog = null;
 const translatedPosts = {};
-let notifications = [];
-let notificationsOpened = false;
+
+// Уведомления
+let notifications = JSON.parse(localStorage.getItem('nbss_notifications') || '[]');
+let unreadCount = 0;
 
 async function request(url, options = {}) {
   const headers = {};
@@ -20,95 +22,16 @@ async function request(url, options = {}) {
   return res.json();
 }
 
-function showToast(message) {
-  const container = document.getElementById('toastContainer');
-  if (!container) return;
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-  toast.textContent = message;
-  container.appendChild(toast);
-  // Удаляем через 5 секунд
-  setTimeout(() => {
-    if (toast.parentNode) toast.remove();
-  }, 5000);
-}
-
-async function loadNotifications() {
-  if (!token) return;
-  try {
-    notifications = await request('/notifications');
-    updateNotificationUI();
-  } catch (e) {}
-}
-
-function updateNotificationUI() {
-  const bell = document.getElementById('notificationBell');
-  const count = document.getElementById('notificationCount');
-  if (!bell || !count) return;
-  const unread = notifications.filter(n => !n.read).length;
-  if (unread > 0) {
-    count.style.display = 'inline';
-    count.textContent = unread;
-  } else {
-    count.style.display = 'none';
-  }
-  bell.style.display = token ? 'flex' : 'none';
-}
-
-function renderNotificationPanel() {
-  const panel = document.getElementById('notificationPanel');
-  if (!panel) return;
-  panel.innerHTML = notifications.length === 0
-    ? '<div class="notification-item"><span class="notification-text">Нет уведомлений</span></div>'
-    : notifications.map(n => `
-        <div class="notification-item" data-id="${n.id}">
-          <div class="notification-text">${n.text}</div>
-          <div class="notification-time">${new Date(n.timestamp).toLocaleString()}</div>
-        </div>
-      `).join('');
-}
-
-// Периодическая проверка уведомлений
-setInterval(async () => {
-  if (token) {
-    try {
-      const newNotifications = await request('/notifications');
-      const newCount = newNotifications.filter(n => !n.read).length;
-      const oldCount = notifications.filter(n => !n.read).length;
-      if (newCount > oldCount) {
-        showToast('🔔 Новое уведомление!');
-      }
-      notifications = newNotifications;
-      updateNotificationUI();
-    } catch (e) {}
-  }
-}, 10000);
-
-// Колокольчик
-document.getElementById('notificationBell')?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  const panel = document.getElementById('notificationPanel');
-  if (panel) {
-    panel.classList.toggle('active');
-    if (panel.classList.contains('active')) {
-      renderNotificationPanel();
-    }
-  }
-});
-
-document.addEventListener('click', () => {
-  document.getElementById('notificationPanel')?.classList.remove('active');
-});
-
+// Инициализация
 (async function init() {
   if (token) {
     try { currentUser = await request('/me'); }
     catch (e) { token = null; currentUser = null; localStorage.removeItem('nbss_token'); }
   }
   updateUIForAuth();
+  updateNotificationBell();
   showPage('home');
   loadTheme();
-  if (token) loadNotifications();
 })();
 
 function showPage(pageId) {
@@ -128,7 +51,7 @@ function showPage(pageId) {
     if (currentUser && !window.viewingUser) loadMyProfile();
     else if (window.viewingUser) loadUserProfile(window.viewingUser);
   }
-  if (pageId === 'messages') loadDialogs();
+  if (pageId === 'messages') { currentDialog = null; loadDialogs(); }
   if (pageId === 'events') loadEvents();
   if (pageId === 'admin') { loadAdminStats(); loadAdminUsers(); }
   if (pageId === 'settings') updateThemeSettings();
@@ -149,55 +72,100 @@ function updateUIForAuth() {
   document.getElementById('mobileLoginLink').style.display = loggedIn ? 'none' : 'flex';
   document.getElementById('registerLink').style.display = loggedIn ? 'none' : 'flex';
   document.getElementById('mobileRegisterLink').style.display = loggedIn ? 'none' : 'flex';
+  document.getElementById('notificationBell').style.display = loggedIn ? 'block' : 'none';
   const navAdmin = document.getElementById('navAdmin');
   const mobileNavAdmin = document.getElementById('mobileNavAdmin');
   if (navAdmin) navAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
   if (mobileNavAdmin) mobileNavAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
-  updateNotificationUI();
 }
 
-// Единый обработчик навигации и кликов
+// ========== УВЕДОМЛЕНИЯ ==========
+function addNotification(type, text) {
+  if (!currentUser) return;
+  const notif = {
+    id: Date.now(),
+    type,
+    text,
+    timestamp: new Date().toISOString(),
+    read: false
+  };
+  notifications.unshift(notif);
+  if (notifications.length > 50) notifications.length = 50;
+  localStorage.setItem('nbss_notifications', JSON.stringify(notifications));
+  unreadCount++;
+  updateNotificationBell();
+  showToast(text);
+}
+
+function showToast(text) {
+  const container = document.getElementById('toastContainer') || createToastContainer();
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = text;
+  container.appendChild(toast);
+  setTimeout(() => {
+    if (toast.parentNode) toast.remove();
+  }, 5000);
+}
+
+function createToastContainer() {
+  const container = document.createElement('div');
+  container.id = 'toastContainer';
+  container.className = 'toast-container';
+  document.body.appendChild(container);
+  return container;
+}
+
+function updateNotificationBell() {
+  const badge = document.getElementById('notifBadge');
+  if (!badge) return;
+  unreadCount = notifications.filter(n => !n.read).length;
+  if (unreadCount > 0) {
+    badge.style.display = 'inline-block';
+    badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function toggleNotificationPanel() {
+  const panel = document.getElementById('notificationPanel');
+  const isActive = panel.classList.toggle('active');
+  if (isActive) {
+    renderNotificationPanel();
+    // Помечаем все как прочитанные
+    notifications.forEach(n => n.read = true);
+    localStorage.setItem('nbss_notifications', JSON.stringify(notifications));
+    updateNotificationBell();
+  }
+}
+
+function renderNotificationPanel() {
+  const panel = document.getElementById('notificationPanel');
+  if (notifications.length === 0) {
+    panel.innerHTML = '<div class="notification-item"><div class="notification-text">Нет уведомлений</div></div>';
+    return;
+  }
+  panel.innerHTML = notifications.map(n => `
+    <div class="notification-item">
+      <div class="notification-text">${n.text}</div>
+      <div class="notification-time">${new Date(n.timestamp).toLocaleString()}</div>
+    </div>
+  `).join('');
+}
+
+// Колокольчик
+document.getElementById('notificationBell')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleNotificationPanel();
+});
+
+// Закрытие панели по клику вне
 document.addEventListener('click', (e) => {
-  const navItem = e.target.closest('[data-page]');
-  if (navItem) {
-    e.preventDefault();
-    const page = navItem.dataset.page;
-    if (page === 'profile' && !token) return alert('Сначала войдите');
-    if (page === 'messages' && !token) return alert('Сначала войдите');
-    if (page === 'admin' && !(currentUser?.admin)) return alert('Нет прав администратора');
-    if (page === 'logout') {
-      token = null; currentUser = null; localStorage.removeItem('nbss_token');
-      updateUIForAuth(); showPage('home'); return;
-    }
-    window.viewingUser = null;
-    showPage(page);
-    return;
-  }
-
-  // Клик по упоминанию (@username)
-  const mentionEl = e.target.closest('.mention');
-  if (mentionEl) {
-    e.preventDefault();
-    let username = mentionEl.textContent;
-    if (username.startsWith('@')) username = username.slice(1);
-    if (username && username !== currentUser?.username) {
-      window.viewingUser = username;
-      showPage('profile');
-    }
-    return;
-  }
-
-  // Клик по нику в посте или комментарии
-  const usernameEl = e.target.closest('.username');
-  if (usernameEl && !e.target.closest('.view-profile-btn')) {
-    const postEl = usernameEl.closest('.post');
-    if (postEl) {
-      const author = postEl.dataset.author;
-      if (author && author !== currentUser?.username) {
-        window.viewingUser = author;
-        showPage('profile');
-      }
-    }
+  const panel = document.getElementById('notificationPanel');
+  const bell = document.getElementById('notificationBell');
+  if (panel && bell && !panel.contains(e.target) && !bell.contains(e.target)) {
+    panel.classList.remove('active');
   }
 });
 
@@ -209,7 +177,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     const data = await request('/login', { method: 'POST', body: JSON.stringify({ username: u, password: p }) });
     token = data.token; currentUser = data.user;
     localStorage.setItem('nbss_token', token); updateUIForAuth(); showPage('home');
-    loadNotifications();
+    addNotification('login', 'Вы вошли в аккаунт');
   } catch (e) { alert(e.message); }
 });
 
@@ -255,6 +223,7 @@ document.getElementById('publishPost').addEventListener('click', async () => {
     await request('/posts', { method: 'POST', body: JSON.stringify({ text }) });
     document.getElementById('postInput').value = '';
     loadPosts();
+    addNotification('post', 'Вы опубликовали новый пост');
   } catch (e) { alert(e.message); }
 });
 
@@ -299,11 +268,13 @@ function attachPostActions() {
     if (!token) return alert('Войдите');
     const postId = this.closest('.post').dataset.id;
     await request(`/posts/${postId}/like`, { method: 'POST' }); loadPosts();
+    addNotification('like', 'Ваш пост понравился пользователю');
   });
   document.querySelectorAll('.repost-btn').forEach(b => b.onclick = async function() {
     if (!token) return alert('Войдите');
     const postId = this.closest('.post').dataset.id;
     await request(`/posts/${postId}/repost`, { method: 'POST' }); loadPosts();
+    addNotification('repost', 'Ваш пост репостнули');
   });
   document.querySelectorAll('.comment-toggle').forEach(b => b.onclick = async function() {
     const postEl = this.closest('.post');
@@ -342,6 +313,7 @@ function attachPostActions() {
         try {
           await request(`/posts/${postId}`, { method: 'DELETE' });
           loadPosts();
+          addNotification('delete', 'Вы удалили пост');
         } catch (err) { alert(err.message); }
       }
     };
@@ -402,7 +374,7 @@ async function loadUserProfile(username) {
   } catch (e) { document.getElementById('profileHeader').innerHTML = '<p>Пользователь не найден</p>'; }
 }
 
-// ========== ЛИЧНЫЕ СООБЩЕНИЯ ==========
+// Сообщения
 async function loadDialogs() {
   const list = document.getElementById('dialogList');
   try {
@@ -424,14 +396,12 @@ async function loadDialogs() {
     document.querySelector('.dialog-list').style.display = 'block';
   } catch (e) {}
 }
-
 async function openChat(username) {
   document.querySelector('.dialog-list').style.display = 'none';
   document.getElementById('chatView').style.display = 'flex';
   document.getElementById('chatPartner').textContent = username;
   await loadMessages(username);
 }
-
 async function loadMessages(username) {
   const container = document.getElementById('chatMessages');
   try {
@@ -446,7 +416,6 @@ async function loadMessages(username) {
     container.scrollTop = container.scrollHeight;
   } catch (e) {}
 }
-
 document.getElementById('sendMessageBtn').addEventListener('click', async () => {
   const input = document.getElementById('messageInput');
   const text = input.value.trim();
@@ -455,9 +424,9 @@ document.getElementById('sendMessageBtn').addEventListener('click', async () => 
     await request('/messages', { method: 'POST', body: JSON.stringify({ to: currentDialog, text }) });
     input.value = '';
     await loadMessages(currentDialog);
+    addNotification('message', `Новое сообщение от ${currentUser.username}`);
   } catch (e) { alert(e.message); }
 });
-
 document.querySelector('.back-to-dialogs')?.addEventListener('click', () => {
   document.getElementById('chatView').style.display = 'none';
   document.querySelector('.dialog-list').style.display = 'block';
@@ -465,7 +434,7 @@ document.querySelector('.back-to-dialogs')?.addEventListener('click', () => {
   loadDialogs();
 });
 
-// Ивенты (с удалением)
+// Ивенты
 async function loadEvents() {
   const list = document.getElementById('eventsList');
   try {
@@ -487,6 +456,7 @@ async function loadEvents() {
           try {
             await request(`/events/${eventId}`, { method: 'DELETE' });
             loadEvents();
+            addNotification('event', 'Ивент удалён');
           } catch (e) { alert('Ошибка при удалении: ' + e.message); }
         }
       });
@@ -528,6 +498,7 @@ document.getElementById('createEventBtn').addEventListener('click', async () => 
   await request('/events', { method: 'POST', body: JSON.stringify({ title, desc }) });
   document.getElementById('eventTitle').value = ''; document.getElementById('eventDesc').value = '';
   loadEvents();
+  addNotification('event', 'Ивент создан');
 });
 
 // Статистика
@@ -558,4 +529,49 @@ document.getElementById('searchInput')?.addEventListener('input', async (e) => {
       });
     });
   } catch (e) {}
+});
+
+// Единый обработчик навигации и кликов
+document.addEventListener('click', (e) => {
+  const navItem = e.target.closest('[data-page]');
+  if (navItem) {
+    e.preventDefault();
+    const page = navItem.dataset.page;
+    if (page === 'profile' && !token) return alert('Сначала войдите');
+    if (page === 'messages' && !token) return alert('Сначала войдите');
+    if (page === 'admin' && !(currentUser?.admin)) return alert('Нет прав администратора');
+    if (page === 'logout') {
+      token = null; currentUser = null; localStorage.removeItem('nbss_token');
+      updateUIForAuth(); showPage('home'); return;
+    }
+    window.viewingUser = null;
+    showPage(page);
+    return;
+  }
+
+  // Клик по упоминанию (@username)
+  const mentionEl = e.target.closest('.mention');
+  if (mentionEl) {
+    e.preventDefault();
+    let username = mentionEl.textContent;
+    if (username.startsWith('@')) username = username.slice(1);
+    if (username && username !== currentUser?.username) {
+      window.viewingUser = username;
+      showPage('profile');
+    }
+    return;
+  }
+
+  // Клик по нику в посте или комментарии
+  const usernameEl = e.target.closest('.username');
+  if (usernameEl && !e.target.closest('.view-profile-btn')) {
+    const postEl = usernameEl.closest('.post');
+    if (postEl) {
+      const author = postEl.dataset.author;
+      if (author && author !== currentUser?.username) {
+        window.viewingUser = author;
+        showPage('profile');
+      }
+    }
+  }
 });
