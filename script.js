@@ -68,7 +68,7 @@ function updateUIForAuth() {
   if (mobileNavAdmin) mobileNavAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
 }
 
-// Единый обработчик навигации
+// Единый обработчик навигации и кликов
 document.addEventListener('click', (e) => {
   const navItem = e.target.closest('[data-page]');
   if (navItem) {
@@ -182,6 +182,8 @@ function renderPost(p) {
   const premium = p.authorPremium === true;
   const verified = p.authorVerified === true;
   const canDelete = currentUser && (currentUser.admin || currentUser.username === p.author);
+  // Преобразуем @упоминания в кликабельные span
+  const textWithMentions = p.text.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
   return `
     <div class="post" data-id="${p.id}" data-author="${p.author}">
       <div class="avatar">${p.author[0]?.toUpperCase() || '?'}</div>
@@ -191,7 +193,7 @@ function renderPost(p) {
           <span>· ${new Date(p.timestamp).toLocaleString()}</span>
           ${canDelete ? `<button class="delete-post-btn" data-post-id="${p.id}">🗑️ Удалить</button>` : ''}
         </div>
-        <div class="post-text" id="text-${p.id}">${p.text}</div>
+        <div class="post-text" id="text-${p.id}">${textWithMentions}</div>
         <div class="post-actions">
           <button class="like-btn">❤️ ${p.likes.length}</button>
           <button class="repost-btn">🔄 ${p.reposts.length}</button>
@@ -245,7 +247,7 @@ function attachPostActions() {
   // Удаление постов
   document.querySelectorAll('.delete-post-btn').forEach(btn => {
     btn.onclick = async function(e) {
-      e.stopPropagation(); // чтобы не сработал обработчик клика по username
+      e.stopPropagation();
       if (!token) return alert('Войдите');
       const postId = this.dataset.postId;
       if (confirm('Удалить этот пост?')) {
@@ -274,7 +276,8 @@ async function loadComments(postId, container) {
 function renderComment(c) {
   const premium = c.authorPremium === true;
   const verified = c.authorVerified === true;
-  return `<div class="comment"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${premium ? 'premium-nick' : ''}">${c.author}${verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span> <span>${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${c.text}</p></div></div>`;
+  const textWithMentions = c.text.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
+  return `<div class="comment"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${premium ? 'premium-nick' : ''}">${c.author}${verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span> <span>${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${textWithMentions}</p></div></div>`;
 }
 
 // Профили
