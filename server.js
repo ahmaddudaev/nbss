@@ -245,6 +245,21 @@ app.get('/api/posts', (req, res) => {
   res.json(enriched);
 });
 
+app.delete('/api/posts/:id', auth, (req, res) => {
+  const post = posts.find(p => p.id == req.params.id);
+  if (!post) return res.status(404).json({ error: 'Пост не найден' });
+  if (!req.user.admin && req.user.username !== post.author) {
+    return res.status(403).json({ error: 'Нет прав на удаление' });
+  }
+  // Удаляем комментарии к посту
+  comments = comments.filter(c => c.postId != req.params.id);
+  // Удаляем сам пост
+  posts = posts.filter(p => p.id != req.params.id);
+  saveJSON(POSTS_FILE, posts);
+  saveJSON(COMMENTS_FILE, comments);
+  res.json({ ok: true });
+});
+
 app.post('/api/posts/:id/like', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
