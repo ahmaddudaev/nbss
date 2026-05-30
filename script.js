@@ -265,10 +265,10 @@ async function loadEvents() {
     const evs = await request('/events');
     list.innerHTML = evs.length
       ? evs.map(e => `
-          <div class="event-banner card" id="event-${e.id}">
+          <div class="event-banner card">
             <strong>${e.title}</strong>
             <p>${e.desc}</p>
-            ${currentUser?.admin ? `<button class="btn danger delete-event-btn" data-event-id="${e.id}">🗑 Удалить</button>` : ''}
+            ${currentUser?.admin && e.id ? `<button class="btn danger delete-event-btn" data-event-id="${e.id}">🗑 Удалить</button>` : ''}
           </div>
         `).join('')
       : '<p>Нет ивентов</p>';
