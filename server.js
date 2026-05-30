@@ -22,6 +22,7 @@ const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const POSTS_FILE = path.join(DATA_DIR, 'posts.json');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
+const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
 const STATS_FILE = path.join(DATA_DIR, 'stats.json');
 
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
@@ -56,6 +57,7 @@ let users = loadJSON(USERS_FILE, {
 let posts = loadJSON(POSTS_FILE, []);
 let events = loadJSON(EVENTS_FILE, []);
 let comments = loadJSON(COMMENTS_FILE, []);
+let messages = loadJSON(MESSAGES_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
 // Инициализация недостающих полей у пользователей
@@ -251,9 +253,7 @@ app.delete('/api/posts/:id', auth, (req, res) => {
   if (!req.user.admin && req.user.username !== post.author) {
     return res.status(403).json({ error: 'Нет прав на удаление' });
   }
-  // Удаляем комментарии к посту
   comments = comments.filter(c => c.postId != req.params.id);
-  // Удаляем сам пост
   posts = posts.filter(p => p.id != req.params.id);
   saveJSON(POSTS_FILE, posts);
   saveJSON(COMMENTS_FILE, comments);
@@ -361,9 +361,11 @@ app.post('/api/admin/user/:username', auth, (req, res) => {
     delete users[target];
     posts = posts.filter(p => p.author !== target);
     comments = comments.filter(c => c.author !== target);
+    messages = messages.filter(m => m.from !== target && m.to !== target);
     saveJSON(USERS_FILE, users);
     saveJSON(POSTS_FILE, posts);
     saveJSON(COMMENTS_FILE, comments);
+    saveJSON(MESSAGES_FILE, messages);
     return res.json({ ok: true });
   }
 
@@ -388,6 +390,45 @@ app.get('/api/stats', (req, res) => {
     pageviews: stats.pageviews,
     online: Math.floor(Math.random() * 5) + 1
   });
+});
+
+// ========== ЛИЧНЫЕ СООБЩЕНИЯ ==========
+app.get('/api/dialogs', auth, (req, res) => {
+  const user = req.user.username;
+  const dialogs = new Map();
+  messages.forEach(m => {
+    if (m.from === user || m.to === user) {
+      const partner = m.from === user ? m.to : m.from;
+      if (!dialogs.has(partner) || m.timestamp > dialogs.get(partner).timestamp) {
+        dialogs.set(partner, { username: partner, lastMessage: m.text, timestamp: m.timestamp });
+      }
+    }
+  });
+  const result = Array.from(dialogs.values()).sort((a, b) => b.timestamp - a.timestamp);
+  result.forEach(d => {
+    const u = users[d.username];
+    if (u) { d.premium = u.premium || false; d.verified = u.verified || false; }
+  });
+  res.json(result);
+});
+
+app.get('/api/messages', auth, (req, res) => {
+  const partner = req.query.with;
+  if (!partner) return res.status(400).json({ error: 'Не указан собеседник' });
+  const user = req.user.username;
+  const conversation = messages
+    .filter(m => (m.from === user && m.to === partner) || (m.from === partner && m.to === user))
+    .sort((a, b) => a.timestamp - b.timestamp);
+  res.json(conversation);
+});
+
+app.post('/api/messages', auth, (req, res) => {
+  const { to, text } = req.body;
+  if (!to || !text) return res.status(400).json({ error: 'Заполните получателя и текст' });
+  const msg = { id: Date.now(), from: req.user.username, to, text, timestamp: new Date().toISOString() };
+  messages.push(msg);
+  saveJSON(MESSAGES_FILE, messages);
+  res.json({ ok: true, message: msg });
 });
 
 app.get('/fix-admin', (req, res) => {
