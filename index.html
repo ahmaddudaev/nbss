@@ -19,6 +19,9 @@
         <a class="nav-item active" data-page="home"><span>🏠</span> <span>Главная</span></a>
         <a class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> <span>Профиль</span></a>
         <a class="nav-item" data-page="messages" id="navMessages" style="display:none"><span>💬</span> <span>Сообщения</span></a>
+        <a class="nav-item" data-page="notifications" id="navNotifications" style="display:none">
+          <span>🔔</span> <span>Уведомления</span> <span id="notifBadge" class="badge" style="display:none">0</span>
+        </a>
         <a class="nav-item" data-page="events"><span>📅</span> <span>Ивенты</span></a>
         <a class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> <span>Админка</span></a>
         <a class="nav-item" data-page="settings"><span>🎨</span> <span>Тема</span></a>
@@ -112,7 +115,9 @@
       <!-- Сообщения -->
       <section id="messagesPage" class="page">
         <div class="messages-container">
-          <div class="dialog-list" id="dialogList"></div>
+          <div class="dialog-list" id="dialogList">
+            <p class="empty-hint">Нет диалогов</p>
+          </div>
           <div class="chat-view" id="chatView" style="display:none;">
             <div class="chat-header">
               <button class="back-to-dialogs btn outline">← Назад</button>
@@ -124,6 +129,14 @@
               <button id="sendMessageBtn" class="btn primary">Отправить</button>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- Уведомления -->
+      <section id="notificationsPage" class="page">
+        <div class="notifications-container">
+          <h2>🔔 Уведомления</h2>
+          <div id="notificationsList"></div>
         </div>
       </section>
 
@@ -171,6 +184,7 @@
       <a class="mobile-nav-item active" data-page="home"><span>🏠</span></a>
       <a class="mobile-nav-item" data-page="profile" id="mobileNavProfile" style="display:none"><span>👤</span></a>
       <a class="mobile-nav-item" data-page="messages" id="mobileNavMessages" style="display:none"><span>💬</span></a>
+      <a class="mobile-nav-item" data-page="notifications" id="mobileNavNotifications" style="display:none"><span>🔔</span></a>
       <a class="mobile-nav-item" data-page="events"><span>📅</span></a>
       <a class="mobile-nav-item" data-page="admin" id="mobileNavAdmin" style="display:none"><span>⚙️</span></a>
       <a class="mobile-nav-item" data-page="settings"><span>🎨</span></a>
