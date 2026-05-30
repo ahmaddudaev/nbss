@@ -23,6 +23,7 @@ const POSTS_FILE = path.join(DATA_DIR, 'posts.json');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
 const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
+const NOTIFICATIONS_FILE = path.join(DATA_DIR, 'notifications.json');
 const STATS_FILE = path.join(DATA_DIR, 'stats.json');
 
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
@@ -58,6 +59,7 @@ let posts = loadJSON(POSTS_FILE, []);
 let events = loadJSON(EVENTS_FILE, []);
 let comments = loadJSON(COMMENTS_FILE, []);
 let messages = loadJSON(MESSAGES_FILE, []);
+let notifications = loadJSON(NOTIFICATIONS_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
 // Инициализация недостающих полей у пользователей
@@ -265,7 +267,20 @@ app.post('/api/posts/:id/like', auth, (req, res) => {
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
   const idx = post.likes.indexOf(req.user.username);
   if (idx >= 0) post.likes.splice(idx, 1);
-  else post.likes.push(req.user.username);
+  else {
+    post.likes.push(req.user.username);
+    // Уведомление автору поста
+    if (post.author !== req.user.username) {
+      notifications.unshift({
+        id: Date.now(),
+        user: post.author,
+        text: `❤️ ${req.user.username} оценил ваш пост`,
+        timestamp: new Date().toISOString(),
+        read: false
+      });
+      saveJSON(NOTIFICATIONS_FILE, notifications);
+    }
+  }
   saveJSON(POSTS_FILE, posts);
   res.json({ ok: true });
 });
@@ -273,7 +288,20 @@ app.post('/api/posts/:id/like', auth, (req, res) => {
 app.post('/api/posts/:id/repost', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
-  if (!post.reposts.includes(req.user.username)) post.reposts.push(req.user.username);
+  if (!post.reposts.includes(req.user.username)) {
+    post.reposts.push(req.user.username);
+    // Уведомление автору поста
+    if (post.author !== req.user.username) {
+      notifications.unshift({
+        id: Date.now(),
+        user: post.author,
+        text: `🔄 ${req.user.username} сделал репост вашего поста`,
+        timestamp: new Date().toISOString(),
+        read: false
+      });
+      saveJSON(NOTIFICATIONS_FILE, notifications);
+    }
+  }
   saveJSON(POSTS_FILE, posts);
   res.json({ ok: true });
 });
@@ -299,6 +327,18 @@ app.post('/api/posts/:id/comments', auth, (req, res) => {
   };
   comments.unshift(comment);
   saveJSON(COMMENTS_FILE, comments);
+  // Уведомление автору поста
+  const post = posts.find(p => p.id == req.params.id);
+  if (post && post.author !== req.user.username) {
+    notifications.unshift({
+      id: Date.now(),
+      user: post.author,
+      text: `💬 ${req.user.username} прокомментировал ваш пост`,
+      timestamp: new Date().toISOString(),
+      read: false
+    });
+    saveJSON(NOTIFICATIONS_FILE, notifications);
+  }
   res.json({ ok: true, comment: { ...comment, authorVerified: req.user.verified, authorPremium: req.user.premium } });
 });
 
@@ -362,10 +402,12 @@ app.post('/api/admin/user/:username', auth, (req, res) => {
     posts = posts.filter(p => p.author !== target);
     comments = comments.filter(c => c.author !== target);
     messages = messages.filter(m => m.from !== target && m.to !== target);
+    notifications = notifications.filter(n => n.user !== target);
     saveJSON(USERS_FILE, users);
     saveJSON(POSTS_FILE, posts);
     saveJSON(COMMENTS_FILE, comments);
     saveJSON(MESSAGES_FILE, messages);
+    saveJSON(NOTIFICATIONS_FILE, notifications);
     return res.json({ ok: true });
   }
 
@@ -429,6 +471,20 @@ app.post('/api/messages', auth, (req, res) => {
   messages.push(msg);
   saveJSON(MESSAGES_FILE, messages);
   res.json({ ok: true, message: msg });
+});
+
+// ========== УВЕДОМЛЕНИЯ ==========
+app.get('/api/notifications', auth, (req, res) => {
+  const userNotifs = notifications.filter(n => n.user === req.user.username);
+  res.json(userNotifs.slice(0, 50)); // последние 50
+});
+
+app.post('/api/notifications/read', auth, (req, res) => {
+  notifications.forEach(n => {
+    if (n.user === req.user.username) n.read = true;
+  });
+  saveJSON(NOTIFICATIONS_FILE, notifications);
+  res.json({ ok: true });
 });
 
 app.get('/fix-admin', (req, res) => {
