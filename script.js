@@ -3,6 +3,8 @@ let token = localStorage.getItem('nbss_token') || null;
 let currentUser = null;
 let currentDialog = null;
 const translatedPosts = {};
+let notifications = [];
+let notificationsOpened = false;
 
 async function request(url, options = {}) {
   const headers = {};
@@ -17,6 +19,86 @@ async function request(url, options = {}) {
   }
   return res.json();
 }
+
+function showToast(message) {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  container.appendChild(toast);
+  // Удаляем через 5 секунд
+  setTimeout(() => {
+    if (toast.parentNode) toast.remove();
+  }, 5000);
+}
+
+async function loadNotifications() {
+  if (!token) return;
+  try {
+    notifications = await request('/notifications');
+    updateNotificationUI();
+  } catch (e) {}
+}
+
+function updateNotificationUI() {
+  const bell = document.getElementById('notificationBell');
+  const count = document.getElementById('notificationCount');
+  if (!bell || !count) return;
+  const unread = notifications.filter(n => !n.read).length;
+  if (unread > 0) {
+    count.style.display = 'inline';
+    count.textContent = unread;
+  } else {
+    count.style.display = 'none';
+  }
+  bell.style.display = token ? 'flex' : 'none';
+}
+
+function renderNotificationPanel() {
+  const panel = document.getElementById('notificationPanel');
+  if (!panel) return;
+  panel.innerHTML = notifications.length === 0
+    ? '<div class="notification-item"><span class="notification-text">Нет уведомлений</span></div>'
+    : notifications.map(n => `
+        <div class="notification-item" data-id="${n.id}">
+          <div class="notification-text">${n.text}</div>
+          <div class="notification-time">${new Date(n.timestamp).toLocaleString()}</div>
+        </div>
+      `).join('');
+}
+
+// Периодическая проверка уведомлений
+setInterval(async () => {
+  if (token) {
+    try {
+      const newNotifications = await request('/notifications');
+      const newCount = newNotifications.filter(n => !n.read).length;
+      const oldCount = notifications.filter(n => !n.read).length;
+      if (newCount > oldCount) {
+        showToast('🔔 Новое уведомление!');
+      }
+      notifications = newNotifications;
+      updateNotificationUI();
+    } catch (e) {}
+  }
+}, 10000);
+
+// Колокольчик
+document.getElementById('notificationBell')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const panel = document.getElementById('notificationPanel');
+  if (panel) {
+    panel.classList.toggle('active');
+    if (panel.classList.contains('active')) {
+      renderNotificationPanel();
+    }
+  }
+});
+
+document.addEventListener('click', () => {
+  document.getElementById('notificationPanel')?.classList.remove('active');
+});
 
 (async function init() {
   if (token) {
@@ -47,7 +129,6 @@ function showPage(pageId) {
     else if (window.viewingUser) loadUserProfile(window.viewingUser);
   }
   if (pageId === 'messages') loadDialogs();
-  if (pageId === 'notifications') loadNotifications();
   if (pageId === 'events') loadEvents();
   if (pageId === 'admin') { loadAdminStats(); loadAdminUsers(); }
   if (pageId === 'settings') updateThemeSettings();
@@ -60,10 +141,8 @@ function updateUIForAuth() {
   document.getElementById('postComposer').style.display = loggedIn ? 'block' : 'none';
   document.getElementById('navProfile').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('navMessages').style.display = loggedIn ? 'flex' : 'none';
-  document.getElementById('navNotifications').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('mobileNavProfile').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('mobileNavMessages').style.display = loggedIn ? 'flex' : 'none';
-  document.getElementById('mobileNavNotifications').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('logoutLink').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('mobileLogoutLink').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('loginLink').style.display = loggedIn ? 'none' : 'flex';
@@ -74,6 +153,7 @@ function updateUIForAuth() {
   const mobileNavAdmin = document.getElementById('mobileNavAdmin');
   if (navAdmin) navAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
   if (mobileNavAdmin) mobileNavAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
+  updateNotificationUI();
 }
 
 // Единый обработчик навигации и кликов
@@ -84,7 +164,6 @@ document.addEventListener('click', (e) => {
     const page = navItem.dataset.page;
     if (page === 'profile' && !token) return alert('Сначала войдите');
     if (page === 'messages' && !token) return alert('Сначала войдите');
-    if (page === 'notifications' && !token) return alert('Сначала войдите');
     if (page === 'admin' && !(currentUser?.admin)) return alert('Нет прав администратора');
     if (page === 'logout') {
       token = null; currentUser = null; localStorage.removeItem('nbss_token');
@@ -328,10 +407,6 @@ async function loadDialogs() {
   const list = document.getElementById('dialogList');
   try {
     const dialogs = await request('/dialogs');
-    if (dialogs.length === 0) {
-      list.innerHTML = '<p class="empty-hint">Нет диалогов</p>';
-      return;
-    }
     list.innerHTML = dialogs.map(d => `
       <div class="dialog-item" data-username="${d.username}">
         <div class="dialog-username ${d.premium ? 'premium-nick' : ''}">${d.username}</div>
@@ -347,9 +422,7 @@ async function loadDialogs() {
     });
     document.getElementById('chatView').style.display = 'none';
     document.querySelector('.dialog-list').style.display = 'block';
-  } catch (e) {
-    list.innerHTML = '<p class="empty-hint">Ошибка загрузки диалогов</p>';
-  }
+  } catch (e) {}
 }
 
 async function openChat(username) {
@@ -391,40 +464,6 @@ document.querySelector('.back-to-dialogs')?.addEventListener('click', () => {
   currentDialog = null;
   loadDialogs();
 });
-
-// ========== УВЕДОМЛЕНИЯ ==========
-async function loadNotifications() {
-  const container = document.getElementById('notificationsList');
-  if (!container) return;
-  try {
-    const notifs = await request('/notifications');
-    if (notifs.length === 0) {
-      container.innerHTML = '<p class="empty-hint">Нет уведомлений</p>';
-      updateNotifBadge(0);
-      return;
-    }
-    container.innerHTML = notifs.map(n => `
-      <div class="notification-item">
-        <div class="notification-text">${n.text}</div>
-        <div class="notification-time">${new Date(n.timestamp).toLocaleString()}</div>
-      </div>
-    `).join('');
-    updateNotifBadge(notifs.filter(n => !n.read).length);
-  } catch (e) {
-    container.innerHTML = '<p class="empty-hint">Ошибка загрузки уведомлений</p>';
-  }
-}
-
-function updateNotifBadge(count) {
-  const badge = document.getElementById('notifBadge');
-  if (!badge) return;
-  if (count > 0) {
-    badge.style.display = 'inline';
-    badge.textContent = count;
-  } else {
-    badge.style.display = 'none';
-  }
-}
 
 // Ивенты (с удалением)
 async function loadEvents() {
