@@ -71,17 +71,45 @@ function updateUIForAuth() {
 // Единый обработчик навигации
 document.addEventListener('click', (e) => {
   const navItem = e.target.closest('[data-page]');
-  if (!navItem) return;
-  e.preventDefault();
-  const page = navItem.dataset.page;
-  if (page === 'profile' && !token) return alert('Сначала войдите');
-  if (page === 'admin' && !(currentUser?.admin)) return alert('Нет прав администратора');
-  if (page === 'logout') {
-    token = null; currentUser = null; localStorage.removeItem('nbss_token');
-    updateUIForAuth(); showPage('home'); return;
+  if (navItem) {
+    e.preventDefault();
+    const page = navItem.dataset.page;
+    if (page === 'profile' && !token) return alert('Сначала войдите');
+    if (page === 'admin' && !(currentUser?.admin)) return alert('Нет прав администратора');
+    if (page === 'logout') {
+      token = null; currentUser = null; localStorage.removeItem('nbss_token');
+      updateUIForAuth(); showPage('home'); return;
+    }
+    window.viewingUser = null;
+    showPage(page);
+    return;
   }
-  window.viewingUser = null;
-  showPage(page);
+
+  // Клик по упоминанию (@username)
+  const mentionEl = e.target.closest('.mention');
+  if (mentionEl) {
+    e.preventDefault();
+    let username = mentionEl.textContent;
+    if (username.startsWith('@')) username = username.slice(1);
+    if (username && username !== currentUser?.username) {
+      window.viewingUser = username;
+      showPage('profile');
+    }
+    return;
+  }
+
+  // Клик по нику в посте или комментарии
+  const usernameEl = e.target.closest('.username');
+  if (usernameEl && !e.target.closest('.view-profile-btn')) {
+    const postEl = usernameEl.closest('.post');
+    if (postEl) {
+      const author = postEl.dataset.author;
+      if (author && author !== currentUser?.username) {
+        window.viewingUser = author;
+        showPage('profile');
+      }
+    }
+  }
 });
 
 // Вход
@@ -153,6 +181,7 @@ async function loadPosts() {
 function renderPost(p) {
   const premium = p.authorPremium === true;
   const verified = p.authorVerified === true;
+  const canDelete = currentUser && (currentUser.admin || currentUser.username === p.author);
   return `
     <div class="post" data-id="${p.id}" data-author="${p.author}">
       <div class="avatar">${p.author[0]?.toUpperCase() || '?'}</div>
@@ -160,6 +189,7 @@ function renderPost(p) {
         <div class="post-header">
           <span class="username ${premium ? 'premium-nick' : ''}" style="cursor:pointer;">${p.author || 'Аноним'}${verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span>
           <span>· ${new Date(p.timestamp).toLocaleString()}</span>
+          ${canDelete ? `<button class="delete-post-btn" data-post-id="${p.id}">🗑️ Удалить</button>` : ''}
         </div>
         <div class="post-text" id="text-${p.id}">${p.text}</div>
         <div class="post-actions">
@@ -209,6 +239,21 @@ function attachPostActions() {
         textEl.textContent = data.translation;
         translatedPosts[postId] = data.translation;
       } catch (e) { textEl.textContent = originalText; alert('Не удалось перевести'); }
+    };
+  });
+
+  // Удаление постов
+  document.querySelectorAll('.delete-post-btn').forEach(btn => {
+    btn.onclick = async function(e) {
+      e.stopPropagation(); // чтобы не сработал обработчик клика по username
+      if (!token) return alert('Войдите');
+      const postId = this.dataset.postId;
+      if (confirm('Удалить этот пост?')) {
+        try {
+          await request(`/posts/${postId}`, { method: 'DELETE' });
+          loadPosts();
+        } catch (err) { alert(err.message); }
+      }
     };
   });
 }
@@ -351,19 +396,4 @@ document.getElementById('searchInput')?.addEventListener('input', async (e) => {
       });
     });
   } catch (e) {}
-});
-
-// Клик по нику в ленте
-document.addEventListener('click', (e) => {
-  const usernameEl = e.target.closest('.username');
-  if (usernameEl && !e.target.closest('.view-profile-btn')) {
-    const postEl = usernameEl.closest('.post');
-    if (postEl) {
-      const author = postEl.dataset.author;
-      if (author && author !== currentUser?.username) {
-        window.viewingUser = author;
-        showPage('profile');
-      }
-    }
-  }
 });
