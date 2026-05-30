@@ -112,7 +112,12 @@ input, textarea, select {
 .post-actions button { font-size: 14px; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 12px; }
 .post-actions button:hover { background: var(--hover); color: var(--accent); }
 .hashtag { color: var(--accent); }
-.mention { color: var(--accent); font-weight: 500; cursor: pointer; }
+.mention {
+  color: var(--accent);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
 .mention:hover { text-decoration: underline; }
 
 /* Кнопка удаления поста */
@@ -127,9 +132,7 @@ input, textarea, select {
   border-radius: 12px;
   transition: 0.2s;
 }
-.delete-post-btn:hover {
-  background: rgba(255, 0, 0, 0.1) !important;
-}
+.delete-post-btn:hover { background: rgba(255, 0, 0, 0.1) !important; }
 
 /* ========== КОММЕНТАРИИ ========== */
 .comments-section { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
