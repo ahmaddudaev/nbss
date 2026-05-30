@@ -54,6 +54,7 @@ input, textarea, select {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
   border-radius: 18px; font-size: 17px; color: var(--text); text-decoration: none;
   transition: background 0.15s, transform 0.15s;
+  position: relative;
 }
 .nav-item:hover { background: var(--hover); transform: translateX(4px); }
 .nav-item.active { background: var(--hover); color: var(--accent); font-weight: 600; }
@@ -123,6 +124,7 @@ input, textarea, select {
 }
 .mention:hover { text-decoration: underline; }
 
+/* Кнопка удаления поста */
 .delete-post-btn {
   margin-left: auto;
   color: var(--danger) !important;
@@ -214,7 +216,9 @@ input, textarea, select {
 }
 
 /* ========== ИВЕНТЫ (кнопка удаления) ========== */
-.event-banner .btn.danger { margin-top: 8px; }
+.event-banner .btn.danger {
+  margin-top: 8px;
+}
 
 /* ========== ЛИЧНЫЕ СООБЩЕНИЯ ========== */
 .messages-container { display: flex; gap: 20px; height: calc(100vh - 200px); min-height: 400px; }
@@ -239,53 +243,76 @@ input, textarea, select {
   .dialog-list { border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 12px; max-height: 200px; }
 }
 
-/* ========== УВЕДОМЛЕНИЯ ========== */
-.notification-bell { cursor: pointer; position: relative; }
-.notification-bell .badge {
-  position: absolute; top: 4px; right: 4px;
-  background: var(--notification-badge); color: white;
-  font-size: 11px; padding: 2px 6px; border-radius: 10px;
-  min-width: 18px; text-align: center;
-}
-.notification-panel {
-  display: none; position: fixed; top: 60px; right: 20px;
-  width: 320px; max-height: 70vh; background: var(--card);
-  border: 1px solid var(--border); border-radius: var(--radius);
-  box-shadow: var(--shadow); z-index: 200; overflow-y: auto;
-}
-.notification-panel.active { display: block; }
-.notification-item { padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s; }
-.notification-item:hover { background: var(--hover); }
-.notification-text { font-size: 14px; }
-.notification-time { font-size: 12px; color: var(--text2); margin-top: 4px; }
-
-/* ========== ВСПЛЫВАЮЩИЕ ТОСТЫ ========== */
-.toast-container {
+/* ========== КОЛОКОЛЬЧИК (правый верхний угол) ========== */
+.notification-bell {
   position: fixed;
-  bottom: 80px;
+  top: 20px;
   right: 20px;
   z-index: 300;
+  font-size: 24px;
+  cursor: pointer;
+  background: var(--bg2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s;
+}
+.notification-bell:hover {
+  transform: scale(1.1);
+}
+.notification-bell .badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background: var(--notification-badge);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  line-height: 1;
+}
+
+/* ========== ВСПЛЫВАЮЩИЕ УВЕДОМЛЕНИЯ (правый нижний угол) ========== */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 400;
+  display: flex;
+  flex-direction: column-reverse;
   gap: 10px;
 }
 .toast {
-  background: var(--accent);
-  color: white;
-  padding: 12px 20px;
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-  font-size: 14px;
-  font-weight: 500;
-  max-width: 300px;
-  animation: slideInRight 0.3s ease, fadeOut 0.3s ease 4.7s forwards;
-  opacity: 1;
-  transition: opacity 0.3s;
+  padding: 12px 16px;
+  box-shadow: var(--shadow);
+  min-width: 250px;
+  max-width: 350px;
+  animation: slideInRight 0.3s ease, fadeOut 0.5s ease 4.5s forwards;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
 }
+.toast-icon { font-size: 18px; }
+.toast-message { flex: 1; font-size: 14px; }
 @keyframes slideInRight {
-  from { transform: translateX(100%); opacity: 0; }
+  from { transform: translateX(120%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
 @keyframes fadeOut {
-  to { opacity: 0; }
+  from { opacity: 1; }
+  to { opacity: 0; transform: translateY(20px); }
 }
