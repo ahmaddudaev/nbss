@@ -20,6 +20,42 @@ try {
   unreadCount = notifications.filter(n => !n.read).length;
 } catch (e) {}
 
+// ========== Функция проверки бана и отображения оверлея ==========
+function checkBan(response) {
+  if (response && response.banned) {
+    showBanScreen(response.bannedUntil);
+    throw new Error('BANNED');
+  }
+}
+
+function showBanScreen(bannedUntil) {
+  const overlay = document.getElementById('banOverlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  document.querySelector('.app-container').style.display = 'none';
+
+  function updateTimer() {
+    const now = new Date();
+    const until = new Date(bannedUntil);
+    const diff = until - now;
+    if (diff <= 0) {
+      overlay.style.display = 'none';
+      document.querySelector('.app-container').style.display = '';
+      localStorage.removeItem('nbss_token');
+      location.reload();
+    } else {
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      document.getElementById('banUntilText').textContent =
+        `Извините, но вы забанены. До окончания бана: ${hours}ч ${minutes}м ${seconds}с`;
+    }
+  }
+
+  updateTimer();
+  setInterval(updateTimer, 1000);
+}
+
 async function request(url, options = {}) {
   const headers = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -27,6 +63,11 @@ async function request(url, options = {}) {
     headers['Content-Type'] = 'application/json';
   }
   const res = await fetch(API + url, { ...options, headers: { ...headers, ...options.headers } });
+  if (res.status === 423) {
+    const data = await res.json();
+    showBanScreen(data.bannedUntil);
+    throw new Error('BANNED');
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Ошибка сети' }));
     throw new Error(err.error || 'Ошибка');
@@ -36,8 +77,13 @@ async function request(url, options = {}) {
 
 (async function init() {
   if (token) {
-    try { currentUser = await request('/me'); }
-    catch (e) { token = null; currentUser = null; localStorage.removeItem('nbss_token'); }
+    try {
+      currentUser = await request('/me');
+    } catch (e) {
+      if (e.message === 'BANNED') return;
+      token = null; currentUser = null;
+      localStorage.removeItem('nbss_token');
+    }
   }
   updateUIForAuth();
   updateNotificationBadge();
@@ -45,7 +91,6 @@ async function request(url, options = {}) {
   loadTheme();
 })();
 
-// ========== Вспомогательные функции уведомлений ==========
 function addNotification(type, message) {
   const notification = { id: Date.now(), type, message, read: false, timestamp: new Date().toISOString() };
   notifications.unshift(notification);
@@ -98,7 +143,6 @@ function showToast(message, type = '') {
   setTimeout(() => { if (toast.parentNode) toast.remove(); }, 5000);
 }
 
-// ========== Переключение страниц ==========
 function showPage(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById(pageId + 'Page');
@@ -151,7 +195,6 @@ function updateUIForAuth() {
   if (mobileNavAdmin) mobileNavAdmin.style.display = (currentUser && ['moderator','admin','head_admin','owner'].includes(currentUser.role)) ? 'flex' : 'none';
 }
 
-// ========== Навигация и клики ==========
 document.addEventListener('click', (e) => {
   const navItem = e.target.closest('[data-page]');
   if (navItem) {
@@ -196,7 +239,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ========== Аутентификация ==========
 document.getElementById('loginBtn')?.addEventListener('click', async () => {
   const u = document.getElementById('loginUsername')?.value.trim();
   const p = document.getElementById('loginPassword')?.value.trim();
@@ -219,7 +261,6 @@ document.getElementById('registerBtn')?.addEventListener('click', async () => {
   } catch (e) { alert(e.message); }
 });
 
-// ========== Темы ==========
 function applyTheme(theme) {
   document.body.classList.remove('classic', 'liquid-light', 'liquid-dark');
   document.body.classList.add(theme);
@@ -237,7 +278,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ========== Публикация ==========
 document.getElementById('publishPost')?.addEventListener('click', async () => {
   const text = document.getElementById('postInput')?.value.trim();
   if (!text) return;
@@ -249,7 +289,6 @@ document.getElementById('publishPost')?.addEventListener('click', async () => {
   } catch (e) { alert(e.message); }
 });
 
-// ========== Лента ==========
 async function loadPosts() {
   const container = document.getElementById('feedContainer');
   if (!container) return;
@@ -318,7 +357,6 @@ function attachPostActions() {
   });
 }
 
-// ========== Комментарии ==========
 async function loadComments(postId, container) {
   if (!container) return;
   try {
@@ -343,7 +381,6 @@ function renderComment(c) {
   return `<div class="comment" data-id="${c.id}"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${nickClass}">${c.author}${verified ? '<img src="verification.png" class="verified-icon">' : ''}</span><span>${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${c.text.replace(/@(\w+)/g, '<span class="mention">@$1</span>')}</p>${canDelete ? `<button class="delete-comment-btn" data-id="${c.id}">🗑️</button>` : ''}</div></div>`;
 }
 
-// ========== Профили ==========
 async function loadMyProfile() {
   if (!currentUser) return;
   const header = document.getElementById('profileHeader');
@@ -381,7 +418,6 @@ async function loadUserProfile(username) {
   }
 }
 
-// ========== Личные сообщения ==========
 async function loadDialogs() {
   const list = document.getElementById('dialogList');
   if (!list) return;
@@ -439,7 +475,6 @@ document.querySelector('.back-to-dialogs')?.addEventListener('click', () => {
   loadDialogs();
 });
 
-// ========== Ивенты ==========
 async function loadEvents() {
   const list = document.getElementById('eventsList');
   if (!list) return;
@@ -452,7 +487,6 @@ async function loadEvents() {
   } catch (e) {}
 }
 
-// ========== Админка ==========
 async function loadAdminStats() {
   if (!currentUser || !['moderator','admin','head_admin','owner'].includes(currentUser.role)) return;
   const stats = await request('/stats');
@@ -481,7 +515,6 @@ async function loadAdminUsers() {
       return currentLevel > targetLevel;
     };
 
-    // Скрываем недоступные кнопки
     const verifyBtn = document.getElementById('verifyUserBtn');
     const unverifyBtn = document.getElementById('unverifyUserBtn');
     const givePremiumBtn = document.getElementById('givePremiumBtn');
@@ -499,17 +532,14 @@ async function loadAdminUsers() {
     const usersCard = document.querySelector('.admin-container .card:nth-child(2)');
     const createEventCard = document.querySelector('.admin-container .card:nth-child(3)');
 
-    // По умолчанию скрываем всё, кроме создания ивентов
     [verifyBtn, unverifyBtn, givePremiumBtn, revokePremiumBtn, setOwnerBtn, setHeadAdminBtn, setAdminBtn, setModeratorBtn, setEventModeratorBtn, removeRoleBtn, banUserBtn, unbanUserBtn, deleteUserBtn].forEach(b => { if (b) b.style.display = 'none'; });
     if (adminStatsCard) adminStatsCard.style.display = 'none';
     if (usersCard) usersCard.style.display = 'none';
     if (createEventCard) createEventCard.style.display = 'none';
 
     if (isModeratorOrAbove()) {
-      // Показываем статистику и список пользователей
       if (adminStatsCard) adminStatsCard.style.display = '';
       if (usersCard) usersCard.style.display = '';
-      // Кнопки, доступные модератору и выше
       if (verifyBtn) verifyBtn.style.display = '';
       if (unverifyBtn) unverifyBtn.style.display = '';
       if (givePremiumBtn) givePremiumBtn.style.display = '';
@@ -520,25 +550,20 @@ async function loadAdminUsers() {
       if (removeRoleBtn) removeRoleBtn.style.display = '';
     }
     if (isAdminOrAbove()) {
-      // Админ может назначать модераторов и ивент-модеров
       if (setModeratorBtn) setModeratorBtn.style.display = '';
       if (setEventModeratorBtn) setEventModeratorBtn.style.display = '';
     }
     if (isHeadAdminOrAbove()) {
-      // Гл.админ может назначать админов
       if (setAdminBtn) setAdminBtn.style.display = '';
     }
     if (isOwner()) {
-      // Владелец может назначать владельцев и гл.админов
       if (setOwnerBtn) setOwnerBtn.style.display = '';
       if (setHeadAdminBtn) setHeadAdminBtn.style.display = '';
     }
-    // Создание ивентов доступно event_moderator и выше
     if (['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role)) {
       if (createEventCard) createEventCard.style.display = '';
     }
 
-    // Обработчики кнопок
     if (verifyBtn) verifyBtn.onclick = () => {
       if (!isModeratorOrAbove() && getSelected() !== currentUser.username) return alert('Нет прав');
       if (!canModify() && getSelected() !== currentUser.username) return alert('Нельзя изменить этого пользователя');
@@ -631,7 +656,6 @@ async function updateStats() {
 updateStats();
 setInterval(updateStats, 10000);
 
-// ========== Поиск ==========
 document.getElementById('searchInput')?.addEventListener('input', async (e) => {
   const q = e.target.value.trim();
   const container = document.getElementById('searchResults');
