@@ -365,23 +365,67 @@ function attachPostActions() {
 
 async function loadComments(postId, container) {
   try {
+    const postAuthor = container.closest('.post')?.dataset.author;
     const comments = await request(`/posts/${postId}/comments`);
-    container.innerHTML = comments.map(c => renderComment(c)).join('') +
-      (token ? `<div class="comment-form"><input type="text" class="comment-input" placeholder="Комментарий..."><button class="btn primary comment-submit">Отпр.</button></div>` : '<p>Войдите, чтобы комментировать</p>');
+    container.innerHTML = comments.map(c => {
+      const canDeleteComment = currentUser && (
+        currentUser.admin ||                          // админ может всё
+        c.author === currentUser.username ||          // автор комментария
+        postAuthor === currentUser.username           // автор поста
+      );
+      return renderComment(c, canDeleteComment);
+    }).join('') + (token ? `
+      <div class="comment-form">
+        <input type="text" class="comment-input" placeholder="Комментарий...">
+        <button class="btn primary comment-submit">Отпр.</button>
+      </div>` : '<p>Войдите, чтобы комментировать</p>');
+
     if (token) {
       const inp = container.querySelector('.comment-input');
       const btn = container.querySelector('.comment-submit');
-      btn.onclick = async () => { const text = inp.value.trim(); if (!text) return; await request(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ text }) }); await loadComments(postId, container); };
+      btn.onclick = async () => {
+        const text = inp.value.trim(); if (!text) return;
+        await request(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ text }) });
+        await loadComments(postId, container);
+      };
     }
   } catch (e) {}
 }
 
-function renderComment(c) {
+function renderComment(c, canDelete = false) {
   const premium = c.authorPremium === true;
   const verified = c.authorVerified === true;
   const textWithMentions = c.text.replace(/@(\w+)/g, '<span class="mention">@$1</span>');
-  return `<div class="comment"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${premium ? 'premium-nick' : ''}">${c.author}${verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span> <span>${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${textWithMentions}</p></div></div>`;
+  return `
+    <div class="comment" data-comment-id="${c.id}">
+      <div class="avatar-small">${c.author[0]?.toUpperCase()}</div>
+      <div class="comment-body">
+        <span class="username ${premium ? 'premium-nick' : ''}">${c.author}${verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span>
+        <span>${new Date(c.timestamp).toLocaleString()}</span>
+        <p class="comment-text">${textWithMentions}</p>
+        ${canDelete ? `<button class="delete-comment-btn" data-comment-id="${c.id}">🗑️</button>` : ''}
+      </div>
+    </div>`;
 }
+
+// Удаление комментария (делегирование)
+document.addEventListener('click', async (e) => {
+  const deleteBtn = e.target.closest('.delete-comment-btn');
+  if (!deleteBtn) return;
+  const commentId = deleteBtn.dataset.commentId;
+  if (confirm('Удалить этот комментарий?')) {
+    try {
+      await request(`/comments/${commentId}`, { method: 'DELETE' });
+      // Перезагружаем комментарии – находим родительский пост
+      const postEl = deleteBtn.closest('.post');
+      if (postEl) {
+        const postId = postEl.dataset.id;
+        const section = postEl.querySelector('.comments-section');
+        await loadComments(postId, section);
+      }
+    } catch (err) { alert(err.message); }
+  }
+});
 
 // Профили
 async function loadMyProfile() {
