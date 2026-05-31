@@ -104,11 +104,17 @@ input, textarea, select {
 }
 
 /* Цвета ролей */
-.role-owner { color: #800020 !important; font-weight: 800; }          /* Бордовый */
-.role-head_admin { color: #ff0000 !important; font-weight: 700; }      /* Красный */
-.role-admin { color: #ff0000 !important; font-weight: 600; }           /* Красный */
-.role-moderator { color: #0044cc !important; font-weight: 600; }       /* Синий */
-.role-event_moderator { color: #0088cc !important; font-weight: 600; } /* Голубой */
+/* Owner – кораллово-красный градиент */
+.role-owner {
+  background: linear-gradient(135deg, #ff4040, #ff6b6b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+}
+.role-head_admin { color: #ff0000 !important; font-weight: 700; }
+.role-admin { color: #ff0000 !important; font-weight: 600; }
+.role-moderator { color: #0044cc !important; font-weight: 600; }
+.role-event_moderator { color: #0088cc !important; font-weight: 600; }
 
 /* ========== ОДНОСТРОЧНЫЙ КОМПОЗЕР ========== */
 .composer-row { display: flex; gap: 12px; align-items: center; }
