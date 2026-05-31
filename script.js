@@ -20,7 +20,6 @@ try {
   unreadCount = notifications.filter(n => !n.read).length;
 } catch (e) {}
 
-// ========== Функция проверки бана и отображения оверлея ==========
 function checkBan(response) {
   if (response && response.banned) {
     showBanScreen(response.bannedUntil);
@@ -33,7 +32,6 @@ function showBanScreen(bannedUntil) {
   if (!overlay) return;
   overlay.style.display = 'flex';
   document.querySelector('.app-container').style.display = 'none';
-
   function updateTimer() {
     const now = new Date();
     const until = new Date(bannedUntil);
@@ -51,7 +49,6 @@ function showBanScreen(bannedUntil) {
         `Извините, но вы забанены. До окончания бана: ${hours}ч ${minutes}м ${seconds}с`;
     }
   }
-
   updateTimer();
   setInterval(updateTimer, 1000);
 }
@@ -157,7 +154,14 @@ function showPage(pageId) {
     else if (window.viewingUser) loadUserProfile(window.viewingUser);
   }
   if (pageId === 'messages') loadDialogs();
-  if (pageId === 'events') loadEvents();
+  if (pageId === 'events') {
+    loadEvents();
+    // Показываем/скрываем форму создания ивента
+    const createCard = document.getElementById('createEventCard');
+    if (createCard) {
+      createCard.style.display = (currentUser && ['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role)) ? '' : 'none';
+    }
+  }
   if (pageId === 'admin') { loadAdminStats(); loadAdminUsers(); }
   if (pageId === 'settings') updateThemeSettings();
   updateStats();
@@ -475,6 +479,7 @@ document.querySelector('.back-to-dialogs')?.addEventListener('click', () => {
   loadDialogs();
 });
 
+// ========== ИВЕНТЫ ==========
 async function loadEvents() {
   const list = document.getElementById('eventsList');
   if (!list) return;
@@ -487,6 +492,19 @@ async function loadEvents() {
   } catch (e) {}
 }
 
+// Обработчик создания ивента на странице ивентов
+document.getElementById('createEventBtnEvents')?.addEventListener('click', async () => {
+  if (!currentUser || !['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role)) return alert('Нет прав');
+  const title = document.getElementById('eventTitleEvents')?.value.trim();
+  const desc = document.getElementById('eventDescEvents')?.value.trim();
+  if (!title) return;
+  await request('/events', { method: 'POST', body: JSON.stringify({ title, desc }) });
+  document.getElementById('eventTitleEvents').value = '';
+  document.getElementById('eventDescEvents').value = '';
+  loadEvents();
+});
+
+// ========== АДМИНКА ==========
 async function loadAdminStats() {
   if (!currentUser || !['moderator','admin','head_admin','owner'].includes(currentUser.role)) return;
   const stats = await request('/stats');
