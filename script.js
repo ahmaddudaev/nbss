@@ -133,8 +133,10 @@ function showPage(pageId) {
 
 function updateUIForAuth() {
   const loggedIn = !!token;
-  document.getElementById('authBanner').style.display = loggedIn ? 'none' : 'flex';
-  document.getElementById('postComposer').style.display = loggedIn ? 'block' : 'none';
+  const authBanner = document.getElementById('authBanner');
+  const postComposer = document.getElementById('postComposer');
+  if (authBanner) authBanner.style.display = loggedIn ? 'none' : 'flex';
+  if (postComposer) postComposer.style.display = loggedIn ? 'block' : 'none';
   document.getElementById('navProfile').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('navMessages').style.display = loggedIn ? 'flex' : 'none';
   document.getElementById('mobileNavProfile').style.display = loggedIn ? 'flex' : 'none';
@@ -151,6 +153,7 @@ function updateUIForAuth() {
   if (mobileNavAdmin) mobileNavAdmin.style.display = (currentUser && currentUser.admin) ? 'flex' : 'none';
 }
 
+// Единый обработчик навигации и кликов
 document.addEventListener('click', (e) => {
   const navItem = e.target.closest('[data-page]');
   if (navItem) {
@@ -167,6 +170,7 @@ document.addEventListener('click', (e) => {
     showPage(page);
     return;
   }
+
   const mentionEl = e.target.closest('.mention');
   if (mentionEl) {
     e.preventDefault();
@@ -178,6 +182,7 @@ document.addEventListener('click', (e) => {
     }
     return;
   }
+
   const usernameEl = e.target.closest('.username');
   if (usernameEl && !e.target.closest('.view-profile-btn')) {
     const postEl = usernameEl.closest('.post');
@@ -191,6 +196,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// Вход
 document.getElementById('loginBtn').addEventListener('click', async () => {
   const u = document.getElementById('loginUsername').value.trim();
   const p = document.getElementById('loginPassword').value.trim();
@@ -201,6 +207,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
   } catch (e) { alert(e.message); }
 });
 
+// Регистрация
 document.getElementById('registerBtn').addEventListener('click', async () => {
   const u = document.getElementById('regUsername').value.trim();
   const p = document.getElementById('regPassword').value.trim();
@@ -213,6 +220,7 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
   } catch (e) { alert(e.message); }
 });
 
+// Темы
 function applyTheme(theme) {
   document.body.classList.remove('classic', 'liquid-light', 'liquid-dark');
   document.body.classList.add(theme);
@@ -233,6 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// Публикация
 document.getElementById('publishPost').addEventListener('click', async () => {
   const text = document.getElementById('postInput').value.trim();
   if (!text) return;
@@ -243,6 +252,7 @@ document.getElementById('publishPost').addEventListener('click', async () => {
   } catch (e) { alert(e.message); }
 });
 
+// Лента
 async function loadPosts() {
   const container = document.getElementById('feedContainer');
   try {
@@ -373,6 +383,7 @@ function renderComment(c) {
   return `<div class="comment"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${premium ? 'premium-nick' : ''}">${c.author}${verified ? '<img src="verification.png" class="verified-icon" alt="✔">' : ''}</span> <span>${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${textWithMentions}</p></div></div>`;
 }
 
+// Профили
 async function loadMyProfile() {
   if (!currentUser) return;
   const header = document.getElementById('profileHeader');
