@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="classic">
+  <!-- Колокольчик -->
   <div class="notification-bell" id="notificationBell">🔔<span class="badge" id="notificationBadge" style="display:none;">0</span></div>
   <div class="notification-history" id="notificationHistory">
     <div class="notification-history-header">Уведомления</div>
@@ -16,8 +17,11 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <div class="app-container">
+    <!-- Левая панель (ПК) -->
     <aside class="sidebar sidebar-left">
-      <div class="sidebar-logo"><img src="logo.png" alt="НБСС"><span class="logo-text">НБСС</span></div>
+      <div class="sidebar-logo">
+        <img src="logo.png" alt="НБСС"><span class="logo-text">НБСС</span>
+      </div>
       <nav class="nav">
         <a class="nav-item active" data-page="home"><span>🏠</span> <span>Главная</span></a>
         <a class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> <span>Профиль</span></a>
@@ -31,16 +35,114 @@
       </nav>
     </aside>
 
+    <!-- Основной контент -->
     <main class="main-content">
-      <div class="search-box" style="margin:10px 20px;"><input type="text" id="searchInput" placeholder="🔍 Поиск людей..." style="width:100%;"><div id="searchResults" class="search-results"></div></div>
+      <div class="search-box" style="margin:10px 20px;">
+        <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." style="width:100%;">
+        <div id="searchResults" class="search-results"></div>
+      </div>
 
-      <section id="settingsPage" class="page">...</section>
-      <section id="loginPage" class="page">...</section>
-      <section id="registerPage" class="page">...</section>
-      <section id="homePage" class="page active">...</section>
-      <section id="profilePage" class="page">...</section>
-      <section id="messagesPage" class="page">...</section>
-      <section id="eventsPage" class="page">...</section>
+      <!-- Настройки -->
+      <section id="settingsPage" class="page">
+        <div class="card settings-card">
+          <h2>🎨 Настройки темы</h2>
+          <p class="settings-subtitle">Выберите внешний вид вашей социальной сети</p>
+          <div class="theme-options">
+            <label class="theme-option-label">
+              <input type="radio" name="theme" value="classic">
+              <span class="theme-preview classic-preview"></span>
+              <span class="theme-name">Классическая</span>
+            </label>
+            <label class="theme-option-label">
+              <input type="radio" name="theme" value="liquid-light">
+              <span class="theme-preview liquid-light-preview"></span>
+              <span class="theme-name">Liquid Glass Светлая</span>
+            </label>
+            <label class="theme-option-label">
+              <input type="radio" name="theme" value="liquid-dark">
+              <span class="theme-preview liquid-dark-preview"></span>
+              <span class="theme-name">Liquid Glass Тёмная</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Вход -->
+      <section id="loginPage" class="page">
+        <div class="auth-center">
+          <div class="card auth-card">
+            <h2>🔐 Вход в НБСС</h2>
+            <input id="loginUsername" placeholder="Логин" autocomplete="username">
+            <input id="loginPassword" type="password" placeholder="Пароль" autocomplete="current-password">
+            <button id="loginBtn" class="btn primary full-width">Войти</button>
+            <p>Нет аккаунта? <a id="showRegisterLink">Зарегистрироваться</a></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Регистрация -->
+      <section id="registerPage" class="page">
+        <div class="auth-center">
+          <div class="card auth-card">
+            <h2>📝 Регистрация</h2>
+            <input id="regUsername" placeholder="Придумайте логин">
+            <input id="regPassword" type="password" placeholder="Пароль">
+            <button id="registerBtn" class="btn primary full-width">Создать аккаунт</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Главная (лента) -->
+      <section id="homePage" class="page active">
+        <div id="authBanner" class="auth-banner card" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>👋 Добро пожаловать в НБСС! Вы смотрите публичную ленту.</span>
+          <span>
+            <button id="loginFromBanner" class="btn outline" data-page="login">Войти</button>
+            <button id="registerFromBanner" class="btn outline" data-page="register">Регистрация</button>
+          </span>
+        </div>
+        <div id="postComposer" class="post-composer" style="display:none">
+          <div class="composer-row">
+            <input type="text" id="postInput" placeholder="Что происходит? #хештег @упоминание" class="composer-input" autocomplete="off">
+            <button id="publishPost" class="btn primary composer-btn">Опубликовать</button>
+          </div>
+        </div>
+        <div id="feedContainer" class="feed"></div>
+      </section>
+
+      <!-- Профиль -->
+      <section id="profilePage" class="page">
+        <div class="profile-header" id="profileHeader"></div>
+        <div id="profilePosts" class="feed"></div>
+      </section>
+
+      <!-- Сообщения -->
+      <section id="messagesPage" class="page">
+        <div class="messages-container">
+          <div class="dialog-list" id="dialogList"></div>
+          <div class="chat-view" id="chatView" style="display:none;">
+            <div class="chat-header">
+              <button class="back-to-dialogs btn outline">← Назад</button>
+              <span id="chatPartner"></span>
+            </div>
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input">
+              <input type="text" id="messageInput" placeholder="Сообщение...">
+              <button id="sendMessageBtn" class="btn primary">Отправить</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ивенты -->
+      <section id="eventsPage" class="page">
+        <div class="events-container">
+          <h2>📅 Активные ивенты</h2>
+          <div id="eventsList"></div>
+        </div>
+      </section>
+
+      <!-- Админка -->
       <section id="adminPage" class="page">
         <div class="admin-container">
           <h2>⚙️ Административная панель</h2>
@@ -76,6 +178,7 @@
       </section>
     </main>
 
+    <!-- Мобильная нижняя панель -->
     <nav class="mobile-nav">
       <a class="mobile-nav-item active" data-page="home"><span>🏠</span></a>
       <a class="mobile-nav-item" data-page="profile" id="mobileNavProfile" style="display:none"><span>👤</span></a>
