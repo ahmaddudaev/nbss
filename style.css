@@ -1,4 +1,3 @@
-/* style.css */
 :root {
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
@@ -123,17 +122,20 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
   padding: 6px 12px; border-radius: 12px; color: var(--text-primary);
 }
 .verified-icon { width: 16px; height: 16px; margin-left: 2px; }
+
+/* Градиент для НБСС+ (обычный пользователь) */
 .premium-nick {
   background: linear-gradient(135deg, #2563eb, #ffffff);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   font-weight: 800;
 }
+
 /* Цвета ролей */
-.role-owner { color: #800020 !important; font-weight: 800; }
-.role-head_admin { color: #ff0000 !important; font-weight: 700; }
-.role-admin { color: #ff0000 !important; font-weight: 600; }
-.role-moderator { color: #0044cc !important; font-weight: 600; }
-.role-event_moderator { color: #0088cc !important; font-weight: 600; }
+.role-owner { color: #800020 !important; font-weight: 800; }          /* Бордовый */
+.role-head_admin { color: #ff0000 !important; font-weight: 700; }      /* Красный */
+.role-admin { color: #ff0000 !important; font-weight: 600; }           /* Красный */
+.role-moderator { color: #0044cc !important; font-weight: 600; }       /* Синий */
+.role-event_moderator { color: #0088cc !important; font-weight: 600; } /* Голубой */
 
 .composer-row { display: flex; gap: 12px; align-items: center; }
 .composer-input { flex: 1; padding: 14px 18px; font-size: 16px; }
