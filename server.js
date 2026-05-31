@@ -40,7 +40,7 @@ function saveJSON(file, data) {
   try { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); } catch (e) {}
 }
 
-// Гарантированный аккаунт MrSigma
+// Гарантированный MrSigma
 let users = loadJSON(USERS_FILE, {});
 const correctPassword = crypto.createHash('sha256').update('Mrbeast132!').digest('hex');
 users['MrSigma'] = {
@@ -62,7 +62,6 @@ let comments = loadJSON(COMMENTS_FILE, []);
 let messages = loadJSON(MESSAGES_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
-// Старым событиям даём ID
 events.forEach((e, i) => { if (!e.id) e.id = Date.now() + i; });
 if (events.some(e => !e.id)) saveJSON(EVENTS_FILE, events);
 
@@ -104,7 +103,7 @@ const upload = multer({
   }
 });
 
-// ---------- API ----------
+// API
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
@@ -268,6 +267,21 @@ app.post('/api/posts/:id/comments', auth, (req, res) => {
   comments.unshift(comment);
   saveJSON(COMMENTS_FILE, comments);
   res.json({ ok: true, comment: { ...comment, authorVerified: req.user.verified, authorPremium: req.user.premium } });
+});
+
+// Удаление комментария (с проверкой прав)
+app.delete('/api/comments/:id', auth, (req, res) => {
+  const comment = comments.find(c => c.id == req.params.id);
+  if (!comment) return res.status(404).json({ error: 'Комментарий не найден' });
+  const post = posts.find(p => p.id == comment.postId);
+  // Админ, автор комментария или автор поста
+  if (req.user.admin || req.user.username === comment.author || (post && req.user.username === post.author)) {
+    comments = comments.filter(c => c.id != req.params.id);
+    saveJSON(COMMENTS_FILE, comments);
+    res.json({ ok: true });
+  } else {
+    res.status(403).json({ error: 'Нет прав на удаление комментария' });
+  }
 });
 
 app.post('/api/translate', (req, res) => {
