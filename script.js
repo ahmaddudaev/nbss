@@ -6,6 +6,16 @@ const translatedPosts = {};
 let notifications = [];
 let unreadCount = 0;
 
+// Локальная иерархия ролей для быстрой проверки на клиенте
+const ROLE_HIERARCHY = {
+  owner: 5,
+  head_admin: 4,
+  admin: 3,
+  moderator: 2,
+  event_moderator: 1,
+  user: 0
+};
+
 try {
   notifications = JSON.parse(localStorage.getItem('nbss_notifications')) || [];
   unreadCount = notifications.filter(n => !n.read).length;
@@ -471,26 +481,89 @@ async function loadAdminUsers() {
     const usersList = await request('/admin/users');
     select.innerHTML = usersList.map(u => `<option value="${u.username}">${u.username} ${u.role !== 'user' ? '('+u.role+')' : ''} ${u.verified ? '✔️' : ''} ${u.premium ? '💎' : ''}</option>`).join('');
     const getSelected = () => select.value;
+    const targetUser = () => usersList.find(u => u.username === getSelected());
     const isOwner = () => currentUser.role === 'owner';
     const isHeadAdminOrAbove = () => ['head_admin','owner'].includes(currentUser.role);
     const isAdminOrAbove = () => ['admin','head_admin','owner'].includes(currentUser.role);
 
-    document.getElementById('verifyUserBtn').onclick = () => { if (!isAdminOrAbove() && getSelected() !== currentUser.username) return alert('Нет прав'); modifyUser(getSelected(), { verified: true }); };
-    document.getElementById('unverifyUserBtn').onclick = () => { if (!isAdminOrAbove() && getSelected() !== currentUser.username) return alert('Нет прав'); modifyUser(getSelected(), { verified: false }); };
-    document.getElementById('givePremiumBtn').onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); modifyUser(getSelected(), { premium: true }); };
-    document.getElementById('revokePremiumBtn').onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); modifyUser(getSelected(), { premium: false }); };
-    document.getElementById('setOwnerBtn').onclick = () => { if (!isOwner()) return alert('Только владелец может назначать владельцев'); modifyUser(getSelected(), { role: 'owner' }); };
-    document.getElementById('setHeadAdminBtn').onclick = () => { if (!isOwner()) return alert('Только владелец может назначать главных администраторов'); modifyUser(getSelected(), { role: 'head_admin' }); };
-    document.getElementById('setAdminBtn').onclick = () => { if (!isHeadAdminOrAbove()) return alert('Только владелец или главный администратор могут назначать администраторов'); modifyUser(getSelected(), { role: 'admin' }); };
-    document.getElementById('setModeratorBtn').onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); modifyUser(getSelected(), { role: 'moderator' }); };
-    document.getElementById('setEventModeratorBtn').onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); modifyUser(getSelected(), { role: 'event_moderator' }); };
+    // Проверка, может ли текущий пользователь изменять выбранного
+    function canModify() {
+      const target = targetUser();
+      if (!target) return false;
+      if (target.username === 'MrSigma') return false; // MrSigma нельзя изменить никому
+      const currentLevel = ROLE_HIERARCHY[currentUser.role] || 0;
+      const targetLevel = ROLE_HIERARCHY[target.role] || 0;
+      return currentLevel > targetLevel; // можно изменять только тех, у кого роль ниже
+    }
+
+    // Вспомогательная функция для показа предупреждения
+    function deny(reason) {
+      alert(reason || 'Недостаточно прав');
+    }
+
+    document.getElementById('verifyUserBtn').onclick = () => {
+      if (!isAdminOrAbove() && getSelected() !== currentUser.username) return deny('Нет прав');
+      if (!canModify() && getSelected() !== currentUser.username) return deny('Нельзя изменить этого пользователя');
+      modifyUser(getSelected(), { verified: true });
+    };
+    document.getElementById('unverifyUserBtn').onclick = () => {
+      if (!isAdminOrAbove() && getSelected() !== currentUser.username) return deny('Нет прав');
+      if (!canModify() && getSelected() !== currentUser.username) return deny('Нельзя изменить этого пользователя');
+      modifyUser(getSelected(), { verified: false });
+    };
+    document.getElementById('givePremiumBtn').onclick = () => {
+      if (!isAdminOrAbove()) return deny('Нет прав');
+      if (!canModify()) return deny('Нельзя изменить этого пользователя');
+      modifyUser(getSelected(), { premium: true });
+    };
+    document.getElementById('revokePremiumBtn').onclick = () => {
+      if (!isAdminOrAbove()) return deny('Нет прав');
+      if (!canModify()) return deny('Нельзя изменить этого пользователя');
+      modifyUser(getSelected(), { premium: false });
+    };
+    document.getElementById('setOwnerBtn').onclick = () => {
+      if (!isOwner()) return deny('Только владелец может назначать владельцев');
+      if (!canModify()) return deny('Нельзя изменить роль этого пользователя');
+      modifyUser(getSelected(), { role: 'owner' });
+    };
+    document.getElementById('setHeadAdminBtn').onclick = () => {
+      if (!isOwner()) return deny('Только владелец может назначать главных администраторов');
+      if (!canModify()) return deny('Нельзя изменить роль этого пользователя');
+      modifyUser(getSelected(), { role: 'head_admin' });
+    };
+    document.getElementById('setAdminBtn').onclick = () => {
+      if (!isHeadAdminOrAbove()) return deny('Только владелец или главный администратор могут назначать администраторов');
+      if (!canModify()) return deny('Нельзя изменить роль этого пользователя');
+      modifyUser(getSelected(), { role: 'admin' });
+    };
+    document.getElementById('setModeratorBtn').onclick = () => {
+      if (!isAdminOrAbove()) return deny('Нет прав');
+      if (!canModify()) return deny('Нельзя изменить роль этого пользователя');
+      modifyUser(getSelected(), { role: 'moderator' });
+    };
+    document.getElementById('setEventModeratorBtn').onclick = () => {
+      if (!isAdminOrAbove()) return deny('Нет прав');
+      if (!canModify()) return deny('Нельзя изменить роль этого пользователя');
+      modifyUser(getSelected(), { role: 'event_moderator' });
+    };
+    document.getElementById('removeRoleBtn').onclick = () => {
+      if (!isAdminOrAbove()) return deny('Нет прав');
+      if (!canModify()) return deny('Нельзя изменить роль этого пользователя');
+      modifyUser(getSelected(), { role: 'user' });
+    };
     document.getElementById('banUserBtn').onclick = () => {
-      if (!isAdminOrAbove()) return alert('Нет прав');
+      if (!isAdminOrAbove()) return deny('Нет прав');
+      if (!canModify()) return deny('Нельзя забанить этого пользователя');
       modifyUser(getSelected(), { banUntil: new Date(Date.now() + 3600000).toISOString() });
     };
-    document.getElementById('unbanUserBtn').onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); modifyUser(getSelected(), { banUntil: null }); };
+    document.getElementById('unbanUserBtn').onclick = () => {
+      if (!isAdminOrAbove()) return deny('Нет прав');
+      if (!canModify()) return deny('Нельзя разбанить этого пользователя');
+      modifyUser(getSelected(), { banUntil: null });
+    };
     document.getElementById('deleteUserBtn').onclick = () => {
-      if (!isAdminOrAbove()) return alert('Нет прав');
+      if (!isAdminOrAbove()) return deny('Нет прав');
+      if (!canModify()) return deny('Нельзя удалить этого пользователя');
       if (confirm(`Удалить ${getSelected()}?`)) modifyUser(getSelected(), { delete: true });
     };
   } catch (e) { select.innerHTML = '<option>Ошибка загрузки</option>'; }
