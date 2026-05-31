@@ -25,7 +25,6 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <div class="app-container">
-    <!-- Левая панель (ПК) -->
     <aside class="sidebar sidebar-left">
       <div class="sidebar-logo">
         <img src="logo.png" alt="НБСС"><span class="logo-text">НБСС</span>
@@ -43,14 +42,12 @@
       </nav>
     </aside>
 
-    <!-- Основной контент -->
     <main class="main-content">
       <div class="search-box" style="margin:10px 20px;">
         <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." style="width:100%;">
         <div id="searchResults" class="search-results"></div>
       </div>
 
-      <!-- Настройки -->
       <section id="settingsPage" class="page">
         <div class="card settings-card">
           <h2>🎨 Настройки темы</h2>
@@ -75,7 +72,6 @@
         </div>
       </section>
 
-      <!-- Вход -->
       <section id="loginPage" class="page">
         <div class="auth-center">
           <div class="card auth-card">
@@ -88,7 +84,6 @@
         </div>
       </section>
 
-      <!-- Регистрация -->
       <section id="registerPage" class="page">
         <div class="auth-center">
           <div class="card auth-card">
@@ -100,7 +95,6 @@
         </div>
       </section>
 
-      <!-- Главная (лента) -->
       <section id="homePage" class="page active">
         <div id="authBanner" class="auth-banner card" style="display:flex; justify-content:space-between; align-items:center;">
           <span>👋 Добро пожаловать в НБСС! Вы смотрите публичную ленту.</span>
@@ -118,13 +112,11 @@
         <div id="feedContainer" class="feed"></div>
       </section>
 
-      <!-- Профиль -->
       <section id="profilePage" class="page">
         <div class="profile-header" id="profileHeader"></div>
         <div id="profilePosts" class="feed"></div>
       </section>
 
-      <!-- Сообщения -->
       <section id="messagesPage" class="page">
         <div class="messages-container">
           <div class="dialog-list" id="dialogList"></div>
@@ -142,15 +134,21 @@
         </div>
       </section>
 
-      <!-- Ивенты -->
+      <!-- ИВЕНТЫ (с формой создания) -->
       <section id="eventsPage" class="page">
         <div class="events-container">
           <h2>📅 Активные ивенты</h2>
           <div id="eventsList"></div>
+          <!-- Форма создания ивента -->
+          <div class="card" style="margin-top:16px;" id="createEventCard">
+            <h3>Создать ивент</h3>
+            <input id="eventTitleEvents" placeholder="Название">
+            <textarea id="eventDescEvents" placeholder="Описание"></textarea>
+            <button id="createEventBtnEvents" class="btn primary">🚀 Запустить</button>
+          </div>
         </div>
       </section>
 
-      <!-- Админка -->
       <section id="adminPage" class="page">
         <div class="admin-container">
           <h2>⚙️ Административная панель</h2>
@@ -187,7 +185,6 @@
       </section>
     </main>
 
-    <!-- Мобильная нижняя панель -->
     <nav class="mobile-nav">
       <a class="mobile-nav-item active" data-page="home"><span>🏠</span></a>
       <a class="mobile-nav-item" data-page="profile" id="mobileNavProfile" style="display:none"><span>👤</span></a>
