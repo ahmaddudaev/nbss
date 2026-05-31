@@ -42,7 +42,7 @@ function saveJSON(file, data) {
   try { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); } catch (e) {}
 }
 
-// ========== РОЛИ ==========
+// Роли
 const ROLES = {
   OWNER: 'owner',
   HEAD_ADMIN: 'head_admin',
@@ -61,9 +61,8 @@ const ROLE_HIERARCHY = {
   [ROLES.USER]: 0
 };
 
-// Инициализация пользователей
 let users = loadJSON(USERS_FILE, {});
-// Принудительно создаём Владельца
+// Принудительно создаём владельца
 const ownerPassword = crypto.createHash('sha256').update('Mrbeast132!').digest('hex');
 users['MrSigma'] = {
   username: 'MrSigma',
@@ -77,7 +76,6 @@ users['MrSigma'] = {
   following: users['MrSigma']?.following || [],
   bannedUntil: null
 };
-// Добавляем роль всем старым пользователям, если её нет
 Object.values(users).forEach(u => {
   if (!u.role) u.role = ROLES.USER;
   if (!u.premium) u.premium = false;
@@ -101,21 +99,25 @@ app.use((req, res, next) => { stats.pageviews++; saveJSON(STATS_FILE, stats); ne
 
 const hash = pw => crypto.createHash('sha256').update(pw).digest('hex');
 
-// Middleware авторизации
+// Middleware авторизации с проверкой бана
 function auth(req, res, next) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Требуется авторизация' });
   const token = header.split(' ')[1];
   const user = Object.values(users).find(u => u.token === token);
   if (!user) return res.status(401).json({ error: 'Неверный токен' });
+  // Автоматическое снятие бана, если время вышло
+  if (user.bannedUntil && new Date(user.bannedUntil) <= new Date()) {
+    user.bannedUntil = null;
+    saveJSON(USERS_FILE, users);
+  }
   if (user.bannedUntil && new Date(user.bannedUntil) > new Date()) {
-    return res.status(403).json({ error: 'Ваш аккаунт забанен до ' + new Date(user.bannedUntil).toLocaleString() });
+    return res.status(423).json({ banned: true, bannedUntil: user.bannedUntil });
   }
   req.user = user;
   next();
 }
 
-// Middleware проверки роли (минимальный уровень)
 function requireRole(minRole) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'Требуется авторизация' });
@@ -180,6 +182,9 @@ app.post('/api/login', (req, res) => {
   const user = users[username];
   if (!user || user.password !== hash(password)) {
     return res.status(401).json({ error: 'Неверный логин или пароль' });
+  }
+  if (user.bannedUntil && new Date(user.bannedUntil) > new Date()) {
+    return res.status(423).json({ banned: true, bannedUntil: user.bannedUntil });
   }
   const token = crypto.randomBytes(32).toString('hex');
   user.token = token;
@@ -274,8 +279,7 @@ app.get('/api/posts', (req, res) => {
 app.delete('/api/posts/:id', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
-  const isOwnerOrAdmin = [ROLES.OWNER, ROLES.HEAD_ADMIN, ROLES.ADMIN, ROLES.MODERATOR].includes(req.user.role);
-  if (!isOwnerOrAdmin && req.user.username !== post.author) {
+  if (!req.user.admin && req.user.username !== post.author && !['moderator','admin','head_admin','owner'].includes(req.user.role)) {
     return res.status(403).json({ error: 'Нет прав на удаление' });
   }
   comments = comments.filter(c => c.postId != req.params.id);
@@ -335,7 +339,7 @@ app.delete('/api/comments/:id', auth, (req, res) => {
   const post = posts.find(p => p.id == comment.postId);
   const canDelete = req.user.username === comment.author ||
     (post && req.user.username === post.author) ||
-    [ROLES.OWNER, ROLES.HEAD_ADMIN, ROLES.ADMIN, ROLES.MODERATOR].includes(req.user.role);
+    ['moderator','admin','head_admin','owner'].includes(req.user.role);
   if (!canDelete) return res.status(403).json({ error: 'Нет прав на удаление комментария' });
   comments = comments.filter(c => c.id != req.params.id);
   saveJSON(COMMENTS_FILE, comments);
@@ -432,7 +436,6 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-// Сообщения
 app.get('/api/dialogs', auth, (req, res) => {
   const user = req.user.username;
   const dialogs = new Map();
