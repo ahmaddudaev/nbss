@@ -112,16 +112,26 @@ function updateUIForAuth() {
   const postComposer = document.getElementById('postComposer');
   if (authBanner) authBanner.style.display = loggedIn ? 'none' : 'flex';
   if (postComposer) postComposer.style.display = loggedIn ? 'block' : 'none';
-  document.getElementById('navProfile').style.display = loggedIn ? 'flex' : 'none';
-  document.getElementById('navMessages').style.display = loggedIn ? 'flex' : 'none';
-  document.getElementById('mobileNavProfile').style.display = loggedIn ? 'flex' : 'none';
-  document.getElementById('mobileNavMessages').style.display = loggedIn ? 'flex' : 'none';
-  document.getElementById('logoutLink').style.display = loggedIn ? 'flex' : 'none';
-  document.getElementById('mobileLogoutLink').style.display = loggedIn ? 'flex' : 'none';
-  document.getElementById('loginLink').style.display = loggedIn ? 'none' : 'flex';
-  document.getElementById('mobileLoginLink').style.display = loggedIn ? 'none' : 'flex';
-  document.getElementById('registerLink').style.display = loggedIn ? 'none' : 'flex';
-  document.getElementById('mobileRegisterLink').style.display = loggedIn ? 'none' : 'flex';
+  const navProfile = document.getElementById('navProfile');
+  const navMessages = document.getElementById('navMessages');
+  const mobileNavProfile = document.getElementById('mobileNavProfile');
+  const mobileNavMessages = document.getElementById('mobileNavMessages');
+  const logoutLink = document.getElementById('logoutLink');
+  const mobileLogoutLink = document.getElementById('mobileLogoutLink');
+  const loginLink = document.getElementById('loginLink');
+  const mobileLoginLink = document.getElementById('mobileLoginLink');
+  const registerLink = document.getElementById('registerLink');
+  const mobileRegisterLink = document.getElementById('mobileRegisterLink');
+  if (navProfile) navProfile.style.display = loggedIn ? 'flex' : 'none';
+  if (navMessages) navMessages.style.display = loggedIn ? 'flex' : 'none';
+  if (mobileNavProfile) mobileNavProfile.style.display = loggedIn ? 'flex' : 'none';
+  if (mobileNavMessages) mobileNavMessages.style.display = loggedIn ? 'flex' : 'none';
+  if (logoutLink) logoutLink.style.display = loggedIn ? 'flex' : 'none';
+  if (mobileLogoutLink) mobileLogoutLink.style.display = loggedIn ? 'flex' : 'none';
+  if (loginLink) loginLink.style.display = loggedIn ? 'none' : 'flex';
+  if (mobileLoginLink) mobileLoginLink.style.display = loggedIn ? 'none' : 'flex';
+  if (registerLink) registerLink.style.display = loggedIn ? 'none' : 'flex';
+  if (mobileRegisterLink) mobileRegisterLink.style.display = loggedIn ? 'none' : 'flex';
   const navAdmin = document.getElementById('navAdmin');
   const mobileNavAdmin = document.getElementById('mobileNavAdmin');
   if (navAdmin) navAdmin.style.display = (currentUser && ['moderator','admin','head_admin','owner'].includes(currentUser.role)) ? 'flex' : 'none';
@@ -222,6 +232,7 @@ document.getElementById('publishPost').addEventListener('click', async () => {
 
 async function loadPosts() {
   const container = document.getElementById('feedContainer');
+  if (!container) return;
   try {
     const posts = await request('/posts');
     container.innerHTML = posts.map(p => renderPost(p)).join('');
@@ -277,7 +288,23 @@ function attachPostActions() {
     if (section.style.display === 'none') { section.style.display = 'block'; await loadComments(postEl.dataset.id, section); }
     else section.style.display = 'none';
   });
-  document.querySelectorAll('.translate-btn').forEach(btn => { /* ... ваш код перевода ... */ });
+  document.querySelectorAll('.translate-btn').forEach(btn => {
+    btn.onclick = async function() {
+      const postId = this.dataset.postId;
+      const textEl = document.getElementById(`text-${postId}`);
+      if (!textEl) return;
+      const originalText = textEl.dataset.original || textEl.textContent;
+      textEl.dataset.original = originalText;
+      if (translatedPosts[postId]) { textEl.textContent = originalText; delete translatedPosts[postId]; return; }
+      textEl.textContent = 'Перевод...';
+      try {
+        const targetLang = navigator.language || 'en';
+        const data = await request('/translate', { method: 'POST', body: JSON.stringify({ text: originalText, target: targetLang }) });
+        textEl.textContent = data.translation;
+        translatedPosts[postId] = data.translation;
+      } catch (e) { textEl.textContent = originalText; alert('Не удалось перевести'); }
+    };
+  });
   document.querySelectorAll('.delete-post-btn').forEach(btn => {
     btn.onclick = async function(e) {
       e.stopPropagation();
@@ -289,4 +316,220 @@ function attachPostActions() {
   });
 }
 
-// Остальные функции (loadComments, renderComment, loadMyProfile, loadUserProfile, loadDialogs, openChat, loadMessages, loadEvents, loadAdminStats, loadAdminUsers, modifyUser, updateStats, поиск) оставлены без изменений, как в предыдущем полном ответе.
+async function loadComments(postId, container) {
+  if (!container) return;
+  try {
+    const comments = await request(`/posts/${postId}/comments`);
+    container.innerHTML = comments.map(c => renderComment(c)).join('') +
+      (token ? `<div class="comment-form"><input type="text" class="comment-input" placeholder="Комментарий..."><button class="btn primary comment-submit">Отпр.</button></div>` : '<p>Войдите, чтобы комментировать</p>');
+    if (token) {
+      const inp = container.querySelector('.comment-input');
+      const btn = container.querySelector('.comment-submit');
+      if (btn) btn.onclick = async () => { const text = inp.value.trim(); if (!text) return; await request(`/posts/${postId}/comments`, { method: 'POST', body: JSON.stringify({ text }) }); await loadComments(postId, container); };
+    }
+  } catch (e) {}
+}
+
+function renderComment(c) {
+  const role = c.authorRole || 'user';
+  const premium = c.authorPremium === true;
+  const verified = c.authorVerified === true;
+  let canDelete = currentUser && (currentUser.username === c.author || ['moderator','admin','head_admin','owner'].includes(currentUser.role));
+  let nickClass = 'role-' + role;
+  if (premium && role === 'user') nickClass = 'premium-nick';
+  return `<div class="comment" data-id="${c.id}">
+    <div class="avatar-small">${c.author[0]?.toUpperCase()}</div>
+    <div class="comment-body">
+      <span class="username ${nickClass}">${c.author}${verified ? '<img src="verification.png" class="verified-icon">' : ''}</span>
+      <span>${new Date(c.timestamp).toLocaleString()}</span>
+      <p class="comment-text">${c.text.replace(/@(\w+)/g, '<span class="mention">@$1</span>')}</p>
+      ${canDelete ? `<button class="delete-comment-btn" data-id="${c.id}">🗑️</button>` : ''}
+    </div>
+  </div>`;
+}
+
+async function loadMyProfile() {
+  if (!currentUser) return;
+  const header = document.getElementById('profileHeader');
+  if (!header) return;
+  let nickClass = 'role-' + (currentUser.role || 'user');
+  if (currentUser.premium && currentUser.role === 'user') nickClass = 'premium-nick';
+  header.innerHTML = `<h2 class="${nickClass}">${currentUser.username} ${currentUser.verified ? '<img src="verification.png" class="verified-icon">' : ''}</h2><p>${currentUser.role !== 'user' ? '🔹 ' + currentUser.role : ''} ${currentUser.premium ? '💎 НБСС+' : ''}</p>`;
+  const allPosts = await request('/posts');
+  const userPosts = allPosts.filter(p => p.author === currentUser.username);
+  const profilePosts = document.getElementById('profilePosts');
+  if (profilePosts) profilePosts.innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
+  attachPostActions();
+}
+
+async function loadUserProfile(username) {
+  try {
+    const user = await request(`/user/${username}`);
+    const header = document.getElementById('profileHeader');
+    if (!header) return;
+    let nickClass = 'role-' + (user.role || 'user');
+    if (user.premium && user.role === 'user') nickClass = 'premium-nick';
+    header.innerHTML = `
+      <h2 class="${nickClass}">${user.username} ${user.verified ? '<img src="verification.png" class="verified-icon">' : ''}</h2>
+      <p>${user.role !== 'user' ? '🔹 ' + user.role : ''} ${user.premium ? '💎 НБСС+' : ''}</p>
+      <div class="profile-actions"><button class="btn primary send-message-btn" data-username="${user.username}">💬 Написать сообщение</button></div>`;
+    const btn = document.querySelector('.send-message-btn');
+    if (btn) btn.addEventListener('click', () => {
+      window.viewingUser = null; currentDialog = username; showPage('messages'); openChat(username);
+    });
+    const allPosts = await request('/posts');
+    const userPosts = allPosts.filter(p => p.author === username);
+    const profilePosts = document.getElementById('profilePosts');
+    if (profilePosts) profilePosts.innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
+    attachPostActions();
+  } catch (e) {
+    const header = document.getElementById('profileHeader');
+    if (header) header.innerHTML = '<p>Пользователь не найден</p>';
+  }
+}
+
+async function loadDialogs() {
+  const list = document.getElementById('dialogList');
+  if (!list) return;
+  try {
+    const dialogs = await request('/dialogs');
+    list.innerHTML = dialogs.map(d => {
+      let nickClass = 'role-' + (d.role || 'user');
+      if (d.premium && d.role === 'user') nickClass = 'premium-nick';
+      return `<div class="dialog-item" data-username="${d.username}"><div class="dialog-username ${nickClass}">${d.username}</div><div class="dialog-last">${d.lastMessage || 'Нет сообщений'}</div></div>`;
+    }).join('');
+    document.querySelectorAll('.dialog-item').forEach(item => {
+      item.addEventListener('click', () => { currentDialog = item.dataset.username; openChat(currentDialog); });
+    });
+    const chatView = document.getElementById('chatView');
+    if (chatView) chatView.style.display = 'none';
+    if (list) list.style.display = 'block';
+  } catch (e) {}
+}
+async function openChat(username) {
+  const dialogList = document.querySelector('.dialog-list');
+  const chatView = document.getElementById('chatView');
+  if (dialogList) dialogList.style.display = 'none';
+  if (chatView) chatView.style.display = 'flex';
+  const partner = document.getElementById('chatPartner');
+  if (partner) partner.textContent = username;
+  await loadMessages(username);
+}
+async function loadMessages(username) {
+  const container = document.getElementById('chatMessages');
+  if (!container) return;
+  try {
+    const msgs = await request(`/messages?with=${encodeURIComponent(username)}`);
+    container.innerHTML = msgs.map(m => {
+      const isSent = m.from === currentUser.username;
+      return `<div class="message-bubble ${isSent ? 'sent' : 'received'}"><div>${m.text}</div><div class="message-time">${new Date(m.timestamp).toLocaleString()}</div></div>`;
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+  } catch (e) {}
+}
+document.getElementById('sendMessageBtn').addEventListener('click', async () => {
+  const input = document.getElementById('messageInput');
+  if (!input || !currentDialog) return;
+  const text = input.value.trim();
+  if (!text) return;
+  await request('/messages', { method: 'POST', body: JSON.stringify({ to: currentDialog, text }) });
+  input.value = '';
+  await loadMessages(currentDialog);
+});
+document.querySelector('.back-to-dialogs')?.addEventListener('click', () => {
+  const chatView = document.getElementById('chatView');
+  const dialogList = document.querySelector('.dialog-list');
+  if (chatView) chatView.style.display = 'none';
+  if (dialogList) dialogList.style.display = 'block';
+  currentDialog = null;
+  loadDialogs();
+});
+
+async function loadEvents() {
+  const list = document.getElementById('eventsList');
+  if (!list) return;
+  try {
+    const evs = await request('/events');
+    list.innerHTML = evs.length ? evs.map(e => `<div class="event-banner card"><strong>${e.title}</strong><p>${e.desc}</p>${currentUser && ['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role) && e.id ? `<button class="btn danger delete-event-btn" data-event-id="${e.id}">🗑 Удалить</button>` : ''}</div>`).join('') : '<p>Нет ивентов</p>';
+    document.querySelectorAll('.delete-event-btn').forEach(btn => {
+      btn.addEventListener('click', async () => { if (confirm('Удалить ивент?')) { await request(`/events/${btn.dataset.eventId}`, { method: 'DELETE' }); loadEvents(); } });
+    });
+  } catch (e) {}
+}
+
+async function loadAdminStats() {
+  if (!currentUser || !['moderator','admin','head_admin','owner'].includes(currentUser.role)) return;
+  const stats = await request('/stats');
+  const container = document.getElementById('adminStats');
+  if (container) container.innerHTML = `<h3>📊 Статистика</h3><div class="stat-row"><span>👥</span><span>${stats.users}</span></div><div class="stat-row"><span>📝</span><span>${stats.posts}</span></div>`;
+}
+async function loadAdminUsers() {
+  if (!currentUser || !['moderator','admin','head_admin','owner'].includes(currentUser.role)) return;
+  const select = document.getElementById('userSelect');
+  if (!select) return;
+  try {
+    const usersList = await request('/admin/users');
+    select.innerHTML = usersList.map(u => `<option value="${u.username}">${u.username} ${u.role !== 'user' ? '('+u.role+')' : ''} ${u.verified ? '✔️' : ''} ${u.premium ? '💎' : ''}</option>`).join('');
+    const getSelected = () => select.value;
+    const isOwner = () => currentUser.role === 'owner';
+    const isHeadAdminOrAbove = () => ['head_admin','owner'].includes(currentUser.role);
+    const isAdminOrAbove = () => ['admin','head_admin','owner'].includes(currentUser.role);
+
+    document.getElementById('verifyUserBtn').onclick = () => { if (!isAdminOrAbove() && getSelected() !== currentUser.username) return alert('Нет прав'); modifyUser(getSelected(), { verified: true }); };
+    document.getElementById('unverifyUserBtn').onclick = () => { if (!isAdminOrAbove() && getSelected() !== currentUser.username) return alert('Нет прав'); modifyUser(getSelected(), { verified: false }); };
+    document.getElementById('givePremiumBtn').onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); modifyUser(getSelected(), { premium: true }); };
+    document.getElementById('revokePremiumBtn').onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); modifyUser(getSelected(), { premium: false }); };
+    document.getElementById('setOwnerBtn').onclick = () => { if (!isOwner()) return alert('Только владелец может назначать владельцев'); modifyUser(getSelected(), { role: 'owner' }); };
+    document.getElementById('setHeadAdminBtn').onclick = () => { if (!isOwner()) return alert('Только владелец может назначать главных администраторов'); modifyUser(getSelected(), { role: 'head_admin' }); };
+    document.getElementById('setAdminBtn').onclick = () => { if (!isHeadAdminOrAbove()) return alert('Только владелец или главный администратор могут назначать администраторов'); modifyUser(getSelected(), { role: 'admin' }); };
+    document.getElementById('setModeratorBtn').onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); modifyUser(getSelected(), { role: 'moderator' }); };
+    document.getElementById('setEventModeratorBtn').onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); modifyUser(getSelected(), { role: 'event_moderator' }); };
+    document.getElementById('banUserBtn').onclick = () => {
+      if (!isAdminOrAbove()) return alert('Нет прав');
+      modifyUser(getSelected(), { banUntil: new Date(Date.now() + 3600000).toISOString() });
+    };
+    document.getElementById('unbanUserBtn').onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); modifyUser(getSelected(), { banUntil: null }); };
+    document.getElementById('deleteUserBtn').onclick = () => {
+      if (!isAdminOrAbove()) return alert('Нет прав');
+      if (confirm(`Удалить ${getSelected()}?`)) modifyUser(getSelected(), { delete: true });
+    };
+  } catch (e) { select.innerHTML = '<option>Ошибка загрузки</option>'; }
+}
+async function modifyUser(username, changes) {
+  await request(`/admin/user/${username}`, { method: 'POST', body: JSON.stringify(changes) });
+  loadAdminUsers();
+}
+document.getElementById('createEventBtn').addEventListener('click', async () => {
+  if (!currentUser || !['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role)) return alert('Нет прав');
+  const title = document.getElementById('eventTitle').value.trim();
+  const desc = document.getElementById('eventDesc').value.trim();
+  if (!title) return;
+  await request('/events', { method: 'POST', body: JSON.stringify({ title, desc }) });
+  document.getElementById('eventTitle').value = '';
+  document.getElementById('eventDesc').value = '';
+  loadEvents();
+});
+
+async function updateStats() {
+  try { await request('/stats'); } catch (e) {}
+}
+updateStats();
+setInterval(updateStats, 10000);
+
+document.getElementById('searchInput')?.addEventListener('input', async (e) => {
+  const q = e.target.value.trim();
+  const container = document.getElementById('searchResults');
+  if (!container) return;
+  if (!q) { container.innerHTML = ''; return; }
+  try {
+    const users = await request(`/users/search?q=${encodeURIComponent(q)}`);
+    container.innerHTML = users.map(u => {
+      let nickClass = 'role-' + (u.role || 'user');
+      if (u.premium && u.role === 'user') nickClass = 'premium-nick';
+      return `<div class="search-user"><span class="username ${nickClass}">${u.username}${u.verified ? '<img src="verification.png" class="verified-icon">' : ''}</span><button class="btn outline view-profile-btn" data-username="${u.username}">→</button></div>`;
+    }).join('');
+    document.querySelectorAll('.view-profile-btn').forEach(btn => {
+      btn.addEventListener('click', () => { window.viewingUser = btn.dataset.username; showPage('profile'); });
+    });
+  } catch (e) {}
+});
