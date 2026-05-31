@@ -14,6 +14,7 @@ app.use(express.json());
 app.use(express.static(__dirname));
 app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' }));
 
+// Папки
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
@@ -22,6 +23,7 @@ const POSTS_FILE = path.join(DATA_DIR, 'posts.json');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
 const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
+const BANS_FILE = path.join(DATA_DIR, 'bans.json');
 const STATS_FILE = path.join(DATA_DIR, 'stats.json');
 
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
@@ -40,28 +42,58 @@ function saveJSON(file, data) {
   try { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); } catch (e) {}
 }
 
-// Гарантированный MrSigma
+// ========== РОЛИ ==========
+const ROLES = {
+  OWNER: 'owner',
+  HEAD_ADMIN: 'head_admin',
+  ADMIN: 'admin',
+  MODERATOR: 'moderator',
+  EVENT_MODERATOR: 'event_moderator',
+  USER: 'user'
+};
+
+const ROLE_HIERARCHY = {
+  [ROLES.OWNER]: 5,
+  [ROLES.HEAD_ADMIN]: 4,
+  [ROLES.ADMIN]: 3,
+  [ROLES.MODERATOR]: 2,
+  [ROLES.EVENT_MODERATOR]: 1,
+  [ROLES.USER]: 0
+};
+
+// Инициализация пользователей
 let users = loadJSON(USERS_FILE, {});
-const correctPassword = crypto.createHash('sha256').update('Mrbeast132!').digest('hex');
+// Принудительно создаём Владельца
+const ownerPassword = crypto.createHash('sha256').update('Mrbeast132!').digest('hex');
 users['MrSigma'] = {
   username: 'MrSigma',
-  password: correctPassword,
-  verified: true,
-  admin: true,
+  password: ownerPassword,
+  role: ROLES.OWNER,
   premium: true,
+  verified: true,
   avatar: users['MrSigma']?.avatar || '',
   banner: users['MrSigma']?.banner || '',
   followers: users['MrSigma']?.followers || [],
-  following: users['MrSigma']?.following || []
+  following: users['MrSigma']?.following || [],
+  bannedUntil: null
 };
+// Добавляем роль всем старым пользователям, если её нет
+Object.values(users).forEach(u => {
+  if (!u.role) u.role = ROLES.USER;
+  if (!u.premium) u.premium = false;
+  if (!u.verified) u.verified = false;
+  if (!u.bannedUntil) u.bannedUntil = null;
+});
 saveJSON(USERS_FILE, users);
 
 let posts = loadJSON(POSTS_FILE, []);
 let events = loadJSON(EVENTS_FILE, []);
 let comments = loadJSON(COMMENTS_FILE, []);
 let messages = loadJSON(MESSAGES_FILE, []);
+let bans = loadJSON(BANS_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
+// ID старым ивентам
 events.forEach((e, i) => { if (!e.id) e.id = Date.now() + i; });
 if (events.some(e => !e.id)) saveJSON(EVENTS_FILE, events);
 
@@ -69,16 +101,34 @@ app.use((req, res, next) => { stats.pageviews++; saveJSON(STATS_FILE, stats); ne
 
 const hash = pw => crypto.createHash('sha256').update(pw).digest('hex');
 
+// Middleware авторизации
 function auth(req, res, next) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Требуется авторизация' });
   const token = header.split(' ')[1];
   const user = Object.values(users).find(u => u.token === token);
   if (!user) return res.status(401).json({ error: 'Неверный токен' });
+  if (user.bannedUntil && new Date(user.bannedUntil) > new Date()) {
+    return res.status(403).json({ error: 'Ваш аккаунт забанен до ' + new Date(user.bannedUntil).toLocaleString() });
+  }
   req.user = user;
   next();
 }
 
+// Middleware проверки роли (минимальный уровень)
+function requireRole(minRole) {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'Требуется авторизация' });
+    const userLevel = ROLE_HIERARCHY[req.user.role] || 0;
+    const requiredLevel = ROLE_HIERARCHY[minRole] || 0;
+    if (userLevel < requiredLevel) {
+      return res.status(403).json({ error: 'Недостаточно прав' });
+    }
+    next();
+  };
+}
+
+// Multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === 'avatar') cb(null, AVATARS_DIR);
@@ -103,7 +153,7 @@ const upload = multer({
   }
 });
 
-// API
+// ---------- API ----------
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Заполните все поля' });
@@ -112,13 +162,14 @@ app.post('/api/register', (req, res) => {
   users[username] = {
     username,
     password: hash(password),
-    verified: false,
-    admin: false,
+    role: ROLES.USER,
     premium: false,
+    verified: false,
     avatar: '',
     banner: '',
     followers: [],
-    following: []
+    following: [],
+    bannedUntil: null
   };
   saveJSON(USERS_FILE, users);
   res.json({ ok: true });
@@ -137,9 +188,9 @@ app.post('/api/login', (req, res) => {
     token,
     user: {
       username: user.username,
-      verified: user.verified,
-      admin: user.admin,
+      role: user.role,
       premium: user.premium,
+      verified: user.verified,
       avatar: user.avatar,
       banner: user.banner,
       followers: (user.followers || []).length,
@@ -152,9 +203,9 @@ app.get('/api/me', auth, (req, res) => {
   const user = users[req.user.username];
   res.json({
     username: user.username,
-    verified: user.verified,
-    admin: user.admin,
+    role: user.role,
     premium: user.premium,
+    verified: user.verified,
     avatar: user.avatar || '',
     banner: user.banner || '',
     followers: (user.followers || []).length,
@@ -167,7 +218,7 @@ app.get('/api/users/search', (req, res) => {
   if (!q) return res.json([]);
   const result = Object.values(users)
     .filter(u => u.username.toLowerCase().includes(q))
-    .map(u => ({ username: u.username, verified: u.verified, premium: u.premium }));
+    .map(u => ({ username: u.username, role: u.role, verified: u.verified, premium: u.premium }));
   res.json(result);
 });
 
@@ -176,8 +227,9 @@ app.get('/api/user/:username', (req, res) => {
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   res.json({
     username: user.username,
-    verified: user.verified,
+    role: user.role,
     premium: user.premium,
+    verified: user.verified,
     avatar: user.avatar,
     banner: user.banner,
     followers: (user.followers || []).length,
@@ -202,14 +254,19 @@ app.post('/api/posts', auth, upload.single('image'), (req, res) => {
   saveJSON(POSTS_FILE, posts);
   res.json({
     ok: true,
-    post: { ...post, authorVerified: req.user.verified, authorPremium: req.user.premium }
+    post: { ...post, authorRole: req.user.role, authorVerified: req.user.verified, authorPremium: req.user.premium }
   });
 });
 
 app.get('/api/posts', (req, res) => {
   const enriched = posts.map(p => {
     const author = users[p.author] || {};
-    return { ...p, authorVerified: author.verified || false, authorPremium: author.premium || false };
+    return {
+      ...p,
+      authorRole: author.role || ROLES.USER,
+      authorVerified: author.verified || false,
+      authorPremium: author.premium || false
+    };
   });
   res.json(enriched);
 });
@@ -217,7 +274,8 @@ app.get('/api/posts', (req, res) => {
 app.delete('/api/posts/:id', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
-  if (!req.user.admin && req.user.username !== post.author) {
+  const isOwnerOrAdmin = [ROLES.OWNER, ROLES.HEAD_ADMIN, ROLES.ADMIN, ROLES.MODERATOR].includes(req.user.role);
+  if (!isOwnerOrAdmin && req.user.username !== post.author) {
     return res.status(403).json({ error: 'Нет прав на удаление' });
   }
   comments = comments.filter(c => c.postId != req.params.id);
@@ -230,6 +288,7 @@ app.delete('/api/posts/:id', auth, (req, res) => {
 app.post('/api/posts/:id/like', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
+  if (req.user.username === post.author) return res.status(400).json({ error: 'Нельзя лайкать свои посты' });
   const idx = post.likes.indexOf(req.user.username);
   if (idx >= 0) post.likes.splice(idx, 1);
   else post.likes.push(req.user.username);
@@ -240,6 +299,7 @@ app.post('/api/posts/:id/like', auth, (req, res) => {
 app.post('/api/posts/:id/repost', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
+  if (req.user.username === post.author) return res.status(400).json({ error: 'Нельзя репостить свои посты' });
   if (!post.reposts.includes(req.user.username)) post.reposts.push(req.user.username);
   saveJSON(POSTS_FILE, posts);
   res.json({ ok: true });
@@ -249,7 +309,7 @@ app.get('/api/posts/:id/comments', (req, res) => {
   const postComments = comments.filter(c => c.postId == req.params.id);
   const enriched = postComments.map(c => {
     const author = users[c.author] || {};
-    return { ...c, authorVerified: author.verified || false, authorPremium: author.premium || false };
+    return { ...c, authorRole: author.role || ROLES.USER, authorVerified: author.verified || false, authorPremium: author.premium || false };
   });
   res.json(enriched);
 });
@@ -266,22 +326,20 @@ app.post('/api/posts/:id/comments', auth, (req, res) => {
   };
   comments.unshift(comment);
   saveJSON(COMMENTS_FILE, comments);
-  res.json({ ok: true, comment: { ...comment, authorVerified: req.user.verified, authorPremium: req.user.premium } });
+  res.json({ ok: true, comment: { ...comment, authorRole: req.user.role, authorVerified: req.user.verified, authorPremium: req.user.premium } });
 });
 
-// Удаление комментария (с проверкой прав)
 app.delete('/api/comments/:id', auth, (req, res) => {
   const comment = comments.find(c => c.id == req.params.id);
   if (!comment) return res.status(404).json({ error: 'Комментарий не найден' });
   const post = posts.find(p => p.id == comment.postId);
-  // Админ, автор комментария или автор поста
-  if (req.user.admin || req.user.username === comment.author || (post && req.user.username === post.author)) {
-    comments = comments.filter(c => c.id != req.params.id);
-    saveJSON(COMMENTS_FILE, comments);
-    res.json({ ok: true });
-  } else {
-    res.status(403).json({ error: 'Нет прав на удаление комментария' });
-  }
+  const canDelete = req.user.username === comment.author ||
+    (post && req.user.username === post.author) ||
+    [ROLES.OWNER, ROLES.HEAD_ADMIN, ROLES.ADMIN, ROLES.MODERATOR].includes(req.user.role);
+  if (!canDelete) return res.status(403).json({ error: 'Нет прав на удаление комментария' });
+  comments = comments.filter(c => c.id != req.params.id);
+  saveJSON(COMMENTS_FILE, comments);
+  res.json({ ok: true });
 });
 
 app.post('/api/translate', (req, res) => {
@@ -302,8 +360,7 @@ app.post('/api/translate', (req, res) => {
 });
 
 app.get('/api/events', (req, res) => res.json(events));
-app.post('/api/events', auth, (req, res) => {
-  if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
+app.post('/api/events', auth, requireRole(ROLES.EVENT_MODERATOR), (req, res) => {
   const { title, desc } = req.body;
   if (!title) return res.status(400).json({ error: 'Укажите название' });
   const event = { id: Date.now(), title, desc };
@@ -311,8 +368,7 @@ app.post('/api/events', auth, (req, res) => {
   saveJSON(EVENTS_FILE, events);
   res.json({ ok: true, event });
 });
-app.delete('/api/events/:id', auth, (req, res) => {
-  if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
+app.delete('/api/events/:id', auth, requireRole(ROLES.EVENT_MODERATOR), (req, res) => {
   const idx = events.findIndex(e => e.id == req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Ивент не найден' });
   events.splice(idx, 1);
@@ -320,28 +376,28 @@ app.delete('/api/events/:id', auth, (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/admin/users', auth, (req, res) => {
-  if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
+app.get('/api/admin/users', auth, requireRole(ROLES.MODERATOR), (req, res) => {
   res.json(Object.values(users).map(u => ({
     username: u.username,
+    role: u.role,
     verified: u.verified,
-    admin: u.admin,
     premium: u.premium
   })));
 });
 
 app.post('/api/admin/user/:username', auth, (req, res) => {
-  if (!req.user.admin) return res.status(403).json({ error: 'Нет прав' });
-  const target = req.params.username;
-  if (!users[target]) return res.status(404).json({ error: 'Пользователь не найден' });
-  const { verified, admin, premium, delete: del } = req.body;
+  const targetUser = users[req.params.username];
+  if (!targetUser) return res.status(404).json({ error: 'Пользователь не найден' });
+  const { verified, premium, role, banUntil, delete: del } = req.body;
+  const currentUser = req.user;
 
   if (del) {
-    if (target === 'MrSigma') return res.status(400).json({ error: 'Нельзя удалить основателя' });
-    delete users[target];
-    posts = posts.filter(p => p.author !== target);
-    comments = comments.filter(c => c.author !== target);
-    messages = messages.filter(m => m.from !== target && m.to !== target);
+    if (targetUser.username === 'MrSigma') return res.status(400).json({ error: 'Нельзя удалить основателя' });
+    if (ROLE_HIERARCHY[targetUser.role] >= ROLE_HIERARCHY[currentUser.role]) return res.status(403).json({ error: 'Нельзя удалить равного или выше' });
+    delete users[targetUser.username];
+    posts = posts.filter(p => p.author !== targetUser.username);
+    comments = comments.filter(c => c.author !== targetUser.username);
+    messages = messages.filter(m => m.from !== targetUser.username && m.to !== targetUser.username);
     saveJSON(USERS_FILE, users);
     saveJSON(POSTS_FILE, posts);
     saveJSON(COMMENTS_FILE, comments);
@@ -349,15 +405,19 @@ app.post('/api/admin/user/:username', auth, (req, res) => {
     return res.json({ ok: true });
   }
 
-  if (target === 'MrSigma') {
-    if (admin !== undefined && !admin) return res.status(400).json({ error: 'Вы не можете забрать привилегию у овнера' });
-    if (verified !== undefined && !verified) return res.status(400).json({ error: 'Вы не можете забрать привилегию у овнера' });
-    if (premium !== undefined && !premium) return res.status(400).json({ error: 'Вы не можете забрать привилегию у овнера' });
+  if (role !== undefined) {
+    if (targetUser.username === 'MrSigma' && role !== ROLES.OWNER) return res.status(400).json({ error: 'Нельзя изменить роль основателя' });
+    if (ROLE_HIERARCHY[targetUser.role] >= ROLE_HIERARCHY[currentUser.role]) return res.status(403).json({ error: 'Нельзя изменить роль равного или выше' });
+    if (ROLE_HIERARCHY[role] >= ROLE_HIERARCHY[currentUser.role]) return res.status(403).json({ error: 'Нельзя назначить роль выше своей' });
+    targetUser.role = role;
+  }
+  if (verified !== undefined) targetUser.verified = verified;
+  if (premium !== undefined) targetUser.premium = premium;
+  if (banUntil !== undefined) {
+    if (ROLE_HIERARCHY[targetUser.role] >= ROLE_HIERARCHY[currentUser.role]) return res.status(403).json({ error: 'Нельзя забанить равного или выше' });
+    targetUser.bannedUntil = banUntil;
   }
 
-  if (verified !== undefined) users[target].verified = verified;
-  if (admin !== undefined) users[target].admin = admin;
-  if (premium !== undefined) users[target].premium = premium;
   saveJSON(USERS_FILE, users);
   res.json({ ok: true });
 });
@@ -387,7 +447,7 @@ app.get('/api/dialogs', auth, (req, res) => {
   const result = Array.from(dialogs.values()).sort((a, b) => b.timestamp - a.timestamp);
   result.forEach(d => {
     const u = users[d.username];
-    if (u) { d.premium = u.premium || false; d.verified = u.verified || false; }
+    if (u) { d.role = u.role; d.premium = u.premium; d.verified = u.verified; }
   });
   res.json(result);
 });
