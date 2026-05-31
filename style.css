@@ -104,11 +104,11 @@ input, textarea, select {
 }
 
 /* Цвета ролей */
-.role-owner { color: #800020 !important; font-weight: 800; }
-.role-head_admin { color: #ff0000 !important; font-weight: 700; }
-.role-admin { color: #ff0000 !important; font-weight: 600; }
-.role-moderator { color: #0044cc !important; font-weight: 600; }
-.role-event_moderator { color: #0088cc !important; font-weight: 600; }
+.role-owner { color: #800020 !important; font-weight: 800; }          /* Бордовый */
+.role-head_admin { color: #ff0000 !important; font-weight: 700; }      /* Красный */
+.role-admin { color: #ff0000 !important; font-weight: 600; }           /* Красный */
+.role-moderator { color: #0044cc !important; font-weight: 600; }       /* Синий */
+.role-event_moderator { color: #0088cc !important; font-weight: 600; } /* Голубой */
 
 /* ========== ОДНОСТРОЧНЫЙ КОМПОЗЕР ========== */
 .composer-row { display: flex; gap: 12px; align-items: center; }
@@ -226,9 +226,7 @@ input, textarea, select {
 }
 
 /* ========== ИВЕНТЫ (кнопка удаления) ========== */
-.event-banner .btn.danger {
-  margin-top: 8px;
-}
+.event-banner .btn.danger { margin-top: 8px; }
 
 /* ========== ЛИЧНЫЕ СООБЩЕНИЯ ========== */
 .messages-container { display: flex; gap: 20px; height: calc(100vh - 200px); min-height: 400px; }
@@ -357,4 +355,35 @@ input, textarea, select {
 @keyframes fadeOut {
   from { opacity: 1; }
   to { opacity: 0; transform: translateY(20px); }
+}
+
+/* ========== ОВЕРЛЕЙ БАНА ========== */
+.ban-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ban-message {
+  background: #1a1a1a;
+  color: #fff;
+  padding: 40px 60px;
+  border-radius: 24px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  max-width: 500px;
+}
+.ban-message h1 {
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+.ban-message p {
+  font-size: 18px;
+  line-height: 1.6;
 }
