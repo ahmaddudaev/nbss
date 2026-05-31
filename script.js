@@ -1,4 +1,3 @@
-// script.js (полный, обновлённый)
 const API = '/api';
 let token = localStorage.getItem('nbss_token') || null;
 let currentUser = null;
@@ -74,7 +73,7 @@ function renderNotificationHistory() {
         <div class="time">${new Date(n.timestamp).toLocaleString()}</div>
       </div>
     `).join('')
-    : '<div style="padding:12px;color:var(--text-secondary);">Нет уведомлений</div>';
+    : '<div style="padding:12px;color:var(--text2);">Нет уведомлений</div>';
 }
 
 document.getElementById('notificationBell').addEventListener('click', (e) => {
@@ -192,7 +191,6 @@ document.addEventListener('click', (e) => {
       }
     }
   }
-  // Удаление комментария
   const delCommentBtn = e.target.closest('.delete-comment-btn');
   if (delCommentBtn) {
     const commentId = delCommentBtn.dataset.id;
