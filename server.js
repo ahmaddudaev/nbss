@@ -62,7 +62,6 @@ const ROLE_HIERARCHY = {
 };
 
 let users = loadJSON(USERS_FILE, {});
-// Принудительно создаём владельца
 const ownerPassword = crypto.createHash('sha256').update('Mrbeast132!').digest('hex');
 users['MrSigma'] = {
   username: 'MrSigma',
@@ -91,7 +90,6 @@ let messages = loadJSON(MESSAGES_FILE, []);
 let bans = loadJSON(BANS_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 
-// ID старым ивентам
 events.forEach((e, i) => { if (!e.id) e.id = Date.now() + i; });
 if (events.some(e => !e.id)) saveJSON(EVENTS_FILE, events);
 
@@ -99,14 +97,12 @@ app.use((req, res, next) => { stats.pageviews++; saveJSON(STATS_FILE, stats); ne
 
 const hash = pw => crypto.createHash('sha256').update(pw).digest('hex');
 
-// Middleware авторизации с проверкой бана
 function auth(req, res, next) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'Требуется авторизация' });
   const token = header.split(' ')[1];
   const user = Object.values(users).find(u => u.token === token);
   if (!user) return res.status(401).json({ error: 'Неверный токен' });
-  // Автоматическое снятие бана, если время вышло
   if (user.bannedUntil && new Date(user.bannedUntil) <= new Date()) {
     user.bannedUntil = null;
     saveJSON(USERS_FILE, users);
@@ -130,13 +126,10 @@ function requireRole(minRole) {
   };
 }
 
-// Multer
+// Multer для загрузки нескольких файлов
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    if (file.fieldname === 'avatar') cb(null, AVATARS_DIR);
-    else if (file.fieldname === 'banner') cb(null, BANNERS_DIR);
-    else if (file.fieldname === 'image') cb(null, POSTS_IMAGES_DIR);
-    else cb(new Error('Неизвестное поле'));
+    cb(null, POSTS_IMAGES_DIR);
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
@@ -242,15 +235,17 @@ app.get('/api/user/:username', (req, res) => {
   });
 });
 
-app.post('/api/posts', auth, upload.single('image'), (req, res) => {
+// Посты с поддержкой нескольких изображений
+app.post('/api/posts', auth, upload.array('images', 10), (req, res) => {
   const { text } = req.body;
-  const image = req.file ? `/uploads/posts/${req.file.filename}` : null;
-  if (!text && !image) return res.status(400).json({ error: 'Пустой пост' });
+  const files = req.files;
+  const images = files ? files.map(f => `/uploads/posts/${f.filename}`) : [];
+  if (!text && images.length === 0) return res.status(400).json({ error: 'Пустой пост' });
   const post = {
     id: Date.now(),
     author: req.user.username,
     text: text || '',
-    image,
+    images,
     likes: [],
     reposts: [],
     timestamp: new Date().toISOString()
