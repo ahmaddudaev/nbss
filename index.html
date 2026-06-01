@@ -106,8 +106,11 @@
         <div id="postComposer" class="post-composer" style="display:none">
           <div class="composer-row">
             <input type="text" id="postInput" placeholder="Что происходит? #хештег @упоминание" class="composer-input" autocomplete="off">
+            <label class="composer-file-label" for="postImageInput">🖼️</label>
+            <input type="file" id="postImageInput" accept="image/*" multiple style="display:none;">
             <button id="publishPost" class="btn primary composer-btn">Опубликовать</button>
           </div>
+          <div id="imagePreviewContainer" class="image-preview-container" style="display:none;"></div>
         </div>
         <div id="feedContainer" class="feed"></div>
       </section>
@@ -134,12 +137,10 @@
         </div>
       </section>
 
-      <!-- ИВЕНТЫ (с формой создания) -->
       <section id="eventsPage" class="page">
         <div class="events-container">
           <h2>📅 Активные ивенты</h2>
           <div id="eventsList"></div>
-          <!-- Форма создания ивента -->
           <div class="card" style="margin-top:16px;" id="createEventCard">
             <h3>Создать ивент</h3>
             <input id="eventTitleEvents" placeholder="Название">
