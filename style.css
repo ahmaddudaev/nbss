@@ -121,6 +121,54 @@ input, textarea, select {
 .composer-input { flex: 1; padding: 14px 18px; font-size: 16px; }
 .composer-btn { flex-shrink: 0; padding: 14px 28px; font-size: 16px; white-space: nowrap; }
 
+/* ========== КНОПКА ПРИКРЕПЛЕНИЯ ФАЙЛОВ ========== */
+.composer-file-label {
+  cursor: pointer;
+  font-size: 24px;
+  color: var(--text2);
+  margin-right: 8px;
+  transition: color 0.2s;
+}
+.composer-file-label:hover {
+  color: var(--accent);
+}
+
+/* ========== ПРЕВЬЮ ВЫБРАННЫХ ИЗОБРАЖЕНИЙ ========== */
+.image-preview-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.preview-image-wrapper {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.remove-preview-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ========== ПОСТЫ ========== */
 .post { padding: 16px 0; border-bottom: 1px solid var(--border); display: flex; gap: 12px; animation: fadeIn 0.3s; }
 .avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #1d4ed8); display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; }
@@ -152,6 +200,24 @@ input, textarea, select {
   transition: 0.2s;
 }
 .delete-post-btn:hover { background: rgba(255, 0, 0, 0.1) !important; }
+
+/* ========== ГАЛЕРЕЯ В ПОСТЕ ========== */
+.post-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.post-image {
+  width: 100%;
+  border-radius: 12px;
+  cursor: pointer;
+  object-fit: cover;
+  transition: transform 0.2s;
+}
+.post-image:hover {
+  transform: scale(1.02);
+}
 
 /* ========== КОММЕНТАРИИ ========== */
 .comments-section { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
@@ -392,4 +458,4 @@ input, textarea, select {
 .ban-message p {
   font-size: 18px;
   line-height: 1.6;
-}
+                  }
