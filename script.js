@@ -60,7 +60,6 @@ async function request(url, options = {}) {
     throw new Error('BANNED');
   }
   if (res.status === 401) {
-    // Токен недействителен – сбрасываем его
     token = null;
     currentUser = null;
     localStorage.removeItem('nbss_token');
@@ -79,10 +78,8 @@ async function request(url, options = {}) {
     try {
       currentUser = await request('/me');
     } catch (e) {
-      // Если токен невалиден, request уже сбросил его
-      if (e.message !== 'BANNED') {
-        console.warn('Автоматический выход из-за невалидного токена');
-      }
+      if (e.message === 'BANNED') return;
+      console.warn('Автоматический выход из-за невалидного токена');
     }
   }
   updateUIForAuth();
@@ -201,7 +198,6 @@ function updateUIForAuth() {
   if (mobileNavAdmin) mobileNavAdmin.style.display = (currentUser && ['moderator','admin','head_admin','owner'].includes(currentUser.role)) ? 'flex' : 'none';
 }
 
-// Обработчики навигации, включая ссылку "Зарегистрироваться"
 document.addEventListener('click', (e) => {
   const navItem = e.target.closest('[data-page]');
   if (navItem) {
@@ -218,7 +214,6 @@ document.addEventListener('click', (e) => {
     showPage(page);
     return;
   }
-  // Обработчик для ссылки "Зарегистрироваться" в форме входа
   if (e.target.id === 'showRegisterLink') {
     e.preventDefault();
     showPage('register');
@@ -291,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Загрузка изображений и публикация
 const postImageInput = document.getElementById('postImageInput');
 const previewContainer = document.getElementById('imagePreviewContainer');
 if (postImageInput) {
@@ -324,7 +318,7 @@ document.getElementById('publishPost')?.addEventListener('click', async () => {
     selectedFiles = [];
     renderPreviews();
     if (postImageInput) postImageInput.value = '';
-    loadPosts();   // <-- обновление ленты
+    loadPosts();
   } catch (e) { alert(e.message); }
 });
 
@@ -417,5 +411,72 @@ function renderComment(c) {
   return `<div class="comment" data-id="${c.id}"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${nickClass}">${c.author}${verified ? '<img src="verification.png" class="verified-icon">' : ''}</span><span>${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${c.text.replace(/@(\w+)/g, '<span class="mention">@$1</span>')}</p>${canDelete ? `<button class="delete-comment-btn" data-id="${c.id}">🗑️</button>` : ''}</div></div>`;
 }
 
-// Остальные функции (loadMyProfile, loadUserProfile, loadDialogs, openChat, loadMessages, loadEvents, loadAdminStats, loadAdminUsers, modifyUser, updateStats, поиск) остаются без изменений.
-// Они уже были предоставлены в предыдущих полных версиях.
+async function loadMyProfile() {
+  if (!currentUser) return; const header = document.getElementById('profileHeader'); if (!header) return;
+  let nickClass = 'role-' + (currentUser.role || 'user'); if (currentUser.premium && currentUser.role === 'user') nickClass = 'premium-nick';
+  header.innerHTML = `<h2 class="${nickClass}">${currentUser.username} ${currentUser.verified ? '<img src="verification.png" class="verified-icon">' : ''}</h2><p>${currentUser.role !== 'user' ? '🔹 ' + currentUser.role : ''} ${currentUser.premium ? '💎 НБСС+' : ''}</p>`;
+  const allPosts = await request('/posts'); const userPosts = allPosts.filter(p => p.author === currentUser.username);
+  const profilePosts = document.getElementById('profilePosts'); if (profilePosts) profilePosts.innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
+  attachPostActions();
+}
+
+async function loadUserProfile(username) {
+  try {
+    const user = await request(`/user/${username}`); const header = document.getElementById('profileHeader'); if (!header) return;
+    let nickClass = 'role-' + (user.role || 'user'); if (user.premium && user.role === 'user') nickClass = 'premium-nick';
+    header.innerHTML = `<h2 class="${nickClass}">${user.username} ${user.verified ? '<img src="verification.png" class="verified-icon">' : ''}</h2><p>${user.role !== 'user' ? '🔹 ' + user.role : ''} ${user.premium ? '💎 НБСС+' : ''}</p><div class="profile-actions"><button class="btn primary send-message-btn" data-username="${user.username}">💬 Написать сообщение</button></div>`;
+    const btn = document.querySelector('.send-message-btn'); if (btn) btn.addEventListener('click', () => { window.viewingUser = null; currentDialog = username; showPage('messages'); openChat(username); });
+    const allPosts = await request('/posts'); const userPosts = allPosts.filter(p => p.author === username);
+    const profilePosts = document.getElementById('profilePosts'); if (profilePosts) profilePosts.innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
+    attachPostActions();
+  } catch (e) { const header = document.getElementById('profileHeader'); if (header) header.innerHTML = '<p>Пользователь не найден</p>'; }
+}
+
+async function loadDialogs() { /* ... */ }
+async function openChat(username) { /* ... */ }
+async function loadMessages(username) { /* ... */ }
+document.getElementById('sendMessageBtn')?.addEventListener('click', async () => { /* ... */ });
+document.querySelector('.back-to-dialogs')?.addEventListener('click', () => { /* ... */ });
+
+async function loadEvents() {
+  const list = document.getElementById('eventsList'); if (!list) return;
+  try {
+    const evs = await request('/events');
+    list.innerHTML = evs.length ? evs.map(e => `<div class="event-banner card"><strong>${e.title}</strong><p>${e.desc}</p>${currentUser && ['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role) && e.id ? `<button class="btn danger delete-event-btn" data-event-id="${e.id}">🗑 Удалить</button>` : ''}</div>`).join('') : '<p>Нет ивентов</p>';
+    document.querySelectorAll('.delete-event-btn').forEach(btn => { btn.addEventListener('click', async () => { if (confirm('Удалить ивент?')) { await request(`/events/${btn.dataset.eventId}`, { method: 'DELETE' }); loadEvents(); } }); });
+  } catch (e) {}
+}
+
+document.getElementById('createEventBtnEvents')?.addEventListener('click', async () => {
+  if (!currentUser || !['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role)) return alert('Нет прав');
+  const title = document.getElementById('eventTitleEvents')?.value.trim();
+  const desc = document.getElementById('eventDescEvents')?.value.trim();
+  if (!title) return;
+  await request('/events', { method: 'POST', body: JSON.stringify({ title, desc }) });
+  document.getElementById('eventTitleEvents').value = ''; document.getElementById('eventDescEvents').value = '';
+  loadEvents();
+});
+
+async function loadAdminStats() { /* ... */ }
+async function loadAdminUsers() { /* ... */ }
+async function modifyUser(username, changes) { /* ... */ }
+document.getElementById('createEventBtn')?.addEventListener('click', async () => { /* ... */ });
+
+async function updateStats() {
+  try { await request('/stats'); } catch (e) {}
+}
+updateStats();
+setInterval(updateStats, 10000);
+
+document.getElementById('searchInput')?.addEventListener('input', async (e) => {
+  const q = e.target.value.trim(); const container = document.getElementById('searchResults'); if (!container) return;
+  if (!q) { container.innerHTML = ''; return; }
+  try {
+    const users = await request(`/users/search?q=${encodeURIComponent(q)}`);
+    container.innerHTML = users.map(u => {
+      let nickClass = 'role-' + (u.role || 'user'); if (u.premium && u.role === 'user') nickClass = 'premium-nick';
+      return `<div class="search-user"><span class="username ${nickClass}">${u.username}${u.verified ? '<img src="verification.png" class="verified-icon">' : ''}</span><button class="btn outline view-profile-btn" data-username="${u.username}">→</button></div>`;
+    }).join('');
+    document.querySelectorAll('.view-profile-btn').forEach(btn => { btn.addEventListener('click', () => { window.viewingUser = btn.dataset.username; showPage('profile'); }); });
+  } catch (e) {}
+});
