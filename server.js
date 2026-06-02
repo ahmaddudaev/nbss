@@ -11,8 +11,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Раздаём статику из public (изображения, загрузки)
+// Раздаём статику из папки public (изображения, загрузки)
 app.use(express.static(path.join(__dirname, 'public')));
+// Раздаём статику из корня проекта (style.css, script.js, logo.png, favicon.png и др.)
+app.use(express.static(__dirname));
 
 // Скрываем server.js
 app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' }));
