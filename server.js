@@ -11,9 +11,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Раздаём статику из папки public (изображения, загрузки)
+// Раздаём статику из public (изображения, загрузки) и из корня (стили, скрипты, лого и т.д.)
 app.use(express.static(path.join(__dirname, 'public')));
-// Раздаём статику из корня проекта (style.css, script.js, logo.png, favicon.png и др.)
 app.use(express.static(__dirname));
 
 // Скрываем server.js
