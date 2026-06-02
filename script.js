@@ -184,13 +184,20 @@ document.getElementById('publishPost')?.addEventListener('click', async () => {
 
 // ========== Лента ==========
 async function loadPosts() { const c = document.getElementById('feedContainer'); if (!c) return; try { const ps = await request('/posts'); c.innerHTML = ps.map(p => renderPost(p)).join(''); attachPostActions(); } catch (e) { c.innerHTML = '<p>Ошибка загрузки</p>'; } }
+
+// ----- ИСПРАВЛЕННЫЙ renderPost (скрытие битых изображений) -----
 function renderPost(p) {
   const role = p.authorRole || 'user', premium = p.authorPremium === true, verified = p.authorVerified === true;
   const canDelete = currentUser && (currentUser.username === p.author || ['moderator','admin','head_admin','owner'].includes(currentUser.role));
   let nickClass = 'role-' + role; if (premium && role === 'user') nickClass = 'premium-nick';
-  let gallery = ''; if (p.images && p.images.length) gallery = `<div class="post-gallery">${p.images.map(img => `<img src="${img}" class="post-image" onclick="this.requestFullscreen()">`).join('')}</div>`;
+  let gallery = '';
+  if (p.images && p.images.length > 0) {
+    gallery = `<div class="post-gallery">${p.images.map(img => `<img src="${img}" class="post-image" onerror="this.style.display='none'" onclick="this.requestFullscreen()">`).join('')}</div>`;
+  }
   return `<div class="post" data-id="${p.id}" data-author="${p.author}"><div class="avatar">${p.author[0]?.toUpperCase()||'?'}</div><div class="post-body"><div class="post-header"><span class="username ${nickClass}" style="cursor:pointer;">${p.author||'Аноним'}${verified?'<img src="verification.png" class="verified-icon" alt="✔">':''}</span><span>· ${new Date(p.timestamp).toLocaleString()}</span>${canDelete?`<button class="delete-post-btn" data-post-id="${p.id}">🗑️</button>`:''}</div>${gallery}${p.text?`<div class="post-text" id="text-${p.id}">${p.text.replace(/@(\w+)/g,'<span class="mention">@$1</span>')}</div>`:''}<div class="post-actions"><button class="like-btn">❤️ ${p.likes.length}</button><button class="repost-btn">🔄 ${p.reposts.length}</button><button class="comment-toggle">💬 Комментарии</button><button class="translate-btn" data-post-id="${p.id}">🌐 Перевести</button></div><div class="comments-section" style="display:none;"></div></div></div>`;
 }
+// ---------------------------------------------------------
+
 function attachPostActions() {
   document.querySelectorAll('.like-btn').forEach(b => b.onclick = async function() { if (!token) return alert('Войдите'); const el = this.closest('.post'); if (el.dataset.author === currentUser?.username) return showToast('Хорошая попытка, но так нельзя','like'); try { await request(`/posts/${el.dataset.id}/like`,{method:'POST'}); loadPosts(); } catch(e) { alert(e.message); } });
   document.querySelectorAll('.repost-btn').forEach(b => b.onclick = async function() { if (!token) return alert('Войдите'); const el = this.closest('.post'); if (el.dataset.author === currentUser?.username) return showToast('Хорошая попытка, но так нельзя','repost'); try { await request(`/posts/${el.dataset.id}/repost`,{method:'POST'}); loadPosts(); } catch(e) { alert(e.message); } });
