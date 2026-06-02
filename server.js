@@ -11,11 +11,16 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Раздаём статику из папки public (изображения, лого, favicon и т.д.)
+// Раздаём статику из public (изображения, загрузки)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Скрываем server.js
 app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' }));
+
+// Главная страница
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // Директории данных
 const DATA_DIR = path.join(__dirname, 'data');
