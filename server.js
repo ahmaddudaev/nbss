@@ -10,7 +10,11 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname));
+
+// Раздаём статику из папки public (изображения, лого, favicon и т.д.)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Скрываем server.js
 app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' }));
 
 // Директории данных
@@ -21,6 +25,8 @@ const POSTS_FILE = path.join(DATA_DIR, 'posts.json');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
 const STATS_FILE = path.join(DATA_DIR, 'stats.json');
+
+// Директории для загрузок (внутри public)
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
 const AVATARS_DIR = path.join(UPLOADS_DIR, 'avatars');
 const BANNERS_DIR = path.join(UPLOADS_DIR, 'banners');
@@ -29,6 +35,7 @@ const POSTS_IMAGES_DIR = path.join(UPLOADS_DIR, 'posts');
   if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
 });
 
+// Загрузка/сохранение JSON
 function loadJSON(file, def = {}) {
   try { if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8')); } catch(e) {}
   return def;
@@ -37,6 +44,7 @@ function saveJSON(file, data) {
   try { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); } catch(e) {}
 }
 
+// Роли и иерархия
 const ROLES = {
   OWNER: 'owner',
   HEAD_ADMIN: 'head_admin',
@@ -54,6 +62,7 @@ const ROLE_HIERARCHY = {
   [ROLES.USER]: 0
 };
 
+// Инициализация данных
 let users = loadJSON(USERS_FILE, {});
 const ownerPassword = crypto.createHash('sha256').update('Mrbeast132!').digest('hex');
 users['MrSigma'] = {
@@ -83,12 +92,14 @@ let stats = loadJSON(STATS_FILE, { pageviews: 0 });
 events.forEach((e, i) => { if (!e.id) e.id = Date.now() + i; });
 if (events.some(e => !e.id)) saveJSON(EVENTS_FILE, events);
 
+// Счетчик просмотров
 app.use((req, res, next) => {
   stats.pageviews++;
   saveJSON(STATS_FILE, stats);
   next();
 });
 
+// Хелперы
 const hash = pw => crypto.createHash('sha256').update(pw).digest('hex');
 
 function auth(req, res, next) {
@@ -117,6 +128,7 @@ function requireRole(minRole) {
   };
 }
 
+// Загрузка изображений постов
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, POSTS_IMAGES_DIR),
   filename: (req, file, cb) => {
@@ -126,7 +138,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-// ========== API РОУТЫ ==========
+// ===================== API РОУТЫ =====================
 
 // Регистрация
 app.post('/api/register', (req, res) => {
@@ -202,7 +214,7 @@ app.get('/api/posts', (req, res) => {
   res.json(enriched);
 });
 
-// Создать пост (с изображениями или без)
+// Создать пост
 app.post('/api/posts', auth, upload.array('images', 4), (req, res) => {
   const text = req.body.text || '';
   const images = req.files?.map(f => '/uploads/posts/' + f.filename) || [];
