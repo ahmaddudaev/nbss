@@ -1,7 +1,6 @@
 const API = '/api';
 let token = localStorage.getItem('nbss_token') || null;
 let currentUser = null;
-let currentDialog = null;
 const translatedPosts = {};
 let notifications = [];
 let unreadCount = 0;
@@ -91,7 +90,6 @@ function showPage(pageId) {
   const searchBox = document.querySelector('.search-box'); if (searchBox) searchBox.style.display = (pageId === 'home') ? 'block' : 'none';
   if (pageId === 'home') loadPosts();
   if (pageId === 'profile') { if (currentUser && !window.viewingUser) loadMyProfile(); else if (window.viewingUser) loadUserProfile(window.viewingUser); }
-  if (pageId === 'messages') loadDialogs();
   if (pageId === 'events') { loadEvents(); const card = document.getElementById('createEventCard'); if (card) card.style.display = (currentUser && ['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role)) ? '' : 'none'; }
   if (pageId === 'admin') { loadAdminStats(); loadAdminUsers(); }
   if (pageId === 'settings') updateThemeSettings();
@@ -101,12 +99,10 @@ function updateUIForAuth() {
   const loggedIn = !!token;
   const authBanner = document.getElementById('authBanner'); if (authBanner) authBanner.style.display = loggedIn ? 'none' : 'flex';
   const postComposer = document.getElementById('postComposer'); if (postComposer) postComposer.style.display = loggedIn ? 'block' : 'none';
-  const navProfile = document.getElementById('navProfile'), navMessages = document.getElementById('navMessages');
+  const navProfile = document.getElementById('navProfile');
   if (navProfile) navProfile.style.display = loggedIn ? 'flex' : 'none';
-  if (navMessages) navMessages.style.display = loggedIn ? 'flex' : 'none';
-  const mobileNavProfile = document.getElementById('mobileNavProfile'), mobileNavMessages = document.getElementById('mobileNavMessages');
+  const mobileNavProfile = document.getElementById('mobileNavProfile');
   if (mobileNavProfile) mobileNavProfile.style.display = loggedIn ? 'flex' : 'none';
-  if (mobileNavMessages) mobileNavMessages.style.display = loggedIn ? 'flex' : 'none';
   const logoutLink = document.getElementById('logoutLink'), mobileLogoutLink = document.getElementById('mobileLogoutLink');
   if (logoutLink) logoutLink.style.display = loggedIn ? 'flex' : 'none';
   if (mobileLogoutLink) mobileLogoutLink.style.display = loggedIn ? 'flex' : 'none';
@@ -126,7 +122,6 @@ document.addEventListener('click', (e) => {
   if (navItem) {
     e.preventDefault(); const page = navItem.dataset.page;
     if (page === 'profile' && !token) return alert('Сначала войдите');
-    if (page === 'messages' && !token) return alert('Сначала войдите');
     if (page === 'admin' && !(currentUser && ['moderator','admin','head_admin','owner'].includes(currentUser.role))) return alert('Нет прав');
     if (page === 'logout') { token = null; currentUser = null; localStorage.removeItem('nbss_token'); updateUIForAuth(); showPage('home'); return; }
     window.viewingUser = null; showPage(page); return;
@@ -184,20 +179,13 @@ document.getElementById('publishPost')?.addEventListener('click', async () => {
 
 // ========== Лента ==========
 async function loadPosts() { const c = document.getElementById('feedContainer'); if (!c) return; try { const ps = await request('/posts'); c.innerHTML = ps.map(p => renderPost(p)).join(''); attachPostActions(); } catch (e) { c.innerHTML = '<p>Ошибка загрузки</p>'; } }
-
-// ----- ИСПРАВЛЕННЫЙ renderPost (скрытие битых изображений) -----
 function renderPost(p) {
   const role = p.authorRole || 'user', premium = p.authorPremium === true, verified = p.authorVerified === true;
   const canDelete = currentUser && (currentUser.username === p.author || ['moderator','admin','head_admin','owner'].includes(currentUser.role));
   let nickClass = 'role-' + role; if (premium && role === 'user') nickClass = 'premium-nick';
-  let gallery = '';
-  if (p.images && p.images.length > 0) {
-    gallery = `<div class="post-gallery">${p.images.map(img => `<img src="${img}" class="post-image" onerror="this.style.display='none'" onclick="this.requestFullscreen()">`).join('')}</div>`;
-  }
+  let gallery = ''; if (p.images && p.images.length) gallery = `<div class="post-gallery">${p.images.map(img => `<img src="${img}" class="post-image" onerror="this.style.display='none'" onclick="this.requestFullscreen()">`).join('')}</div>`;
   return `<div class="post" data-id="${p.id}" data-author="${p.author}"><div class="avatar">${p.author[0]?.toUpperCase()||'?'}</div><div class="post-body"><div class="post-header"><span class="username ${nickClass}" style="cursor:pointer;">${p.author||'Аноним'}${verified?'<img src="verification.png" class="verified-icon" alt="✔">':''}</span><span>· ${new Date(p.timestamp).toLocaleString()}</span>${canDelete?`<button class="delete-post-btn" data-post-id="${p.id}">🗑️</button>`:''}</div>${gallery}${p.text?`<div class="post-text" id="text-${p.id}">${p.text.replace(/@(\w+)/g,'<span class="mention">@$1</span>')}</div>`:''}<div class="post-actions"><button class="like-btn">❤️ ${p.likes.length}</button><button class="repost-btn">🔄 ${p.reposts.length}</button><button class="comment-toggle">💬 Комментарии</button><button class="translate-btn" data-post-id="${p.id}">🌐 Перевести</button></div><div class="comments-section" style="display:none;"></div></div></div>`;
 }
-// ---------------------------------------------------------
-
 function attachPostActions() {
   document.querySelectorAll('.like-btn').forEach(b => b.onclick = async function() { if (!token) return alert('Войдите'); const el = this.closest('.post'); if (el.dataset.author === currentUser?.username) return showToast('Хорошая попытка, но так нельзя','like'); try { await request(`/posts/${el.dataset.id}/like`,{method:'POST'}); loadPosts(); } catch(e) { alert(e.message); } });
   document.querySelectorAll('.repost-btn').forEach(b => b.onclick = async function() { if (!token) return alert('Войдите'); const el = this.closest('.post'); if (el.dataset.author === currentUser?.username) return showToast('Хорошая попытка, но так нельзя','repost'); try { await request(`/posts/${el.dataset.id}/repost`,{method:'POST'}); loadPosts(); } catch(e) { alert(e.message); } });
@@ -206,10 +194,146 @@ function attachPostActions() {
   document.querySelectorAll('.delete-post-btn').forEach(btn => btn.onclick = async function(e) { e.stopPropagation(); if (!token) return alert('Войдите'); if (confirm('Удалить пост?')) { try { await request(`/posts/${this.dataset.postId}`,{method:'DELETE'}); loadPosts(); } catch(err) { alert(err.message); } } });
 }
 
-// ========== Комментарии, Профили, Сообщения, Ивенты, Админка, Статистика – полные версии из предыдущих ответов.
-// … (они должны быть в вашем файле)
+// ========== Комментарии ==========
+async function loadComments(postId, container) {
+  if (!container) return;
+  try {
+    const comments = await request(`/posts/${postId}/comments`);
+    container.innerHTML = comments.map(c => renderComment(c)).join('') +
+      (token ? `<div class="comment-form"><input type="text" class="comment-input" placeholder="Комментарий..."><button class="btn primary comment-submit">Отпр.</button></div>` : '<p>Войдите, чтобы комментировать</p>');
+    if (token) {
+      const inp = container.querySelector('.comment-input');
+      const btn = container.querySelector('.comment-submit');
+      if (btn) btn.onclick = async () => { const text = inp.value.trim(); if (!text) return; await request(`/posts/${postId}/comments`, { method:'POST', body: JSON.stringify({ text }) }); await loadComments(postId, container); };
+      inp?.addEventListener('keypress', (e) => { if (e.key === 'Enter') btn.click(); });
+    }
+  } catch (e) { container.innerHTML = '<p>Ошибка загрузки комментариев</p>'; }
+}
 
-// ========== Обязательная функция updateStats (в самом конце) ==========
+function renderComment(c) {
+  const role = c.authorRole || 'user', premium = c.authorPremium === true, verified = c.authorVerified === true;
+  let canDelete = currentUser && (currentUser.username === c.author || ['moderator','admin','head_admin','owner'].includes(currentUser.role));
+  let nickClass = 'role-' + role; if (premium && role === 'user') nickClass = 'premium-nick';
+  return `<div class="comment" data-id="${c.id}"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${nickClass}">${c.author}${verified ? '<img src="verification.png" class="verified-icon">' : ''}</span><span>${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${c.text.replace(/@(\w+)/g, '<span class="mention">@$1</span>')}</p>${canDelete ? `<button class="delete-comment-btn" data-id="${c.id}">🗑️</button>` : ''}</div></div>`;
+}
+
+// ========== Профиль ==========
+async function loadMyProfile() {
+  if (!currentUser) return; const header = document.getElementById('profileHeader'); if (!header) return;
+  let nickClass = 'role-' + (currentUser.role || 'user'); if (currentUser.premium && currentUser.role === 'user') nickClass = 'premium-nick';
+  header.innerHTML = `<h2 class="${nickClass}">${currentUser.username} ${currentUser.verified ? '<img src="verification.png" class="verified-icon">' : ''}</h2><p>${currentUser.role !== 'user' ? '🔹 ' + currentUser.role : ''} ${currentUser.premium ? '💎 НБСС+' : ''}</p>`;
+  const allPosts = await request('/posts'); const userPosts = allPosts.filter(p => p.author === currentUser.username);
+  const profilePosts = document.getElementById('profilePosts'); if (profilePosts) profilePosts.innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
+  attachPostActions();
+}
+
+async function loadUserProfile(username) {
+  try {
+    const user = await request(`/user/${username}`); const header = document.getElementById('profileHeader'); if (!header) return;
+    let nickClass = 'role-' + (user.role || 'user'); if (user.premium && user.role === 'user') nickClass = 'premium-nick';
+    header.innerHTML = `<h2 class="${nickClass}">${user.username} ${user.verified ? '<img src="verification.png" class="verified-icon">' : ''}</h2><p>${user.role !== 'user' ? '🔹 ' + user.role : ''} ${user.premium ? '💎 НБСС+' : ''}</p>`;
+    const allPosts = await request('/posts'); const userPosts = allPosts.filter(p => p.author === username);
+    const profilePosts = document.getElementById('profilePosts'); if (profilePosts) profilePosts.innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
+    attachPostActions();
+  } catch (e) { const header = document.getElementById('profileHeader'); if (header) header.innerHTML = '<p>Пользователь не найден</p>'; }
+}
+
+// ========== Ивенты ==========
+async function loadEvents() {
+  const list = document.getElementById('eventsList'); if (!list) return;
+  try {
+    const evs = await request('/events');
+    list.innerHTML = evs.length ? evs.map(e => `<div class="event-banner card"><strong>${e.title}</strong><p>${e.desc}</p>${currentUser && ['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role) && e.id ? `<button class="btn danger delete-event-btn" data-event-id="${e.id}">🗑 Удалить</button>` : ''}</div>`).join('') : '<p>Нет ивентов</p>';
+    document.querySelectorAll('.delete-event-btn').forEach(btn => { btn.addEventListener('click', async () => { if (confirm('Удалить ивент?')) { await request(`/events/${btn.dataset.eventId}`, { method:'DELETE' }); loadEvents(); } }); });
+  } catch (e) {}
+}
+
+document.getElementById('createEventBtnEvents')?.addEventListener('click', async () => {
+  if (!currentUser || !['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role)) return alert('Нет прав');
+  const title = document.getElementById('eventTitleEvents')?.value.trim(), desc = document.getElementById('eventDescEvents')?.value.trim();
+  if (!title) return;
+  await request('/events', { method:'POST', body: JSON.stringify({ title, desc }) });
+  document.getElementById('eventTitleEvents').value = ''; document.getElementById('eventDescEvents').value = '';
+  loadEvents();
+});
+
+// ========== Админка ==========
+async function loadAdminStats() {
+  if (!currentUser || !['moderator','admin','head_admin','owner'].includes(currentUser.role)) return;
+  const stats = await request('/stats'); const container = document.getElementById('adminStats');
+  if (container) container.innerHTML = `<h3>📊 Статистика</h3><div class="stat-row"><span>👥</span><span>${stats.users}</span></div><div class="stat-row"><span>📝</span><span>${stats.posts}</span></div>`;
+}
+async function loadAdminUsers() {
+  if (!currentUser || !['moderator','admin','head_admin','owner'].includes(currentUser.role)) return;
+  const select = document.getElementById('userSelect'); if (!select) return;
+  try {
+    const usersList = await request('/admin/users');
+    select.innerHTML = usersList.map(u => `<option value="${u.username}">${u.username} ${u.role !== 'user' ? '('+u.role+')' : ''} ${u.verified ? '✔️' : ''} ${u.premium ? '💎' : ''}</option>`).join('');
+    const getSelected = () => select.value, targetUser = () => usersList.find(u => u.username === getSelected());
+    const isOwner = () => currentUser.role === 'owner', isHeadAdminOrAbove = () => ['head_admin','owner'].includes(currentUser.role);
+    const isAdminOrAbove = () => ['admin','head_admin','owner'].includes(currentUser.role);
+    const isModeratorOrAbove = () => ['moderator','admin','head_admin','owner'].includes(currentUser.role);
+    const canModify = () => { const t = targetUser(); if (!t) return false; if (t.username === 'MrSigma') return false; return (ROLE_HIERARCHY[currentUser.role]||0) > (ROLE_HIERARCHY[t.role]||0); };
+
+    const verifyBtn = document.getElementById('verifyUserBtn'), unverifyBtn = document.getElementById('unverifyUserBtn');
+    const givePremiumBtn = document.getElementById('givePremiumBtn'), revokePremiumBtn = document.getElementById('revokePremiumBtn');
+    const setOwnerBtn = document.getElementById('setOwnerBtn'), setHeadAdminBtn = document.getElementById('setHeadAdminBtn'), setAdminBtn = document.getElementById('setAdminBtn');
+    const setModeratorBtn = document.getElementById('setModeratorBtn'), setEventModeratorBtn = document.getElementById('setEventModeratorBtn');
+    const removeRoleBtn = document.getElementById('removeRoleBtn'), banUserBtn = document.getElementById('banUserBtn');
+    const unbanUserBtn = document.getElementById('unbanUserBtn'), deleteUserBtn = document.getElementById('deleteUserBtn');
+
+    [verifyBtn, unverifyBtn, givePremiumBtn, revokePremiumBtn, setOwnerBtn, setHeadAdminBtn, setAdminBtn, setModeratorBtn, setEventModeratorBtn, removeRoleBtn, banUserBtn, unbanUserBtn, deleteUserBtn].forEach(b => { if (b) b.style.display = 'none'; });
+    if (isModeratorOrAbove()) {
+      if (verifyBtn) verifyBtn.style.display = ''; if (unverifyBtn) unverifyBtn.style.display = '';
+      if (givePremiumBtn) givePremiumBtn.style.display = ''; if (revokePremiumBtn) revokePremiumBtn.style.display = '';
+      if (banUserBtn) banUserBtn.style.display = ''; if (unbanUserBtn) unbanUserBtn.style.display = '';
+      if (deleteUserBtn) deleteUserBtn.style.display = ''; if (removeRoleBtn) removeRoleBtn.style.display = '';
+    }
+    if (isAdminOrAbove()) { if (setModeratorBtn) setModeratorBtn.style.display = ''; if (setEventModeratorBtn) setEventModeratorBtn.style.display = ''; }
+    if (isHeadAdminOrAbove()) { if (setAdminBtn) setAdminBtn.style.display = ''; }
+    if (isOwner()) { if (setOwnerBtn) setOwnerBtn.style.display = ''; if (setHeadAdminBtn) setHeadAdminBtn.style.display = ''; }
+
+    if (verifyBtn) verifyBtn.onclick = () => { if (!isModeratorOrAbove() && getSelected() !== currentUser.username) return alert('Нет прав'); if (!canModify() && getSelected() !== currentUser.username) return alert('Нельзя'); modifyUser(getSelected(), { verified:true }); };
+    if (unverifyBtn) unverifyBtn.onclick = () => { if (!isModeratorOrAbove() && getSelected() !== currentUser.username) return alert('Нет прав'); if (!canModify() && getSelected() !== currentUser.username) return alert('Нельзя'); modifyUser(getSelected(), { verified:false }); };
+    if (givePremiumBtn) givePremiumBtn.onclick = () => { if (!isModeratorOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { premium:true }); };
+    if (revokePremiumBtn) revokePremiumBtn.onclick = () => { if (!isModeratorOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { premium:false }); };
+    if (setOwnerBtn) setOwnerBtn.onclick = () => { if (!isOwner()) return alert('Только владелец'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { role:'owner' }); };
+    if (setHeadAdminBtn) setHeadAdminBtn.onclick = () => { if (!isOwner()) return alert('Только владелец'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { role:'head_admin' }); };
+    if (setAdminBtn) setAdminBtn.onclick = () => { if (!isHeadAdminOrAbove()) return alert('Только владелец или гл. админ'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { role:'admin' }); };
+    if (setModeratorBtn) setModeratorBtn.onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { role:'moderator' }); };
+    if (setEventModeratorBtn) setEventModeratorBtn.onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { role:'event_moderator' }); };
+    if (removeRoleBtn) removeRoleBtn.onclick = () => { if (!isModeratorOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { role:'user' }); };
+    if (banUserBtn) banUserBtn.onclick = () => { if (!isModeratorOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { banUntil: new Date(Date.now()+3600000).toISOString() }); };
+    if (unbanUserBtn) unbanUserBtn.onclick = () => { if (!isModeratorOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { banUntil:null }); };
+    if (deleteUserBtn) deleteUserBtn.onclick = () => { if (!isModeratorOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); if (confirm(`Удалить ${getSelected()}?`)) modifyUser(getSelected(), { delete:true }); };
+  } catch (e) { select.innerHTML = '<option>Ошибка загрузки</option>'; }
+}
+async function modifyUser(username, changes) {
+  try { await request(`/admin/user/${username}`, { method:'POST', body: JSON.stringify(changes) }); loadAdminUsers(); } catch (e) { alert(e.message); }
+}
+document.getElementById('createEventBtn')?.addEventListener('click', async () => {
+  if (!currentUser || !['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role)) return alert('Нет прав');
+  const title = document.getElementById('eventTitle')?.value.trim(), desc = document.getElementById('eventDesc')?.value.trim();
+  if (!title) return;
+  await request('/events', { method:'POST', body: JSON.stringify({ title, desc }) });
+  document.getElementById('eventTitle').value = ''; document.getElementById('eventDesc').value = '';
+  loadEvents();
+});
+
+// ========== Статистика ==========
 async function updateStats() { try { await request('/stats'); } catch(e) {} }
-updateStats();
-setInterval(updateStats, 10000);
+updateStats(); setInterval(updateStats, 10000);
+
+// ========== Поиск ==========
+document.getElementById('searchInput')?.addEventListener('input', async (e) => {
+  const q = e.target.value.trim(); const container = document.getElementById('searchResults'); if (!container) return;
+  if (!q) { container.innerHTML = ''; return; }
+  try {
+    const users = await request(`/users/search?q=${encodeURIComponent(q)}`);
+    container.innerHTML = users.map(u => {
+      let nickClass = 'role-' + (u.role || 'user'); if (u.premium && u.role === 'user') nickClass = 'premium-nick';
+      return `<div class="search-user"><span class="username ${nickClass}">${u.username}${u.verified ? '<img src="verification.png" class="verified-icon">' : ''}</span><button class="btn outline view-profile-btn" data-username="${u.username}">→</button></div>`;
+    }).join('');
+    document.querySelectorAll('.view-profile-btn').forEach(btn => { btn.addEventListener('click', () => { window.viewingUser = btn.dataset.username; showPage('profile'); }); });
+  } catch (e) {}
+});
