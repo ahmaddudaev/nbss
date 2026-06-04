@@ -10,6 +10,16 @@ const ROLE_HIERARCHY = {
   owner: 5, head_admin: 4, admin: 3, moderator: 2, event_moderator: 1, user: 0
 };
 
+// Русские названия ролей
+const ROLE_NAMES_RU = {
+  owner: '👑 Владелец',
+  head_admin: '🛡️ Главный админ',
+  admin: '🔴 Администратор',
+  moderator: '🔵 Модератор',
+  event_moderator: '📅 Ивент-модератор',
+  user: 'Пользователь'
+};
+
 try {
   notifications = JSON.parse(localStorage.getItem('nbss_notifications')) || [];
   unreadCount = notifications.filter(n => !n.read).length;
@@ -45,7 +55,12 @@ async function request(url, options = {}) {
 }
 
 (async function init() {
-  if (token) { try { currentUser = await request('/me'); } catch (e) { if (e.message === 'BANNED') return; } }
+  if (token) {
+    try {
+      currentUser = await request('/me');
+      updateTokenDisplay();
+    } catch (e) { if (e.message === 'BANNED') return; }
+  }
   updateUIForAuth(); updateNotificationBadge(); showPage('home'); loadTheme();
 })();
 
@@ -92,7 +107,10 @@ function showPage(pageId) {
   if (pageId === 'profile') { if (currentUser && !window.viewingUser) loadMyProfile(); else if (window.viewingUser) loadUserProfile(window.viewingUser); }
   if (pageId === 'events') { loadEvents(); const card = document.getElementById('createEventCard'); if (card) card.style.display = (currentUser && ['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role)) ? '' : 'none'; }
   if (pageId === 'admin') { loadAdminStats(); loadAdminUsers(); }
-  if (pageId === 'settings') updateThemeSettings();
+  if (pageId === 'settings') {
+    updateThemeSettings();
+    updateTokenDisplay();
+  }
   updateStats();
 }
 function updateUIForAuth() {
@@ -139,7 +157,14 @@ document.addEventListener('click', (e) => {
 document.getElementById('loginBtn')?.addEventListener('click', async () => {
   const u = document.getElementById('loginUsername')?.value.trim(), p = document.getElementById('loginPassword')?.value.trim();
   if (!u || !p) return alert('Заполните поля');
-  try { const data = await request('/login', { method:'POST', body: JSON.stringify({ username:u, password:p }) }); token = data.token; currentUser = data.user; localStorage.setItem('nbss_token', token); updateUIForAuth(); showPage('home'); } catch (e) { alert(e.message); }
+  try {
+    const data = await request('/login', { method:'POST', body: JSON.stringify({ username:u, password:p }) });
+    token = data.token; currentUser = data.user;
+    localStorage.setItem('nbss_token', token);
+    updateUIForAuth();
+    updateTokenDisplay();
+    showPage('home');
+  } catch (e) { alert(e.message); }
 });
 document.getElementById('registerBtn')?.addEventListener('click', async () => {
   const u = document.getElementById('regUsername')?.value.trim(), p = document.getElementById('regPassword')?.value.trim();
@@ -184,7 +209,8 @@ function renderPost(p) {
   const canDelete = currentUser && (currentUser.username === p.author || ['moderator','admin','head_admin','owner'].includes(currentUser.role));
   let nickClass = 'role-' + role; if (premium && role === 'user') nickClass = 'premium-nick';
   let gallery = ''; if (p.images && p.images.length) gallery = `<div class="post-gallery">${p.images.map(img => `<img src="${img}" class="post-image" onerror="this.style.display='none'" onclick="this.requestFullscreen()">`).join('')}</div>`;
-  return `<div class="post" data-id="${p.id}" data-author="${p.author}"><div class="avatar">${p.author[0]?.toUpperCase()||'?'}</div><div class="post-body"><div class="post-header"><span class="username ${nickClass}" style="cursor:pointer;">${p.author||'Аноним'}${verified?'<img src="verification.png" class="verified-icon" alt="✔">':''}</span><span>· ${new Date(p.timestamp).toLocaleString()}</span>${canDelete?`<button class="delete-post-btn" data-post-id="${p.id}">🗑️</button>`:''}</div>${gallery}${p.text?`<div class="post-text" id="text-${p.id}">${p.text.replace(/@(\w+)/g,'<span class="mention">@$1</span>')}</div>`:''}<div class="post-actions"><button class="like-btn">❤️ ${p.likes.length}</button><button class="repost-btn">🔄 ${p.reposts.length}</button><button class="comment-toggle">💬 Комментарии</button><button class="translate-btn" data-post-id="${p.id}">🌐 Перевести</button></div><div class="comments-section" style="display:none;"></div></div></div>`;
+  const roleDisplay = ROLE_NAMES_RU[role] ? `<span class="role-badge">${ROLE_NAMES_RU[role]}</span>` : '';
+  return `<div class="post" data-id="${p.id}" data-author="${p.author}"><div class="avatar">${p.author[0]?.toUpperCase()||'?'}</div><div class="post-body"><div class="post-header"><span class="username ${nickClass}" style="cursor:pointer;">${p.author||'Аноним'}${verified?'<img src="verification.png" class="verified-icon" alt="✔">':''}</span>${roleDisplay}<span>· ${new Date(p.timestamp).toLocaleString()}</span>${canDelete?`<button class="delete-post-btn" data-post-id="${p.id}">🗑️</button>`:''}</div>${gallery}${p.text?`<div class="post-text" id="text-${p.id}">${p.text.replace(/@(\w+)/g,'<span class="mention">@$1</span>')}</div>`:''}<div class="post-actions"><button class="like-btn">❤️ ${p.likes.length}</button><button class="repost-btn">🔄 ${p.reposts.length}</button><button class="comment-toggle">💬 Комментарии</button><button class="translate-btn" data-post-id="${p.id}">🌐 Перевести</button></div><div class="comments-section" style="display:none;"></div></div></div>`;
 }
 function attachPostActions() {
   document.querySelectorAll('.like-btn').forEach(b => b.onclick = async function() { if (!token) return alert('Войдите'); const el = this.closest('.post'); if (el.dataset.author === currentUser?.username) return showToast('Хорошая попытка, но так нельзя','like'); try { await request(`/posts/${el.dataset.id}/like`,{method:'POST'}); loadPosts(); } catch(e) { alert(e.message); } });
@@ -214,14 +240,16 @@ function renderComment(c) {
   const role = c.authorRole || 'user', premium = c.authorPremium === true, verified = c.authorVerified === true;
   let canDelete = currentUser && (currentUser.username === c.author || ['moderator','admin','head_admin','owner'].includes(currentUser.role));
   let nickClass = 'role-' + role; if (premium && role === 'user') nickClass = 'premium-nick';
-  return `<div class="comment" data-id="${c.id}"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${nickClass}">${c.author}${verified ? '<img src="verification.png" class="verified-icon">' : ''}</span><span>${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${c.text.replace(/@(\w+)/g, '<span class="mention">@$1</span>')}</p>${canDelete ? `<button class="delete-comment-btn" data-id="${c.id}">🗑️</button>` : ''}</div></div>`;
+  const roleDisplay = ROLE_NAMES_RU[role] ? `<span class="role-badge">${ROLE_NAMES_RU[role]}</span>` : '';
+  return `<div class="comment" data-id="${c.id}"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${nickClass}">${c.author}${verified ? '<img src="verification.png" class="verified-icon">' : ''}</span>${roleDisplay}<span>${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${c.text.replace(/@(\w+)/g, '<span class="mention">@$1</span>')}</p>${canDelete ? `<button class="delete-comment-btn" data-id="${c.id}">🗑️</button>` : ''}</div></div>`;
 }
 
 // ========== Профиль ==========
 async function loadMyProfile() {
   if (!currentUser) return; const header = document.getElementById('profileHeader'); if (!header) return;
   let nickClass = 'role-' + (currentUser.role || 'user'); if (currentUser.premium && currentUser.role === 'user') nickClass = 'premium-nick';
-  header.innerHTML = `<h2 class="${nickClass}">${currentUser.username} ${currentUser.verified ? '<img src="verification.png" class="verified-icon">' : ''}</h2><p>${currentUser.role !== 'user' ? '🔹 ' + currentUser.role : ''} ${currentUser.premium ? '💎 НБСС+' : ''}</p>`;
+  const roleName = ROLE_NAMES_RU[currentUser.role] || currentUser.role;
+  header.innerHTML = `<h2 class="${nickClass}">${currentUser.username} ${currentUser.verified ? '<img src="verification.png" class="verified-icon">' : ''}</h2><p>${roleName} ${currentUser.premium ? '💎 НБСС+' : ''}</p>`;
   const allPosts = await request('/posts'); const userPosts = allPosts.filter(p => p.author === currentUser.username);
   const profilePosts = document.getElementById('profilePosts'); if (profilePosts) profilePosts.innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
   attachPostActions();
@@ -231,7 +259,8 @@ async function loadUserProfile(username) {
   try {
     const user = await request(`/user/${username}`); const header = document.getElementById('profileHeader'); if (!header) return;
     let nickClass = 'role-' + (user.role || 'user'); if (user.premium && user.role === 'user') nickClass = 'premium-nick';
-    header.innerHTML = `<h2 class="${nickClass}">${user.username} ${user.verified ? '<img src="verification.png" class="verified-icon">' : ''}</h2><p>${user.role !== 'user' ? '🔹 ' + user.role : ''} ${user.premium ? '💎 НБСС+' : ''}</p>`;
+    const roleName = ROLE_NAMES_RU[user.role] || user.role;
+    header.innerHTML = `<h2 class="${nickClass}">${user.username} ${user.verified ? '<img src="verification.png" class="verified-icon">' : ''}</h2><p>${roleName} ${user.premium ? '💎 НБСС+' : ''}</p>`;
     const allPosts = await request('/posts'); const userPosts = allPosts.filter(p => p.author === username);
     const profilePosts = document.getElementById('profilePosts'); if (profilePosts) profilePosts.innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
     attachPostActions();
@@ -337,3 +366,83 @@ document.getElementById('searchInput')?.addEventListener('input', async (e) => {
     document.querySelectorAll('.view-profile-btn').forEach(btn => { btn.addEventListener('click', () => { window.viewingUser = btn.dataset.username; showPage('profile'); }); });
   } catch (e) {}
 });
+
+// ========== Настройки: язык, секретный код, токены ==========
+const languageSelect = document.getElementById('languageSelect');
+const secretCodeInput = document.getElementById('secretCodeInput');
+const activateCodeBtn = document.getElementById('activateCodeBtn');
+const codeMessage = document.getElementById('codeMessage');
+const tokenBalanceSpan = document.getElementById('tokenBalance');
+const buyPremiumBtn = document.getElementById('buyPremiumBtn');
+const premiumStatus = document.getElementById('premiumStatus');
+
+// Язык
+languageSelect?.addEventListener('change', () => {
+  const lang = languageSelect.value;
+  localStorage.setItem('nbss_lang', lang);
+  alert('Язык изменён на ' + (lang === 'ru' ? 'Русский' : 'English') + '. Перезагрузите страницу для полного применения.');
+});
+
+// Загрузка языка при старте
+const savedLang = localStorage.getItem('nbss_lang') || 'ru';
+if (languageSelect) languageSelect.value = savedLang;
+
+// Обновление отображения токенов
+function updateTokenDisplay() {
+  const row = document.getElementById('tokenBalanceRow');
+  if (!currentUser) {
+    if (row) row.style.display = 'none';
+    return;
+  }
+  if (row) row.style.display = '';
+  if (tokenBalanceSpan) tokenBalanceSpan.textContent = currentUser.tokens || 0;
+  if (currentUser.premium) {
+    if (buyPremiumBtn) buyPremiumBtn.style.display = 'none';
+    if (premiumStatus) premiumStatus.textContent = '✅ НБСС+ активно';
+  } else {
+    if (buyPremiumBtn) buyPremiumBtn.style.display = '';
+    if (premiumStatus) premiumStatus.textContent = '';
+  }
+}
+
+// Покупка НБСС+
+buyPremiumBtn?.addEventListener('click', async () => {
+  try {
+    const result = await request('/buy-premium', { method: 'POST' });
+    alert(result.message);
+    currentUser = await request('/me');
+    updateTokenDisplay();
+    updateUIForAuth();
+  } catch (e) {
+    alert(e.message);
+  }
+});
+
+// Активация секретного кода
+activateCodeBtn?.addEventListener('click', async () => {
+  const code = secretCodeInput.value.trim();
+  if (!code) return;
+  try {
+    const result = await request('/redeem-code', { method: 'POST', body: JSON.stringify({ code }) });
+    codeMessage.innerHTML = '<span style="color:green;">' + result.message + '</span>';
+    secretCodeInput.value = '';
+    currentUser = await request('/me');
+    updateTokenDisplay();
+    updateUIForAuth();
+  } catch (e) {
+    codeMessage.innerHTML = '<span style="color:red;">' + e.message + '</span>';
+  }
+});
+
+// ========== PWA: Регистрация Service Worker ==========
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(registration => {
+        console.log('Service Worker зарегистрирован:', registration.scope);
+      })
+      .catch(error => {
+        console.log('Ошибка регистрации Service Worker:', error);
+      });
+  });
+}
