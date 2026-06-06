@@ -10,15 +10,10 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-
-// Раздаём статику из public (изображения, загрузки) и из корня (стили, скрипты, лого и т.д.)
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
-
-// Скрываем server.js
 app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' }));
 
-// Главная страница
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -31,8 +26,9 @@ const POSTS_FILE = path.join(DATA_DIR, 'posts.json');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
 const STATS_FILE = path.join(DATA_DIR, 'stats.json');
+const CODES_FILE = path.join(DATA_DIR, 'codes.json');   // <-- добавлено
 
-// Директории для загрузок (внутри public)
+// Директории загрузок
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
 const AVATARS_DIR = path.join(UPLOADS_DIR, 'avatars');
 const BANNERS_DIR = path.join(UPLOADS_DIR, 'banners');
@@ -50,7 +46,7 @@ function saveJSON(file, data) {
   try { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); } catch(e) {}
 }
 
-// Роли и иерархия
+// Роли
 const ROLES = {
   OWNER: 'owner',
   HEAD_ADMIN: 'head_admin',
@@ -77,6 +73,7 @@ users['MrSigma'] = {
   role: ROLES.OWNER,
   premium: true,
   verified: true,
+  tokens: 1000,
   avatar: users['MrSigma']?.avatar || '',
   banner: users['MrSigma']?.banner || '',
   followers: users['MrSigma']?.followers || [],
@@ -88,6 +85,7 @@ Object.values(users).forEach(u => {
   if (!u.premium) u.premium = false;
   if (!u.verified) u.verified = false;
   if (!u.bannedUntil) u.bannedUntil = null;
+  if (u.tokens === undefined) u.tokens = 0;
 });
 saveJSON(USERS_FILE, users);
 
@@ -95,6 +93,8 @@ let posts = loadJSON(POSTS_FILE, []);
 let events = loadJSON(EVENTS_FILE, []);
 let comments = loadJSON(COMMENTS_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
+let codes = loadJSON(CODES_FILE, []);    // <-- загружаем промокоды
+
 events.forEach((e, i) => { if (!e.id) e.id = Date.now() + i; });
 if (events.some(e => !e.id)) saveJSON(EVENTS_FILE, events);
 
@@ -134,7 +134,7 @@ function requireRole(minRole) {
   };
 }
 
-// Загрузка изображений постов
+// Загрузка изображений
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, POSTS_IMAGES_DIR),
   filename: (req, file, cb) => {
@@ -145,7 +145,6 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // ===================== API РОУТЫ =====================
-
 // Регистрация
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
@@ -159,6 +158,7 @@ app.post('/api/register', (req, res) => {
     role: ROLES.USER,
     premium: false,
     verified: false,
+    tokens: 0,
     avatar: '',
     banner: '',
     followers: [],
@@ -209,7 +209,7 @@ app.get('/api/user/:username', (req, res) => {
   res.json(safeUser);
 });
 
-// Получить все посты
+// Посты
 app.get('/api/posts', (req, res) => {
   const enriched = posts.map(p => ({
     ...p,
@@ -220,7 +220,6 @@ app.get('/api/posts', (req, res) => {
   res.json(enriched);
 });
 
-// Создать пост
 app.post('/api/posts', auth, upload.array('images', 4), (req, res) => {
   const text = req.body.text || '';
   const images = req.files?.map(f => '/uploads/posts/' + f.filename) || [];
@@ -238,7 +237,6 @@ app.post('/api/posts', auth, upload.array('images', 4), (req, res) => {
   res.json(post);
 });
 
-// Удалить пост
 app.delete('/api/posts/:id', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
@@ -250,7 +248,7 @@ app.delete('/api/posts/:id', auth, (req, res) => {
   res.json({ success: true });
 });
 
-// Лайк поста
+// Лайк / репост
 app.post('/api/posts/:id/like', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
@@ -261,8 +259,6 @@ app.post('/api/posts/:id/like', auth, (req, res) => {
   }
   res.json({ likes: post.likes.length });
 });
-
-// Репост
 app.post('/api/posts/:id/repost', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
@@ -274,7 +270,7 @@ app.post('/api/posts/:id/repost', auth, (req, res) => {
   res.json({ reposts: post.reposts.length });
 });
 
-// Комментарии к посту
+// Комментарии
 app.get('/api/posts/:id/comments', (req, res) => {
   const postComments = comments.filter(c => c.postId == req.params.id);
   const enriched = postComments.map(c => ({
@@ -285,7 +281,6 @@ app.get('/api/posts/:id/comments', (req, res) => {
   }));
   res.json(enriched);
 });
-
 app.post('/api/posts/:id/comments', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
@@ -302,8 +297,6 @@ app.post('/api/posts/:id/comments', auth, (req, res) => {
   saveJSON(COMMENTS_FILE, comments);
   res.json(comment);
 });
-
-// Удаление комментария
 app.delete('/api/comments/:id', auth, (req, res) => {
   const comment = comments.find(c => c.id == req.params.id);
   if (!comment) return res.status(404).json({ error: 'Комментарий не найден' });
@@ -317,7 +310,6 @@ app.delete('/api/comments/:id', auth, (req, res) => {
 
 // События
 app.get('/api/events', (req, res) => res.json(events));
-
 app.post('/api/events', auth, requireRole(ROLES.EVENT_MODERATOR), (req, res) => {
   const { title, desc } = req.body;
   if (!title) return res.status(400).json({ error: 'Название обязательно' });
@@ -326,20 +318,17 @@ app.post('/api/events', auth, requireRole(ROLES.EVENT_MODERATOR), (req, res) => 
   saveJSON(EVENTS_FILE, events);
   res.json(event);
 });
-
 app.delete('/api/events/:id', auth, requireRole(ROLES.EVENT_MODERATOR), (req, res) => {
   events = events.filter(e => e.id != req.params.id);
   saveJSON(EVENTS_FILE, events);
   res.json({ success: true });
 });
 
-// Админка: список пользователей
+// Админка: пользователи
 app.get('/api/admin/users', auth, requireRole(ROLES.MODERATOR), (req, res) => {
   const list = Object.values(users).map(({ password, token, ...u }) => u);
   res.json(list);
 });
-
-// Админка: изменение пользователя
 app.post('/api/admin/user/:username', auth, requireRole(ROLES.MODERATOR), (req, res) => {
   const target = users[req.params.username];
   if (!target) return res.status(404).json({ error: 'Пользователь не найден' });
@@ -366,6 +355,69 @@ app.post('/api/admin/user/:username', auth, requireRole(ROLES.MODERATOR), (req, 
   saveJSON(USERS_FILE, users);
   const { password, token, ...safeUser } = target;
   res.json(safeUser);
+});
+
+// ====== ПРОМОКОДЫ ======
+// Создание промокода (head_admin и выше)
+app.post('/api/admin/create-code', auth, requireRole(ROLES.HEAD_ADMIN), (req, res) => {
+  const { code, reward, amount } = req.body;
+  if (!code || !reward) return res.status(400).json({ error: 'Код и тип награды обязательны' });
+  if (reward === 'tokens' && !amount) return res.status(400).json({ error: 'Укажите количество токенов' });
+
+  codes.push({
+    code,
+    reward,          // 'tokens' или 'premium'
+    amount: reward === 'tokens' ? amount : undefined,
+    usedBy: [],
+    createdBy: req.user.username,
+    createdAt: new Date().toISOString()
+  });
+  saveJSON(CODES_FILE, codes);
+  res.json({ success: true });
+});
+
+// Список промокодов
+app.get('/api/admin/codes', auth, requireRole(ROLES.MODERATOR), (req, res) => {
+  res.json(codes);
+});
+
+// Активация промокода (любой авторизованный)
+app.post('/api/redeem-code', auth, (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ error: 'Введите код' });
+
+  const promo = codes.find(c => c.code === code && !c.usedBy?.includes(req.user.username));
+  if (!promo) return res.status(404).json({ error: 'Код не найден или уже использован' });
+
+  if (promo.reward === 'tokens') {
+    req.user.tokens = (req.user.tokens || 0) + promo.amount;
+  } else if (promo.reward === 'premium') {
+    req.user.premium = true;
+    req.user.premiumUntil = promo.premiumUntil || null;
+  }
+
+  if (!promo.usedBy) promo.usedBy = [];
+  promo.usedBy.push(req.user.username);
+  saveJSON(CODES_FILE, codes);
+  saveJSON(USERS_FILE, users);
+
+  const { password, token, ...safeUser } = req.user;
+  res.json({ success: true, message: 'Код активирован!', user: safeUser });
+});
+
+// Покупка премиума
+app.post('/api/buy-premium', auth, (req, res) => {
+  const PRICE = 100;
+  if (req.user.premium) return res.status(400).json({ error: 'У вас уже есть НБСС+' });
+  if ((req.user.tokens || 0) < PRICE) return res.status(400).json({ error: 'Недостаточно токенов. Нужно ' + PRICE });
+
+  req.user.tokens -= PRICE;
+  req.user.premium = true;
+  req.user.premiumUntil = null;
+  saveJSON(USERS_FILE, users);
+
+  const { password, token, ...safeUser } = req.user;
+  res.json({ success: true, message: 'НБСС+ активирован!', user: safeUser });
 });
 
 // Статистика
