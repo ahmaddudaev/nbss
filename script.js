@@ -10,7 +10,6 @@ const ROLE_HIERARCHY = {
   owner: 5, head_admin: 4, admin: 3, moderator: 2, event_moderator: 1, user: 0
 };
 
-// Русские названия ролей
 const ROLE_NAMES_RU = {
   owner: '👑 Владелец',
   head_admin: '🛡️ Главный админ',
@@ -19,6 +18,8 @@ const ROLE_NAMES_RU = {
   event_moderator: '📅 Ивент-модератор',
   user: 'Пользователь'
 };
+
+let selectedAdminUser = null;
 
 try {
   notifications = JSON.parse(localStorage.getItem('nbss_notifications')) || [];
@@ -106,11 +107,8 @@ function showPage(pageId) {
   if (pageId === 'home') loadPosts();
   if (pageId === 'profile') { if (currentUser && !window.viewingUser) loadMyProfile(); else if (window.viewingUser) loadUserProfile(window.viewingUser); }
   if (pageId === 'events') { loadEvents(); const card = document.getElementById('createEventCard'); if (card) card.style.display = (currentUser && ['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role)) ? '' : 'none'; }
-  if (pageId === 'admin') { loadAdminStats(); loadAdminUsers(); }
-  if (pageId === 'settings') {
-    updateThemeSettings();
-    updateTokenDisplay();
-  }
+  if (pageId === 'admin') { loadAdminStats(); resetAdminSearch(); }
+  if (pageId === 'settings') { updateThemeSettings(); updateTokenDisplay(); }
   updateStats();
 }
 function updateUIForAuth() {
@@ -216,7 +214,37 @@ function attachPostActions() {
   document.querySelectorAll('.like-btn').forEach(b => b.onclick = async function() { if (!token) return alert('Войдите'); const el = this.closest('.post'); if (el.dataset.author === currentUser?.username) return showToast('Хорошая попытка, но так нельзя','like'); try { await request(`/posts/${el.dataset.id}/like`,{method:'POST'}); loadPosts(); } catch(e) { alert(e.message); } });
   document.querySelectorAll('.repost-btn').forEach(b => b.onclick = async function() { if (!token) return alert('Войдите'); const el = this.closest('.post'); if (el.dataset.author === currentUser?.username) return showToast('Хорошая попытка, но так нельзя','repost'); try { await request(`/posts/${el.dataset.id}/repost`,{method:'POST'}); loadPosts(); } catch(e) { alert(e.message); } });
   document.querySelectorAll('.comment-toggle').forEach(b => b.onclick = async function() { const el = this.closest('.post'), sec = el.querySelector('.comments-section'); if (sec.style.display==='none') { sec.style.display='block'; await loadComments(el.dataset.id, sec); } else sec.style.display='none'; });
-  document.querySelectorAll('.translate-btn').forEach(btn => btn.onclick = async function() { /* перевод */ });
+  document.querySelectorAll('.translate-btn').forEach(btn => {
+    btn.onclick = async function() {
+      const postEl = this.closest('.post');
+      const textEl = postEl.querySelector('.post-text');
+      if (!textEl) return;
+      const postId = postEl.dataset.id;
+      const originalHTML = translatedPosts[postId]?.original || textEl.innerHTML;
+      if (translatedPosts[postId]?.translated) {
+        // Возвращаем оригинал
+        textEl.innerHTML = originalHTML;
+        translatedPosts[postId].translated = false;
+        this.textContent = '🌐 Перевести';
+        return;
+      }
+      // Переводим
+      const plainText = textEl.innerText.trim();
+      if (!plainText) return;
+      try {
+        const lang = localStorage.getItem('nbss_lang') || 'ru';
+        const target = lang === 'ru' ? 'en' : 'ru';
+        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(plainText)}&langpair=auto|${target}`);
+        const data = await res.json();
+        const translated = data.responseData.translatedText;
+        translatedPosts[postId] = { original: originalHTML, translated: true };
+        textEl.innerText = translated;
+        this.textContent = '↩️ Оригинал';
+      } catch (e) {
+        alert('Ошибка перевода');
+      }
+    };
+  });
   document.querySelectorAll('.delete-post-btn').forEach(btn => btn.onclick = async function(e) { e.stopPropagation(); if (!token) return alert('Войдите'); if (confirm('Удалить пост?')) { try { await request(`/posts/${this.dataset.postId}`,{method:'DELETE'}); loadPosts(); } catch(err) { alert(err.message); } } });
 }
 
@@ -235,7 +263,6 @@ async function loadComments(postId, container) {
     }
   } catch (e) { container.innerHTML = '<p>Ошибка загрузки комментариев</p>'; }
 }
-
 function renderComment(c) {
   const role = c.authorRole || 'user', premium = c.authorPremium === true, verified = c.authorVerified === true;
   let canDelete = currentUser && (currentUser.username === c.author || ['moderator','admin','head_admin','owner'].includes(currentUser.role));
@@ -254,7 +281,6 @@ async function loadMyProfile() {
   const profilePosts = document.getElementById('profilePosts'); if (profilePosts) profilePosts.innerHTML = userPosts.length ? userPosts.map(p => renderPost(p)).join('') : '<p>Нет постов</p>';
   attachPostActions();
 }
-
 async function loadUserProfile(username) {
   try {
     const user = await request(`/user/${username}`); const header = document.getElementById('profileHeader'); if (!header) return;
@@ -276,7 +302,6 @@ async function loadEvents() {
     document.querySelectorAll('.delete-event-btn').forEach(btn => { btn.addEventListener('click', async () => { if (confirm('Удалить ивент?')) { await request(`/events/${btn.dataset.eventId}`, { method:'DELETE' }); loadEvents(); } }); });
   } catch (e) {}
 }
-
 document.getElementById('createEventBtnEvents')?.addEventListener('click', async () => {
   if (!currentUser || !['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role)) return alert('Нет прав');
   const title = document.getElementById('eventTitleEvents')?.value.trim(), desc = document.getElementById('eventDescEvents')?.value.trim();
@@ -292,54 +317,145 @@ async function loadAdminStats() {
   const stats = await request('/stats'); const container = document.getElementById('adminStats');
   if (container) container.innerHTML = `<h3>📊 Статистика</h3><div class="stat-row"><span>👥</span><span>${stats.users}</span></div><div class="stat-row"><span>📝</span><span>${stats.posts}</span></div>`;
 }
-async function loadAdminUsers() {
-  if (!currentUser || !['moderator','admin','head_admin','owner'].includes(currentUser.role)) return;
-  const select = document.getElementById('userSelect'); if (!select) return;
+
+function resetAdminSearch() {
+  selectedAdminUser = null;
+  document.getElementById('adminUserSearch').value = '';
+  document.getElementById('adminSearchResults').innerHTML = '';
+  document.getElementById('adminSelectedUser').style.display = 'none';
+  hideAllAdminButtons();
+}
+
+async function searchAdminUsers(query) {
+  if (!query) { document.getElementById('adminSearchResults').innerHTML = ''; return; }
   try {
-    const usersList = await request('/admin/users');
-    select.innerHTML = usersList.map(u => `<option value="${u.username}">${u.username} ${u.role !== 'user' ? '('+u.role+')' : ''} ${u.verified ? '✔️' : ''} ${u.premium ? '💎' : ''}</option>`).join('');
-    const getSelected = () => select.value, targetUser = () => usersList.find(u => u.username === getSelected());
-    const isOwner = () => currentUser.role === 'owner', isHeadAdminOrAbove = () => ['head_admin','owner'].includes(currentUser.role);
-    const isAdminOrAbove = () => ['admin','head_admin','owner'].includes(currentUser.role);
-    const isModeratorOrAbove = () => ['moderator','admin','head_admin','owner'].includes(currentUser.role);
-    const canModify = () => { const t = targetUser(); if (!t) return false; if (t.username === 'MrSigma') return false; return (ROLE_HIERARCHY[currentUser.role]||0) > (ROLE_HIERARCHY[t.role]||0); };
-
-    const verifyBtn = document.getElementById('verifyUserBtn'), unverifyBtn = document.getElementById('unverifyUserBtn');
-    const givePremiumBtn = document.getElementById('givePremiumBtn'), revokePremiumBtn = document.getElementById('revokePremiumBtn');
-    const setOwnerBtn = document.getElementById('setOwnerBtn'), setHeadAdminBtn = document.getElementById('setHeadAdminBtn'), setAdminBtn = document.getElementById('setAdminBtn');
-    const setModeratorBtn = document.getElementById('setModeratorBtn'), setEventModeratorBtn = document.getElementById('setEventModeratorBtn');
-    const removeRoleBtn = document.getElementById('removeRoleBtn'), banUserBtn = document.getElementById('banUserBtn');
-    const unbanUserBtn = document.getElementById('unbanUserBtn'), deleteUserBtn = document.getElementById('deleteUserBtn');
-
-    [verifyBtn, unverifyBtn, givePremiumBtn, revokePremiumBtn, setOwnerBtn, setHeadAdminBtn, setAdminBtn, setModeratorBtn, setEventModeratorBtn, removeRoleBtn, banUserBtn, unbanUserBtn, deleteUserBtn].forEach(b => { if (b) b.style.display = 'none'; });
-    if (isModeratorOrAbove()) {
-      if (verifyBtn) verifyBtn.style.display = ''; if (unverifyBtn) unverifyBtn.style.display = '';
-      if (givePremiumBtn) givePremiumBtn.style.display = ''; if (revokePremiumBtn) revokePremiumBtn.style.display = '';
-      if (banUserBtn) banUserBtn.style.display = ''; if (unbanUserBtn) unbanUserBtn.style.display = '';
-      if (deleteUserBtn) deleteUserBtn.style.display = ''; if (removeRoleBtn) removeRoleBtn.style.display = '';
-    }
-    if (isAdminOrAbove()) { if (setModeratorBtn) setModeratorBtn.style.display = ''; if (setEventModeratorBtn) setEventModeratorBtn.style.display = ''; }
-    if (isHeadAdminOrAbove()) { if (setAdminBtn) setAdminBtn.style.display = ''; }
-    if (isOwner()) { if (setOwnerBtn) setOwnerBtn.style.display = ''; if (setHeadAdminBtn) setHeadAdminBtn.style.display = ''; }
-
-    if (verifyBtn) verifyBtn.onclick = () => { if (!isModeratorOrAbove() && getSelected() !== currentUser.username) return alert('Нет прав'); if (!canModify() && getSelected() !== currentUser.username) return alert('Нельзя'); modifyUser(getSelected(), { verified:true }); };
-    if (unverifyBtn) unverifyBtn.onclick = () => { if (!isModeratorOrAbove() && getSelected() !== currentUser.username) return alert('Нет прав'); if (!canModify() && getSelected() !== currentUser.username) return alert('Нельзя'); modifyUser(getSelected(), { verified:false }); };
-    if (givePremiumBtn) givePremiumBtn.onclick = () => { if (!isModeratorOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { premium:true }); };
-    if (revokePremiumBtn) revokePremiumBtn.onclick = () => { if (!isModeratorOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { premium:false }); };
-    if (setOwnerBtn) setOwnerBtn.onclick = () => { if (!isOwner()) return alert('Только владелец'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { role:'owner' }); };
-    if (setHeadAdminBtn) setHeadAdminBtn.onclick = () => { if (!isOwner()) return alert('Только владелец'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { role:'head_admin' }); };
-    if (setAdminBtn) setAdminBtn.onclick = () => { if (!isHeadAdminOrAbove()) return alert('Только владелец или гл. админ'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { role:'admin' }); };
-    if (setModeratorBtn) setModeratorBtn.onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { role:'moderator' }); };
-    if (setEventModeratorBtn) setEventModeratorBtn.onclick = () => { if (!isAdminOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { role:'event_moderator' }); };
-    if (removeRoleBtn) removeRoleBtn.onclick = () => { if (!isModeratorOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { role:'user' }); };
-    if (banUserBtn) banUserBtn.onclick = () => { if (!isModeratorOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { banUntil: new Date(Date.now()+3600000).toISOString() }); };
-    if (unbanUserBtn) unbanUserBtn.onclick = () => { if (!isModeratorOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); modifyUser(getSelected(), { banUntil:null }); };
-    if (deleteUserBtn) deleteUserBtn.onclick = () => { if (!isModeratorOrAbove()) return alert('Нет прав'); if (!canModify()) return alert('Нельзя'); if (confirm(`Удалить ${getSelected()}?`)) modifyUser(getSelected(), { delete:true }); };
-  } catch (e) { select.innerHTML = '<option>Ошибка загрузки</option>'; }
+    const users = await request(`/users/search?q=${encodeURIComponent(query)}`);
+    const container = document.getElementById('adminSearchResults');
+    container.innerHTML = users.map(u => `
+      <div class="admin-search-result-item" data-username="${u.username}">
+        <span>${u.username} ${u.role !== 'user' ? '('+ROLE_NAMES_RU[u.role]+')' : ''} ${u.verified ? '✔️' : ''} ${u.premium ? '💎' : ''}</span>
+      </div>
+    `).join('');
+    document.querySelectorAll('.admin-search-result-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const username = item.dataset.username;
+        const user = users.find(u => u.username === username);
+        selectAdminUser(user);
+        container.innerHTML = '';
+        document.getElementById('adminUserSearch').value = username;
+      });
+    });
+  } catch (e) {}
 }
+
+function selectAdminUser(user) {
+  selectedAdminUser = user;
+  document.getElementById('adminSelectedUsername').textContent = user.username;
+  document.getElementById('adminSelectedUser').style.display = '';
+  updateAdminButtonsVisibility(user);
+}
+
+function updateAdminButtonsVisibility(target) {
+  if (!target) { hideAllAdminButtons(); return; }
+  const isOwner = () => currentUser.role === 'owner',
+        isHeadAdminOrAbove = () => ['head_admin','owner'].includes(currentUser.role),
+        isAdminOrAbove = () => ['admin','head_admin','owner'].includes(currentUser.role),
+        isModeratorOrAbove = () => ['moderator','admin','head_admin','owner'].includes(currentUser.role);
+  const canModify = () => {
+    if (!target) return false;
+    if (target.username === 'MrSigma') return false;
+    return (ROLE_HIERARCHY[currentUser.role]||0) > (ROLE_HIERARCHY[target.role]||0);
+  };
+
+  const buttons = {
+    verifyUserBtn: isModeratorOrAbove() && (canModify() || target.username === currentUser.username),
+    unverifyUserBtn: isModeratorOrAbove() && (canModify() || target.username === currentUser.username),
+    givePremiumBtn: isModeratorOrAbove() && canModify(),
+    revokePremiumBtn: isModeratorOrAbove() && canModify(),
+    setOwnerBtn: isOwner() && canModify(),
+    setHeadAdminBtn: isOwner() && canModify(),
+    setAdminBtn: isHeadAdminOrAbove() && canModify(),
+    setModeratorBtn: isAdminOrAbove() && canModify(),
+    setEventModeratorBtn: isAdminOrAbove() && canModify(),
+    removeRoleBtn: isModeratorOrAbove() && canModify(),
+    banUserBtn: isModeratorOrAbove() && canModify(),
+    unbanUserBtn: isModeratorOrAbove() && canModify(),
+    deleteUserBtn: isModeratorOrAbove() && canModify()
+  };
+
+  for (const [id, visible] of Object.entries(buttons)) {
+    const btn = document.getElementById(id);
+    if (btn) btn.style.display = visible ? '' : 'none';
+  }
+}
+
+function hideAllAdminButtons() {
+  ['verifyUserBtn','unverifyUserBtn','givePremiumBtn','revokePremiumBtn',
+   'setOwnerBtn','setHeadAdminBtn','setAdminBtn','setModeratorBtn',
+   'setEventModeratorBtn','removeRoleBtn','banUserBtn','unbanUserBtn',
+   'deleteUserBtn'].forEach(id => {
+     const btn = document.getElementById(id);
+     if (btn) btn.style.display = 'none';
+   });
+}
+
+document.getElementById('adminUserSearch')?.addEventListener('input', (e) => {
+  searchAdminUsers(e.target.value.trim());
+});
+
+document.getElementById('verifyUserBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { verified: true });
+});
+document.getElementById('unverifyUserBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { verified: false });
+});
+document.getElementById('givePremiumBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { premium: true });
+});
+document.getElementById('revokePremiumBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { premium: false });
+});
+document.getElementById('setOwnerBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'owner' });
+});
+document.getElementById('setHeadAdminBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'head_admin' });
+});
+document.getElementById('setAdminBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'admin' });
+});
+document.getElementById('setModeratorBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'moderator' });
+});
+document.getElementById('setEventModeratorBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'event_moderator' });
+});
+document.getElementById('removeRoleBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'user' });
+});
+document.getElementById('banUserBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { banUntil: new Date(Date.now()+3600000).toISOString() });
+});
+document.getElementById('unbanUserBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { banUntil: null });
+});
+document.getElementById('deleteUserBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser && confirm(`Удалить пользователя ${selectedAdminUser.username}?`)) {
+    modifyUser(selectedAdminUser.username, { delete: true });
+    resetAdminSearch();
+  }
+});
+
 async function modifyUser(username, changes) {
-  try { await request(`/admin/user/${username}`, { method:'POST', body: JSON.stringify(changes) }); loadAdminUsers(); } catch (e) { alert(e.message); }
+  try {
+    await request(`/admin/user/${username}`, { method:'POST', body: JSON.stringify(changes) });
+    // Обновим данные выбранного пользователя после изменения
+    const updated = await request(`/user/${username}`);
+    selectAdminUser(updated);
+    loadAdminStats();
+  } catch (e) { alert(e.message); }
 }
+
 document.getElementById('createEventBtn')?.addEventListener('click', async () => {
   if (!currentUser || !['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role)) return alert('Нет прав');
   const title = document.getElementById('eventTitle')?.value.trim(), desc = document.getElementById('eventDesc')?.value.trim();
@@ -376,18 +492,14 @@ const tokenBalanceSpan = document.getElementById('tokenBalance');
 const buyPremiumBtn = document.getElementById('buyPremiumBtn');
 const premiumStatus = document.getElementById('premiumStatus');
 
-// Язык
 languageSelect?.addEventListener('change', () => {
   const lang = languageSelect.value;
   localStorage.setItem('nbss_lang', lang);
   alert('Язык изменён на ' + (lang === 'ru' ? 'Русский' : 'English') + '. Перезагрузите страницу для полного применения.');
 });
-
-// Загрузка языка при старте
 const savedLang = localStorage.getItem('nbss_lang') || 'ru';
 if (languageSelect) languageSelect.value = savedLang;
 
-// Обновление отображения токенов
 function updateTokenDisplay() {
   const row = document.getElementById('tokenBalanceRow');
   if (!currentUser) {
@@ -405,7 +517,6 @@ function updateTokenDisplay() {
   }
 }
 
-// Покупка НБСС+
 buyPremiumBtn?.addEventListener('click', async () => {
   try {
     const result = await request('/buy-premium', { method: 'POST' });
@@ -413,12 +524,9 @@ buyPremiumBtn?.addEventListener('click', async () => {
     currentUser = await request('/me');
     updateTokenDisplay();
     updateUIForAuth();
-  } catch (e) {
-    alert(e.message);
-  }
+  } catch (e) { alert(e.message); }
 });
 
-// Активация секретного кода
 activateCodeBtn?.addEventListener('click', async () => {
   const code = secretCodeInput.value.trim();
   if (!code) return;
@@ -438,11 +546,7 @@ activateCodeBtn?.addEventListener('click', async () => {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
-      .then(registration => {
-        console.log('Service Worker зарегистрирован:', registration.scope);
-      })
-      .catch(error => {
-        console.log('Ошибка регистрации Service Worker:', error);
-      });
+      .then(registration => console.log('SW зарегистрирован'))
+      .catch(error => console.log('Ошибка SW'));
   });
 }
