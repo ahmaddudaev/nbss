@@ -57,10 +57,7 @@ async function request(url, options = {}) {
       const err = await res.json();
       msg = err.error || msg;
     } catch (e) {
-      // ответ не JSON – пробуем текст
-      try {
-        msg = await res.text();
-      } catch (e2) {}
+      try { msg = await res.text(); } catch (e2) {}
     }
     throw new Error(msg);
   }
@@ -410,46 +407,19 @@ function hideAllAdminButtons() {
    });
 }
 
-// Обработчики кнопок админки
-document.getElementById('adminUserSearch')?.addEventListener('input', (e) => {
-  searchAdminUsers(e.target.value.trim());
-});
-document.getElementById('verifyUserBtn')?.addEventListener('click', () => {
-  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { verified: true });
-});
-document.getElementById('unverifyUserBtn')?.addEventListener('click', () => {
-  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { verified: false });
-});
-document.getElementById('givePremiumBtn')?.addEventListener('click', () => {
-  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { premium: true });
-});
-document.getElementById('revokePremiumBtn')?.addEventListener('click', () => {
-  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { premium: false });
-});
-document.getElementById('setOwnerBtn')?.addEventListener('click', () => {
-  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'owner' });
-});
-document.getElementById('setHeadAdminBtn')?.addEventListener('click', () => {
-  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'head_admin' });
-});
-document.getElementById('setAdminBtn')?.addEventListener('click', () => {
-  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'admin' });
-});
-document.getElementById('setModeratorBtn')?.addEventListener('click', () => {
-  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'moderator' });
-});
-document.getElementById('setEventModeratorBtn')?.addEventListener('click', () => {
-  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'event_moderator' });
-});
-document.getElementById('removeRoleBtn')?.addEventListener('click', () => {
-  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'user' });
-});
-document.getElementById('banUserBtn')?.addEventListener('click', () => {
-  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { banUntil: new Date(Date.now()+3600000).toISOString() });
-});
-document.getElementById('unbanUserBtn')?.addEventListener('click', () => {
-  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { banUntil: null });
-});
+document.getElementById('adminUserSearch')?.addEventListener('input', (e) => searchAdminUsers(e.target.value.trim()));
+document.getElementById('verifyUserBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { verified: true }); });
+document.getElementById('unverifyUserBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { verified: false }); });
+document.getElementById('givePremiumBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { premium: true }); });
+document.getElementById('revokePremiumBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { premium: false }); });
+document.getElementById('setOwnerBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'owner' }); });
+document.getElementById('setHeadAdminBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'head_admin' }); });
+document.getElementById('setAdminBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'admin' }); });
+document.getElementById('setModeratorBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'moderator' }); });
+document.getElementById('setEventModeratorBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'event_moderator' }); });
+document.getElementById('removeRoleBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'user' }); });
+document.getElementById('banUserBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { banUntil: new Date(Date.now()+3600000).toISOString() }); });
+document.getElementById('unbanUserBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { banUntil: null }); });
 document.getElementById('deleteUserBtn')?.addEventListener('click', () => {
   if (selectedAdminUser && confirm(`Удалить пользователя ${selectedAdminUser.username}?`)) {
     modifyUser(selectedAdminUser.username, { delete: true });
@@ -466,15 +436,13 @@ async function modifyUser(username, changes) {
   } catch (e) { alert(e.message); }
 }
 
-// ---------- Управление секретными кодами ----------
+// ========== Управление кодами ==========
 async function loadAdminCodes() {
   if (!currentUser || !['head_admin','owner'].includes(currentUser.role)) {
-    const card = document.getElementById('adminCodesCard');
-    if (card) card.style.display = 'none';
+    document.getElementById('adminCodesCard').style.display = 'none';
     return;
   }
-  const card = document.getElementById('adminCodesCard');
-  if (card) card.style.display = '';
+  document.getElementById('adminCodesCard').style.display = '';
   try {
     const codes = await request('/admin/codes');
     const container = document.getElementById('codesList');
@@ -484,11 +452,23 @@ async function loadAdminCodes() {
     }
     container.innerHTML = codes.map(c => `
       <div class="code-item">
-        <span class="code-value">${c.code}</span>
-        <span class="code-reward">${c.reward === 'tokens' ? '💰 ' + c.amount + ' токенов' : '💎 Премиум'}</span>
-        <span class="code-used">Использован: ${c.usedBy?.length || 0} раз</span>
+        <div>
+          <span class="code-value">${c.code}</span>
+          <span class="code-reward">${c.reward === 'tokens' ? '💰 ' + c.amount + ' токенов' : '💎 Премиум'}</span>
+          <span class="code-used">${c.maxUses > 0 ? `${c.usedBy?.length || 0}/${c.maxUses}` : (c.usedBy?.length || 0)} исп.</span>
+        </div>
+        <button class="btn danger delete-code-btn" data-code="${c.code}">🗑</button>
       </div>
     `).join('');
+    document.querySelectorAll('.delete-code-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm(`Удалить код ${btn.dataset.code}?`)) return;
+        try {
+          await request(`/admin/codes/${encodeURIComponent(btn.dataset.code)}`, { method: 'DELETE' });
+          loadAdminCodes();
+        } catch (e) { alert(e.message); }
+      });
+    });
   } catch (e) {}
 }
 
@@ -496,9 +476,13 @@ document.getElementById('createCodeBtn')?.addEventListener('click', async () => 
   const code = document.getElementById('newCodeValue').value.trim();
   const reward = document.getElementById('newCodeReward').value;
   const amount = parseInt(document.getElementById('newCodeAmount').value) || 0;
+  const maxUses = parseInt(document.getElementById('newCodeMaxUses').value) || 0;
   if (!code) return alert('Введите код');
   try {
-    await request('/admin/create-code', { method:'POST', body: JSON.stringify({ code, reward, amount }) });
+    await request('/admin/create-code', {
+      method:'POST',
+      body: JSON.stringify({ code, reward, amount, maxUses })
+    });
     alert('Код создан');
     document.getElementById('newCodeValue').value = '';
     loadAdminCodes();
@@ -506,8 +490,7 @@ document.getElementById('createCodeBtn')?.addEventListener('click', async () => 
 });
 
 document.getElementById('newCodeReward')?.addEventListener('change', function() {
-  const amountInput = document.getElementById('newCodeAmount');
-  if (amountInput) amountInput.style.display = this.value === 'tokens' ? '' : 'none';
+  document.getElementById('newCodeAmount').style.display = this.value === 'tokens' ? '' : 'none';
 });
 
 // ========== Статистика ==========
