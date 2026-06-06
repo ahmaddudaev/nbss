@@ -26,9 +26,8 @@ const POSTS_FILE = path.join(DATA_DIR, 'posts.json');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json');
 const STATS_FILE = path.join(DATA_DIR, 'stats.json');
-const CODES_FILE = path.join(DATA_DIR, 'codes.json');   // <-- добавлено
+const CODES_FILE = path.join(DATA_DIR, 'codes.json');
 
-// Директории загрузок
 const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
 const AVATARS_DIR = path.join(UPLOADS_DIR, 'avatars');
 const BANNERS_DIR = path.join(UPLOADS_DIR, 'banners');
@@ -37,7 +36,6 @@ const POSTS_IMAGES_DIR = path.join(UPLOADS_DIR, 'posts');
   if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
 });
 
-// Загрузка/сохранение JSON
 function loadJSON(file, def = {}) {
   try { if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8')); } catch(e) {}
   return def;
@@ -46,7 +44,6 @@ function saveJSON(file, data) {
   try { fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8'); } catch(e) {}
 }
 
-// Роли
 const ROLES = {
   OWNER: 'owner',
   HEAD_ADMIN: 'head_admin',
@@ -64,7 +61,6 @@ const ROLE_HIERARCHY = {
   [ROLES.USER]: 0
 };
 
-// Инициализация данных
 let users = loadJSON(USERS_FILE, {});
 const ownerPassword = crypto.createHash('sha256').update('Mrbeast132!').digest('hex');
 users['MrSigma'] = {
@@ -93,19 +89,17 @@ let posts = loadJSON(POSTS_FILE, []);
 let events = loadJSON(EVENTS_FILE, []);
 let comments = loadJSON(COMMENTS_FILE, []);
 let stats = loadJSON(STATS_FILE, { pageviews: 0 });
-let codes = loadJSON(CODES_FILE, []);    // <-- загружаем промокоды
+let codes = loadJSON(CODES_FILE, []);
 
 events.forEach((e, i) => { if (!e.id) e.id = Date.now() + i; });
 if (events.some(e => !e.id)) saveJSON(EVENTS_FILE, events);
 
-// Счетчик просмотров
 app.use((req, res, next) => {
   stats.pageviews++;
   saveJSON(STATS_FILE, stats);
   next();
 });
 
-// Хелперы
 const hash = pw => crypto.createHash('sha256').update(pw).digest('hex');
 
 function auth(req, res, next) {
@@ -134,7 +128,6 @@ function requireRole(minRole) {
   };
 }
 
-// Загрузка изображений
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, POSTS_IMAGES_DIR),
   filename: (req, file, cb) => {
@@ -144,8 +137,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-// ===================== API РОУТЫ =====================
-// Регистрация
+// ===================== API =====================
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Логин и пароль обязательны' });
@@ -169,7 +161,6 @@ app.post('/api/register', (req, res) => {
   res.json({ success: true });
 });
 
-// Вход
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Логин и пароль обязательны' });
@@ -184,13 +175,11 @@ app.post('/api/login', (req, res) => {
   res.json({ token, user: safeUser });
 });
 
-// Текущий пользователь
 app.get('/api/me', auth, (req, res) => {
   const { password, token, ...safeUser } = req.user;
   res.json(safeUser);
 });
 
-// Поиск пользователей
 app.get('/api/users/search', (req, res) => {
   const q = req.query.q?.toLowerCase() || '';
   if (!q) return res.json([]);
@@ -201,7 +190,6 @@ app.get('/api/users/search', (req, res) => {
   res.json(results);
 });
 
-// Профиль пользователя
 app.get('/api/user/:username', (req, res) => {
   const user = users[req.params.username];
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
@@ -209,7 +197,6 @@ app.get('/api/user/:username', (req, res) => {
   res.json(safeUser);
 });
 
-// Посты
 app.get('/api/posts', (req, res) => {
   const enriched = posts.map(p => ({
     ...p,
@@ -248,7 +235,6 @@ app.delete('/api/posts/:id', auth, (req, res) => {
   res.json({ success: true });
 });
 
-// Лайк / репост
 app.post('/api/posts/:id/like', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
@@ -259,6 +245,7 @@ app.post('/api/posts/:id/like', auth, (req, res) => {
   }
   res.json({ likes: post.likes.length });
 });
+
 app.post('/api/posts/:id/repost', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
@@ -270,7 +257,6 @@ app.post('/api/posts/:id/repost', auth, (req, res) => {
   res.json({ reposts: post.reposts.length });
 });
 
-// Комментарии
 app.get('/api/posts/:id/comments', (req, res) => {
   const postComments = comments.filter(c => c.postId == req.params.id);
   const enriched = postComments.map(c => ({
@@ -281,6 +267,7 @@ app.get('/api/posts/:id/comments', (req, res) => {
   }));
   res.json(enriched);
 });
+
 app.post('/api/posts/:id/comments', auth, (req, res) => {
   const post = posts.find(p => p.id == req.params.id);
   if (!post) return res.status(404).json({ error: 'Пост не найден' });
@@ -297,6 +284,7 @@ app.post('/api/posts/:id/comments', auth, (req, res) => {
   saveJSON(COMMENTS_FILE, comments);
   res.json(comment);
 });
+
 app.delete('/api/comments/:id', auth, (req, res) => {
   const comment = comments.find(c => c.id == req.params.id);
   if (!comment) return res.status(404).json({ error: 'Комментарий не найден' });
@@ -308,7 +296,6 @@ app.delete('/api/comments/:id', auth, (req, res) => {
   res.json({ success: true });
 });
 
-// События
 app.get('/api/events', (req, res) => res.json(events));
 app.post('/api/events', auth, requireRole(ROLES.EVENT_MODERATOR), (req, res) => {
   const { title, desc } = req.body;
@@ -324,11 +311,11 @@ app.delete('/api/events/:id', auth, requireRole(ROLES.EVENT_MODERATOR), (req, re
   res.json({ success: true });
 });
 
-// Админка: пользователи
 app.get('/api/admin/users', auth, requireRole(ROLES.MODERATOR), (req, res) => {
   const list = Object.values(users).map(({ password, token, ...u }) => u);
   res.json(list);
 });
+
 app.post('/api/admin/user/:username', auth, requireRole(ROLES.MODERATOR), (req, res) => {
   const target = users[req.params.username];
   if (!target) return res.status(404).json({ error: 'Пользователь не найден' });
@@ -358,16 +345,16 @@ app.post('/api/admin/user/:username', auth, requireRole(ROLES.MODERATOR), (req, 
 });
 
 // ====== ПРОМОКОДЫ ======
-// Создание промокода (head_admin и выше)
 app.post('/api/admin/create-code', auth, requireRole(ROLES.HEAD_ADMIN), (req, res) => {
-  const { code, reward, amount } = req.body;
+  const { code, reward, amount, maxUses } = req.body;
   if (!code || !reward) return res.status(400).json({ error: 'Код и тип награды обязательны' });
   if (reward === 'tokens' && !amount) return res.status(400).json({ error: 'Укажите количество токенов' });
 
   codes.push({
     code,
-    reward,          // 'tokens' или 'premium'
+    reward,
     amount: reward === 'tokens' ? amount : undefined,
+    maxUses: maxUses || 0,   // 0 = без ограничений
     usedBy: [],
     createdBy: req.user.username,
     createdAt: new Date().toISOString()
@@ -376,18 +363,30 @@ app.post('/api/admin/create-code', auth, requireRole(ROLES.HEAD_ADMIN), (req, re
   res.json({ success: true });
 });
 
-// Список промокодов
 app.get('/api/admin/codes', auth, requireRole(ROLES.MODERATOR), (req, res) => {
   res.json(codes);
 });
 
-// Активация промокода (любой авторизованный)
+// Удаление промокода
+app.delete('/api/admin/codes/:code', auth, requireRole(ROLES.HEAD_ADMIN), (req, res) => {
+  const idx = codes.findIndex(c => c.code === req.params.code);
+  if (idx === -1) return res.status(404).json({ error: 'Код не найден' });
+  codes.splice(idx, 1);
+  saveJSON(CODES_FILE, codes);
+  res.json({ success: true });
+});
+
 app.post('/api/redeem-code', auth, (req, res) => {
   const { code } = req.body;
   if (!code) return res.status(400).json({ error: 'Введите код' });
 
   const promo = codes.find(c => c.code === code && !c.usedBy?.includes(req.user.username));
   if (!promo) return res.status(404).json({ error: 'Код не найден или уже использован' });
+
+  // Проверка лимита использований
+  if (promo.maxUses > 0 && promo.usedBy.length >= promo.maxUses) {
+    return res.status(400).json({ error: 'Лимит использований кода исчерпан' });
+  }
 
   if (promo.reward === 'tokens') {
     req.user.tokens = (req.user.tokens || 0) + promo.amount;
@@ -405,9 +404,8 @@ app.post('/api/redeem-code', auth, (req, res) => {
   res.json({ success: true, message: 'Код активирован!', user: safeUser });
 });
 
-// Покупка премиума
 app.post('/api/buy-premium', auth, (req, res) => {
-  const PRICE = 100;
+  const PRICE = 1000;
   if (req.user.premium) return res.status(400).json({ error: 'У вас уже есть НБСС+' });
   if ((req.user.tokens || 0) < PRICE) return res.status(400).json({ error: 'Недостаточно токенов. Нужно ' + PRICE });
 
@@ -420,7 +418,6 @@ app.post('/api/buy-premium', auth, (req, res) => {
   res.json({ success: true, message: 'НБСС+ активирован!', user: safeUser });
 });
 
-// Статистика
 app.get('/api/stats', (req, res) => {
   res.json({
     pageviews: stats.pageviews,
@@ -429,5 +426,4 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-// Запуск
 app.listen(PORT, () => console.log(`🚀 НБСС запущен на порту ${PORT}`));
