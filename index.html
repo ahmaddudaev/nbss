@@ -112,10 +112,13 @@
           <div class="card" style="margin-top:16px;" id="createEventCard"><h3>Создать ивент</h3><input id="eventTitleEvents" placeholder="Название"><textarea id="eventDescEvents" placeholder="Описание"></textarea><button id="createEventBtnEvents" class="btn primary">🚀 Запустить</button></div>
         </div>
       </section>
+
+      <!-- АДМИНКА с секретными кодами -->
       <section id="adminPage" class="page">
         <div class="admin-container">
           <h2>⚙️ Административная панель</h2>
           <div class="card" id="adminStats"></div>
+
           <div class="card">
             <h3>👥 Пользователи</h3>
             <div class="admin-search-wrapper">
@@ -141,6 +144,22 @@
               </div>
             </div>
           </div>
+
+          <!-- Секретные коды -->
+          <div class="card" id="adminCodesCard">
+            <h3>🎁 Секретные коды</h3>
+            <div class="code-create-row">
+              <input type="text" id="newCodeValue" placeholder="Код (например, PREMIUM2025)" class="setting-input">
+              <select id="newCodeReward" class="setting-select">
+                <option value="tokens">💰 Токены</option>
+                <option value="premium">💎 Премиум</option>
+              </select>
+              <input type="number" id="newCodeAmount" placeholder="Сумма токенов" value="100" class="setting-input" style="width:120px;">
+              <button id="createCodeBtn" class="btn primary">Создать код</button>
+            </div>
+            <div id="codesList" class="codes-list" style="margin-top:16px;"></div>
+          </div>
+
           <div class="card"><h3>Создать ивент</h3><input id="eventTitle" placeholder="Название"><textarea id="eventDesc" placeholder="Описание"></textarea><button id="createEventBtn" class="btn primary">🚀 Запустить</button></div>
         </div>
       </section>
