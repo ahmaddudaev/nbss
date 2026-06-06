@@ -51,7 +51,19 @@ async function request(url, options = {}) {
   const res = await fetch(API + url, { ...options, headers: { ...headers, ...options.headers } });
   if (res.status === 423) { const data = await res.json(); showBanScreen(data.bannedUntil); throw new Error('BANNED'); }
   if (res.status === 401) { token = null; currentUser = null; localStorage.removeItem('nbss_token'); updateUIForAuth(); throw new Error('Сессия истекла'); }
-  if (!res.ok) { const err = await res.json().catch(() => ({ error: 'Ошибка сети' })); throw new Error(err.error || 'Ошибка'); }
+  if (!res.ok) {
+    let msg = 'Ошибка сети';
+    try {
+      const err = await res.json();
+      msg = err.error || msg;
+    } catch (e) {
+      // ответ не JSON – пробуем текст
+      try {
+        msg = await res.text();
+      } catch (e2) {}
+    }
+    throw new Error(msg);
+  }
   return res.json();
 }
 
@@ -310,7 +322,7 @@ document.getElementById('createEventBtnEvents')?.addEventListener('click', async
   loadEvents();
 });
 
-// ========== Админка: пользователи и коды ==========
+// ========== Админка ==========
 async function loadAdminStats() {
   if (!currentUser || !['moderator','admin','head_admin','owner'].includes(currentUser.role)) return;
   const stats = await request('/stats'); const container = document.getElementById('adminStats');
@@ -398,22 +410,46 @@ function hideAllAdminButtons() {
    });
 }
 
+// Обработчики кнопок админки
 document.getElementById('adminUserSearch')?.addEventListener('input', (e) => {
   searchAdminUsers(e.target.value.trim());
 });
-
 document.getElementById('verifyUserBtn')?.addEventListener('click', () => {
   if (selectedAdminUser) modifyUser(selectedAdminUser.username, { verified: true });
 });
-// ... (остальные обработчики кнопок остаются как раньше, сокращено для brevity)
-document.getElementById('setOwnerBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'owner' }); });
-document.getElementById('setHeadAdminBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'head_admin' }); });
-document.getElementById('setAdminBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'admin' }); });
-document.getElementById('setModeratorBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'moderator' }); });
-document.getElementById('setEventModeratorBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'event_moderator' }); });
-document.getElementById('removeRoleBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'user' }); });
-document.getElementById('banUserBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { banUntil: new Date(Date.now()+3600000).toISOString() }); });
-document.getElementById('unbanUserBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { banUntil: null }); });
+document.getElementById('unverifyUserBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { verified: false });
+});
+document.getElementById('givePremiumBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { premium: true });
+});
+document.getElementById('revokePremiumBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { premium: false });
+});
+document.getElementById('setOwnerBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'owner' });
+});
+document.getElementById('setHeadAdminBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'head_admin' });
+});
+document.getElementById('setAdminBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'admin' });
+});
+document.getElementById('setModeratorBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'moderator' });
+});
+document.getElementById('setEventModeratorBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'event_moderator' });
+});
+document.getElementById('removeRoleBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { role: 'user' });
+});
+document.getElementById('banUserBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { banUntil: new Date(Date.now()+3600000).toISOString() });
+});
+document.getElementById('unbanUserBtn')?.addEventListener('click', () => {
+  if (selectedAdminUser) modifyUser(selectedAdminUser.username, { banUntil: null });
+});
 document.getElementById('deleteUserBtn')?.addEventListener('click', () => {
   if (selectedAdminUser && confirm(`Удалить пользователя ${selectedAdminUser.username}?`)) {
     modifyUser(selectedAdminUser.username, { delete: true });
@@ -433,10 +469,12 @@ async function modifyUser(username, changes) {
 // ---------- Управление секретными кодами ----------
 async function loadAdminCodes() {
   if (!currentUser || !['head_admin','owner'].includes(currentUser.role)) {
-    document.getElementById('adminCodesCard').style.display = 'none';
+    const card = document.getElementById('adminCodesCard');
+    if (card) card.style.display = 'none';
     return;
   }
-  document.getElementById('adminCodesCard').style.display = '';
+  const card = document.getElementById('adminCodesCard');
+  if (card) card.style.display = '';
   try {
     const codes = await request('/admin/codes');
     const container = document.getElementById('codesList');
@@ -467,9 +505,9 @@ document.getElementById('createCodeBtn')?.addEventListener('click', async () => 
   } catch (e) { alert(e.message); }
 });
 
-// Скрываем поле суммы, если выбрана награда "премиум"
 document.getElementById('newCodeReward')?.addEventListener('change', function() {
-  document.getElementById('newCodeAmount').style.display = this.value === 'tokens' ? '' : 'none';
+  const amountInput = document.getElementById('newCodeAmount');
+  if (amountInput) amountInput.style.display = this.value === 'tokens' ? '' : 'none';
 });
 
 // ========== Статистика ==========
@@ -490,7 +528,7 @@ document.getElementById('searchInput')?.addEventListener('input', async (e) => {
   } catch (e) {}
 });
 
-// ========== Настройки: язык, секретный код, токены ==========
+// ========== Настройки ==========
 const languageSelect = document.getElementById('languageSelect');
 const secretCodeInput = document.getElementById('secretCodeInput');
 const activateCodeBtn = document.getElementById('activateCodeBtn');
@@ -549,7 +587,7 @@ activateCodeBtn?.addEventListener('click', async () => {
   }
 });
 
-// ========== PWA: Регистрация Service Worker ==========
+// ========== PWA ==========
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
