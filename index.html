@@ -82,7 +82,7 @@
           </div>
           <div class="setting-row" id="tokenBalanceRow" style="display:none;">
             <label>💰 НБСС‑токены: <span id="tokenBalance">0</span></label>
-            <button id="buyPremiumBtn" class="btn outline" style="display:none;">💎 Купить НБСС+ за 100 токенов</button>
+            <button id="buyPremiumBtn" class="btn outline" style="display:none;">💎 Купить НБСС+ за 1000 токенов</button>
             <div id="premiumStatus" class="premium-status"></div>
           </div>
         </div>
@@ -113,7 +113,6 @@
         </div>
       </section>
 
-      <!-- АДМИНКА с секретными кодами -->
       <section id="adminPage" class="page">
         <div class="admin-container">
           <h2>⚙️ Административная панель</h2>
@@ -145,7 +144,6 @@
             </div>
           </div>
 
-          <!-- Секретные коды -->
           <div class="card" id="adminCodesCard">
             <h3>🎁 Секретные коды</h3>
             <div class="code-create-row">
@@ -155,6 +153,7 @@
                 <option value="premium">💎 Премиум</option>
               </select>
               <input type="number" id="newCodeAmount" placeholder="Сумма токенов" value="100" class="setting-input" style="width:120px;">
+              <input type="number" id="newCodeMaxUses" placeholder="Макс. использований (0 — безлимит)" value="0" class="setting-input" style="width:160px;">
               <button id="createCodeBtn" class="btn primary">Создать код</button>
             </div>
             <div id="codesList" class="codes-list" style="margin-top:16px;"></div>
