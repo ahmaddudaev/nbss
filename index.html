@@ -47,7 +47,6 @@
     </aside>
 
     <main class="main-content">
-      <!-- Поиск с кнопкой -->
       <div class="search-box" style="margin:10px 20px;">
         <div class="search-input-wrapper">
           <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." class="search-input-field">
@@ -125,7 +124,10 @@
           <div class="card">
             <h3>👥 Пользователи</h3>
             <div class="admin-search-wrapper">
-              <input type="text" id="adminUserSearch" placeholder="🔍 Введите ник..." class="admin-search-input">
+              <div class="search-input-wrapper">
+                <input type="text" id="adminUserSearch" placeholder="🔍 Введите ник..." class="admin-search-input search-input-field">
+                <button id="adminSearchButton" class="btn primary search-button">🔍</button>
+              </div>
               <div id="adminSearchResults" class="admin-search-results"></div>
             </div>
             <div id="adminSelectedUser" class="admin-selected-user" style="display:none;">
