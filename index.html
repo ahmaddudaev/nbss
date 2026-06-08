@@ -47,8 +47,12 @@
     </aside>
 
     <main class="main-content">
+      <!-- Поиск с кнопкой -->
       <div class="search-box" style="margin:10px 20px;">
-        <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." style="width:100%;">
+        <div class="search-input-wrapper">
+          <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." class="search-input-field">
+          <button id="searchButton" class="btn primary search-button">🔍</button>
+        </div>
         <div id="searchResults" class="search-results"></div>
       </div>
 
