@@ -497,18 +497,67 @@ document.getElementById('newCodeReward')?.addEventListener('change', function() 
 async function updateStats() { try { await request('/stats'); } catch(e) {} }
 updateStats(); setInterval(updateStats, 10000);
 
-// ========== Поиск ==========
-document.getElementById('searchInput')?.addEventListener('input', async (e) => {
-  const q = e.target.value.trim(); const container = document.getElementById('searchResults'); if (!container) return;
-  if (!q) { container.innerHTML = ''; return; }
+// ========== ПОИСК ЛЮДЕЙ (основной) ==========
+const searchInput = document.getElementById('searchInput');
+const searchButton = document.getElementById('searchButton');
+const searchResultsContainer = document.getElementById('searchResults');
+
+async function performSearch(query) {
+  if (!searchResultsContainer) return;
   try {
-    const users = await request(`/users/search?q=${encodeURIComponent(q)}`);
-    container.innerHTML = users.map(u => {
-      let nickClass = 'role-' + (u.role || 'user'); if (u.premium && u.role === 'user') nickClass = 'premium-nick';
-      return `<div class="search-user"><span class="username ${nickClass}">${u.username}${u.verified ? '<img src="verification.png" class="verified-icon">' : ''}</span><button class="btn outline view-profile-btn" data-username="${u.username}">→</button></div>`;
+    const users = await request(`/users/search?q=${encodeURIComponent(query)}`);
+    if (users.length === 0) {
+      searchResultsContainer.innerHTML = '<p>Никого не найдено</p>';
+      return;
+    }
+    searchResultsContainer.innerHTML = users.map(u => {
+      let nickClass = 'role-' + (u.role || 'user');
+      if (u.premium && u.role === 'user') nickClass = 'premium-nick';
+      return `<div class="search-user">
+        <span class="username ${nickClass}">${u.username}${u.verified ? '<img src="verification.png" class="verified-icon">' : ''}</span>
+        <button class="btn outline view-profile-btn" data-username="${u.username}">→</button>
+      </div>`;
     }).join('');
-    document.querySelectorAll('.view-profile-btn').forEach(btn => { btn.addEventListener('click', () => { window.viewingUser = btn.dataset.username; showPage('profile'); }); });
-  } catch (e) {}
+    // Обработчики кнопок "→"
+    document.querySelectorAll('.view-profile-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        window.viewingUser = btn.dataset.username;
+        showPage('profile');
+      });
+    });
+  } catch (e) {
+    searchResultsContainer.innerHTML = '<p>Ошибка поиска</p>';
+  }
+}
+
+// Живой поиск при вводе
+searchInput?.addEventListener('input', () => {
+  const q = searchInput.value.trim();
+  if (q) {
+    performSearch(q);
+  } else {
+    searchResultsContainer.innerHTML = '';
+  }
+});
+
+// Ручной поиск по клику на кнопку
+searchButton?.addEventListener('click', () => {
+  const q = searchInput.value.trim();
+  if (q) {
+    performSearch(q);
+  } else {
+    // Если поле пустое, покажем всех пользователей (или подсказку)
+    performSearch('');
+  }
+});
+
+// Поиск по нажатию Enter
+searchInput?.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const q = searchInput.value.trim();
+    performSearch(q || '');
+  }
 });
 
 // ========== Настройки ==========
@@ -577,4 +626,4 @@ if ('serviceWorker' in navigator) {
       .then(registration => console.log('SW зарегистрирован'))
       .catch(error => console.log('Ошибка SW'));
   });
-}
+    }
