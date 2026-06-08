@@ -127,16 +127,31 @@ input, textarea, select {
   background: var(--border); color: var(--text);
 }
 
-/* ========== ПОИСК ========== */
+/* ========== ПОИСК (основной) ========== */
 .search-input-wrapper {
   display: flex;
   gap: 8px;
+  margin-bottom: 8px;
 }
 .search-input-field {
   flex: 1;
 }
 .search-button {
   flex-shrink: 0;
+  padding: 0 20px;
+  font-size: 18px;
+}
+.search-results {
+  margin-top: 8px;
+}
+.search-user {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--card);
+  border-radius: 12px;
+  margin-bottom: 6px;
 }
 
 /* ========== КОМПОЗЕР ========== */
@@ -231,25 +246,116 @@ input, textarea, select {
 /* ========== МОБИЛЬНАЯ ВЕРСИЯ ========== */
 .mobile-nav { display: none; }
 @media (max-width: 768px) {
-  .app-container { flex-direction: column; padding: 0 0 70px 0; }
-  .main-content { max-width: 100%; border-radius: 0; padding: 16px; min-height: calc(100vh - 70px); }
+  .app-container {
+    flex-direction: column;
+    padding: 0 0 70px 0; /* отступ для нижней панели */
+  }
+  .main-content {
+    max-width: 100%;
+    border-radius: 0;
+    padding: 16px;
+    min-height: calc(100vh - 70px);
+    margin-bottom: 0;
+  }
   .sidebar { display: none; }
   .mobile-nav {
-    display: flex; position: fixed; bottom: 0; left: 0; width: 100%;
-    background: var(--bg2); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-    border-top: 1px solid var(--border); border-radius: 24px 24px 0 0;
-    padding: 10px 0; z-index: 100; justify-content: space-around;
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: var(--bg2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    border-radius: 24px 24px 0 0;
+    padding: 10px 0;
+    z-index: 100;
+    justify-content: space-around;
     box-shadow: 0 -4px 10px rgba(0,0,0,0.3);
   }
-  .mobile-nav-item { font-size: 0; flex-direction: column; padding: 8px 0; gap: 4px; flex: 1; text-align: center; color: var(--text2); text-decoration: none; }
+  .mobile-nav-item {
+    font-size: 0;
+    flex-direction: column;
+    padding: 8px 0;
+    gap: 4px;
+    flex: 1;
+    text-align: center;
+    color: var(--text2);
+    text-decoration: none;
+  }
   .mobile-nav-item span:first-child { font-size: 22px; }
   .mobile-nav-item.active { color: var(--accent); }
+
+  /* Поиск */
   .search-box { margin: 10px 0; }
-  .composer-row { flex-direction: column; }
-  .composer-file-label { margin-right: 0; margin-bottom: 8px; }
+  .search-input-wrapper { flex-direction: row; }
+  .search-input-field { font-size: 14px; padding: 10px 12px; }
+  .search-button { padding: 0 14px; font-size: 16px; }
+
+  /* Композер */
+  .composer-row { flex-direction: column; align-items: stretch; }
+  .composer-input { width: 100%; min-width: auto; }
+  .composer-file-label { margin: 0 0 8px; align-self: flex-start; }
   .composer-btn { width: 100%; }
+
+  /* Посты */
   .post-actions { gap: 12px; }
-  .admin-actions button { min-width: calc(50% - 10px); }
+  .post-gallery { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+
+  /* Админка */
+  .admin-actions button { min-width: calc(50% - 10px); font-size: 13px; padding: 8px 10px; }
+  .code-create-row { flex-direction: column; align-items: stretch; }
+  .code-create-row input, .code-create-row select { width: 100%; }
+
+  /* Уведомления */
   .notification-history { width: 90%; right: 5%; left: auto; }
-  .toast-container { bottom: 80px; }
-                  }
+  .toast-container { bottom: 80px; right: 10px; }
+}
+
+/* ========== ОВЕРЛЕЙ БАНА ========== */
+.ban-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+.ban-message { background: #1a1a1a; color: #fff; padding: 40px 60px; border-radius: 24px; text-align: center; }
+
+/* ========== УВЕДОМЛЕНИЯ И TOAST ========== */
+.notification-bell {
+  position: fixed; top: 20px; right: 20px; z-index: 300; font-size: 20px;
+  width: 44px; height: 44px; background: var(--bg2); backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px); border: 1px solid var(--border);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: var(--shadow); transition: transform 0.2s;
+}
+.notification-bell:hover { transform: scale(1.1); }
+.notification-bell .badge {
+  position: absolute; top: -4px; right: -6px;
+  background: var(--notification-badge); color: white;
+  font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; line-height: 1;
+}
+.notification-history {
+  position: fixed; top: 70px; right: 20px; width: 320px; max-height: 60vh;
+  background: var(--card); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); z-index: 299; overflow-y: auto; display: none;
+}
+.notification-history.active { display: block; }
+.notification-history-header { font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.notification-history-list { padding: 8px 0; }
+.notification-history-item { padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 14px; cursor: pointer; transition: background 0.2s; }
+.notification-history-item:hover { background: var(--hover); }
+.notification-history-item .time { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+.toast-container {
+  position: fixed; bottom: 20px; right: 20px; z-index: 400;
+  display: flex; flex-direction: column-reverse; gap: 10px;
+}
+.toast {
+  background: var(--card); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px;
+  box-shadow: var(--shadow); min-width: 250px; max-width: 350px;
+  animation: slideInRight 0.3s ease, fadeOut 0.5s ease 4.5s forwards;
+  display: flex; align-items: center; gap: 8px; color: var(--text);
+}
+.toast-icon { font-size: 18px; }
+.toast-message { flex: 1; font-size: 14px; }
+@keyframes slideInRight { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; transform: translateY(20px); } }
