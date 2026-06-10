@@ -417,7 +417,7 @@ function updateAdminButtonsVisibility(target) {
     banUserBtn: isModeratorOrAbove() && canModify(),
     unbanUserBtn: isModeratorOrAbove() && canModify(),
     deleteUserBtn: isModeratorOrAbove() && canModify(),
-    showPasswordBtn: isOwner()
+    showPasswordBtn: isOwner() // только владелец видит кнопку пароля
   };
 
   for (const [id, visible] of Object.entries(buttons)) {
@@ -464,9 +464,13 @@ document.getElementById('deleteUserBtn')?.addEventListener('click', () => {
   }
 });
 
-// Кнопка показа пароля (только owner) – теперь показывает расшифрованный пароль
+// Кнопка показа пароля (только owner)
 document.getElementById('showPasswordBtn')?.addEventListener('click', async () => {
   if (!selectedAdminUser) return;
+  if (selectedAdminUser.username === 'MrSigma') {
+    alert('Нельзя посмотреть пароль владельца');
+    return;
+  }
   try {
     const data = await request(`/admin/user/${selectedAdminUser.username}/password`);
     alert(`Пароль пользователя ${selectedAdminUser.username}: ${data.password}`);
