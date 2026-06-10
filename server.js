@@ -9,8 +9,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ====== ШИФРОВАНИЕ ПАРОЛЕЙ ======
-const ENCRYPTION_KEY = crypto.createHash('sha256').update('NBSS_SUPER_SECRET_KEY_2025!').digest(); // 32 байта
-const IV_LENGTH = 16; // AES блока
+const ENCRYPTION_KEY = crypto.createHash('sha256').update('NBSS_SUPER_SECRET_KEY_2025!').digest();
+const IV_LENGTH = 16;
 
 function encrypt(text) {
   const iv = crypto.randomBytes(IV_LENGTH);
@@ -21,6 +21,7 @@ function encrypt(text) {
 }
 
 function decrypt(encryptedText) {
+  if (!encryptedText) return null;
   const parts = encryptedText.split(':');
   if (parts.length !== 2) return null;
   const iv = Buffer.from(parts[0], 'hex');
@@ -85,12 +86,13 @@ const ROLE_HIERARCHY = {
 };
 
 let users = loadJSON(USERS_FILE, {});
-// Инициализация владельца
+
+// Инициализация владельца (если отсутствует)
 if (!users['MrSigma'] || !users['MrSigma'].encryptedPassword) {
   const ownerPass = 'Mrbeast132!';
   users['MrSigma'] = {
     username: 'MrSigma',
-    encryptedPassword: encrypt(ownerPass),   // ← шифрованный пароль
+    encryptedPassword: encrypt(ownerPass),
     role: ROLES.OWNER,
     premium: true,
     verified: true,
@@ -103,14 +105,17 @@ if (!users['MrSigma'] || !users['MrSigma'].encryptedPassword) {
   };
 }
 
+// Миграция старых пользователей
 Object.values(users).forEach(u => {
   if (!u.role) u.role = ROLES.USER;
   if (!u.premium) u.premium = false;
   if (!u.verified) u.verified = false;
   if (!u.bannedUntil) u.bannedUntil = null;
   if (u.tokens === undefined) u.tokens = 0;
-  // Миграция старых хешей (если остались) – удалим поле password, оставим encryptedPassword
+  // Удаляем старые SHA-256 хеши
   if (u.password) delete u.password;
+  // Добавляем encryptedPassword, если его нет (пустой пароль)
+  if (!u.encryptedPassword) u.encryptedPassword = encrypt('');
 });
 saveJSON(USERS_FILE, users);
 
@@ -173,7 +178,7 @@ app.post('/api/register', (req, res) => {
   if (users[username]) return res.status(400).json({ error: 'Пользователь уже существует' });
   users[username] = {
     username,
-    encryptedPassword: encrypt(password),   // шифруем пароль
+    encryptedPassword: encrypt(password),
     role: ROLES.USER,
     premium: false,
     verified: false,
@@ -193,7 +198,6 @@ app.post('/api/login', (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'Логин и пароль обязательны' });
   const user = users[username];
   if (!user) return res.status(400).json({ error: 'Неверный логин или пароль' });
-  // Расшифровываем сохранённый пароль и сравниваем
   const decrypted = decrypt(user.encryptedPassword);
   if (decrypted !== password) return res.status(400).json({ error: 'Неверный логин или пароль' });
   if (user.bannedUntil && new Date(user.bannedUntil) > new Date())
@@ -376,6 +380,10 @@ app.post('/api/admin/user/:username', auth, requireRole(ROLES.MODERATOR), (req, 
 
 // ----- ПРОСМОТР ПАРОЛЯ (только owner) -----
 app.get('/api/admin/user/:username/password', auth, requireRole(ROLES.OWNER), (req, res) => {
+  // Запрещаем просмотр пароля владельца
+  if (req.params.username === 'MrSigma') {
+    return res.status(403).json({ error: 'Нельзя посмотреть пароль владельца' });
+  }
   const target = users[req.params.username];
   if (!target) return res.status(404).json({ error: 'Пользователь не найден' });
   const decrypted = decrypt(target.encryptedPassword);
