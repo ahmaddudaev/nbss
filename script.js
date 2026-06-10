@@ -417,7 +417,8 @@ function updateAdminButtonsVisibility(target) {
     removeRoleBtn: isModeratorOrAbove() && canModify(),
     banUserBtn: isModeratorOrAbove() && canModify(),
     unbanUserBtn: isModeratorOrAbove() && canModify(),
-    deleteUserBtn: isModeratorOrAbove() && canModify()
+    deleteUserBtn: isModeratorOrAbove() && canModify(),
+    showPasswordBtn: isOwner() // только владелец видит кнопку пароля
   };
 
   for (const [id, visible] of Object.entries(buttons)) {
@@ -430,7 +431,7 @@ function hideAllAdminButtons() {
   ['verifyUserBtn','unverifyUserBtn','givePremiumBtn','revokePremiumBtn',
    'setOwnerBtn','setHeadAdminBtn','setAdminBtn','setModeratorBtn',
    'setEventModeratorBtn','removeRoleBtn','banUserBtn','unbanUserBtn',
-   'deleteUserBtn'].forEach(id => {
+   'deleteUserBtn','showPasswordBtn'].forEach(id => {
      const btn = document.getElementById(id);
      if (btn) btn.style.display = 'none';
    });
@@ -462,6 +463,17 @@ document.getElementById('deleteUserBtn')?.addEventListener('click', () => {
   if (selectedAdminUser && confirm(`Удалить пользователя ${selectedAdminUser.username}?`)) {
     modifyUser(selectedAdminUser.username, { delete: true });
     resetAdminSearch();
+  }
+});
+
+// Кнопка показа пароля (только owner)
+document.getElementById('showPasswordBtn')?.addEventListener('click', async () => {
+  if (!selectedAdminUser) return;
+  try {
+    const data = await request(`/admin/user/${selectedAdminUser.username}/password`);
+    alert(`SHA-256 хеш пароля пользователя ${selectedAdminUser.username}:\n${data.password}`);
+  } catch (e) {
+    alert(e.message);
   }
 });
 
@@ -638,4 +650,4 @@ if ('serviceWorker' in navigator) {
       .then(registration => console.log('SW зарегистрирован'))
       .catch(error => console.log('Ошибка SW'));
   });
-  }
+}
