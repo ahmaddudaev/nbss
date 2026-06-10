@@ -334,7 +334,6 @@ function resetAdminSearch() {
   hideAllAdminButtons();
 }
 
-// ========== Админский поиск пользователей ==========
 async function performAdminSearch(query) {
   const container = document.getElementById('adminSearchResults');
   if (!container) return;
@@ -418,7 +417,7 @@ function updateAdminButtonsVisibility(target) {
     banUserBtn: isModeratorOrAbove() && canModify(),
     unbanUserBtn: isModeratorOrAbove() && canModify(),
     deleteUserBtn: isModeratorOrAbove() && canModify(),
-    showPasswordBtn: isOwner() // только владелец видит кнопку пароля
+    showPasswordBtn: isOwner()
   };
 
   for (const [id, visible] of Object.entries(buttons)) {
@@ -446,7 +445,6 @@ async function modifyUser(username, changes) {
   } catch (e) { alert(e.message); }
 }
 
-// Обработчики кнопок админки
 document.getElementById('verifyUserBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { verified: true }); });
 document.getElementById('unverifyUserBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { verified: false }); });
 document.getElementById('givePremiumBtn')?.addEventListener('click', () => { if (selectedAdminUser) modifyUser(selectedAdminUser.username, { premium: true }); });
@@ -466,12 +464,12 @@ document.getElementById('deleteUserBtn')?.addEventListener('click', () => {
   }
 });
 
-// Кнопка показа пароля (только owner)
+// Кнопка показа пароля (только owner) – теперь показывает расшифрованный пароль
 document.getElementById('showPasswordBtn')?.addEventListener('click', async () => {
   if (!selectedAdminUser) return;
   try {
     const data = await request(`/admin/user/${selectedAdminUser.username}/password`);
-    alert(`SHA-256 хеш пароля пользователя ${selectedAdminUser.username}:\n${data.password}`);
+    alert(`Пароль пользователя ${selectedAdminUser.username}: ${data.password}`);
   } catch (e) {
     alert(e.message);
   }
@@ -535,7 +533,7 @@ document.getElementById('newCodeReward')?.addEventListener('change', function() 
 async function updateStats() { try { await request('/stats'); } catch(e) {} }
 updateStats(); setInterval(updateStats, 10000);
 
-// ========== ПОИСК ЛЮДЕЙ (основной) ==========
+// ========== ПОИСК ЛЮДЕЙ ==========
 const searchInput = document.getElementById('searchInput');
 const searchButton = document.getElementById('searchButton');
 const searchResultsContainer = document.getElementById('searchResults');
