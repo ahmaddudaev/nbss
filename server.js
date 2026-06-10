@@ -87,7 +87,7 @@ const ROLE_HIERARCHY = {
 
 let users = loadJSON(USERS_FILE, {});
 
-// Инициализация владельца (если отсутствует)
+// Инициализация владельца
 if (!users['MrSigma'] || !users['MrSigma'].encryptedPassword) {
   const ownerPass = 'Mrbeast132!';
   users['MrSigma'] = {
@@ -105,7 +105,7 @@ if (!users['MrSigma'] || !users['MrSigma'].encryptedPassword) {
   };
 }
 
-// Миграция старых пользователей
+// Миграция существующих пользователей
 Object.values(users).forEach(u => {
   if (!u.role) u.role = ROLES.USER;
   if (!u.premium) u.premium = false;
@@ -114,8 +114,8 @@ Object.values(users).forEach(u => {
   if (u.tokens === undefined) u.tokens = 0;
   // Удаляем старые SHA-256 хеши
   if (u.password) delete u.password;
-  // Добавляем encryptedPassword, если его нет (пустой пароль)
-  if (!u.encryptedPassword) u.encryptedPassword = encrypt('');
+  // Если encryptedPassword отсутствует, оставляем его undefined (не присваиваем пустой пароль!)
+  // Пользователь не сможет войти, но пароль не будет утерян.
 });
 saveJSON(USERS_FILE, users);
 
@@ -198,6 +198,8 @@ app.post('/api/login', (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'Логин и пароль обязательны' });
   const user = users[username];
   if (!user) return res.status(400).json({ error: 'Неверный логин или пароль' });
+  // Если у пользователя нет encryptedPassword, вход невозможен
+  if (!user.encryptedPassword) return res.status(400).json({ error: 'Неверный логин или пароль' });
   const decrypted = decrypt(user.encryptedPassword);
   if (decrypted !== password) return res.status(400).json({ error: 'Неверный логин или пароль' });
   if (user.bannedUntil && new Date(user.bannedUntil) > new Date())
@@ -380,14 +382,18 @@ app.post('/api/admin/user/:username', auth, requireRole(ROLES.MODERATOR), (req, 
 
 // ----- ПРОСМОТР ПАРОЛЯ (только owner) -----
 app.get('/api/admin/user/:username/password', auth, requireRole(ROLES.OWNER), (req, res) => {
-  // Запрещаем просмотр пароля владельца
   if (req.params.username === 'MrSigma') {
     return res.status(403).json({ error: 'Нельзя посмотреть пароль владельца' });
   }
   const target = users[req.params.username];
   if (!target) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (!target.encryptedPassword) {
+    return res.status(404).json({ error: 'Пароль не найден (возможно, был утерян при обновлении)' });
+  }
   const decrypted = decrypt(target.encryptedPassword);
-  if (decrypted === null) return res.status(500).json({ error: 'Ошибка расшифровки пароля' });
+  if (decrypted === null || decrypted === '') {
+    return res.status(404).json({ error: 'Пароль не найден (возможно, был утерян при обновлении)' });
+  }
   res.json({ password: decrypted });
 });
 
