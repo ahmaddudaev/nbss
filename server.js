@@ -18,7 +18,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Директории данных
 const DATA_DIR = path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
@@ -344,6 +343,13 @@ app.post('/api/admin/user/:username', auth, requireRole(ROLES.MODERATOR), (req, 
   res.json(safeUser);
 });
 
+// 👇 НОВЫЙ МАРШРУТ: получить пароль пользователя (только owner)
+app.get('/api/admin/user/:username/password', auth, requireRole(ROLES.OWNER), (req, res) => {
+  const target = users[req.params.username];
+  if (!target) return res.status(404).json({ error: 'Пользователь не найден' });
+  res.json({ password: target.password });
+});
+
 // ====== ПРОМОКОДЫ ======
 app.post('/api/admin/create-code', auth, requireRole(ROLES.HEAD_ADMIN), (req, res) => {
   const { code, reward, amount, maxUses } = req.body;
@@ -354,7 +360,7 @@ app.post('/api/admin/create-code', auth, requireRole(ROLES.HEAD_ADMIN), (req, re
     code,
     reward,
     amount: reward === 'tokens' ? amount : undefined,
-    maxUses: maxUses || 0,   // 0 = без ограничений
+    maxUses: maxUses || 0,
     usedBy: [],
     createdBy: req.user.username,
     createdAt: new Date().toISOString()
@@ -367,7 +373,6 @@ app.get('/api/admin/codes', auth, requireRole(ROLES.MODERATOR), (req, res) => {
   res.json(codes);
 });
 
-// Удаление промокода
 app.delete('/api/admin/codes/:code', auth, requireRole(ROLES.HEAD_ADMIN), (req, res) => {
   const idx = codes.findIndex(c => c.code === req.params.code);
   if (idx === -1) return res.status(404).json({ error: 'Код не найден' });
@@ -383,7 +388,6 @@ app.post('/api/redeem-code', auth, (req, res) => {
   const promo = codes.find(c => c.code === code && !c.usedBy?.includes(req.user.username));
   if (!promo) return res.status(404).json({ error: 'Код не найден или уже использован' });
 
-  // Проверка лимита использований
   if (promo.maxUses > 0 && promo.usedBy.length >= promo.maxUses) {
     return res.status(400).json({ error: 'Лимит использований кода исчерпан' });
   }
