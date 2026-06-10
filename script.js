@@ -417,7 +417,7 @@ function updateAdminButtonsVisibility(target) {
     banUserBtn: isModeratorOrAbove() && canModify(),
     unbanUserBtn: isModeratorOrAbove() && canModify(),
     deleteUserBtn: isModeratorOrAbove() && canModify(),
-    showPasswordBtn: isOwner() // только владелец видит кнопку пароля
+    showPasswordBtn: isOwner()
   };
 
   for (const [id, visible] of Object.entries(buttons)) {
