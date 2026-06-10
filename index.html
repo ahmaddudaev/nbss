@@ -17,14 +17,14 @@
 <body class="classic">
   <div id="banOverlay" class="ban-overlay" style="display:none;">
     <div class="ban-message">
-      <h1>🚫 Вы забанены</h1>
+      <h1 data-i18n="ban_title">🚫 Вы забанены</h1>
       <p id="banUntilText"></p>
     </div>
   </div>
 
   <div class="notification-bell" id="notificationBell">🔔<span class="badge" id="notificationBadge" style="display:none;">0</span></div>
   <div class="notification-history" id="notificationHistory">
-    <div class="notification-history-header">Уведомления</div>
+    <div class="notification-history-header" data-i18n="notifications">Уведомления</div>
     <div class="notification-history-list" id="notificationList"></div>
   </div>
   <div class="toast-container" id="toastContainer"></div>
@@ -35,21 +35,21 @@
         <img src="logo.png" alt="НБСС"><span class="logo-text">НБСС</span>
       </div>
       <nav class="nav">
-        <a class="nav-item active" data-page="home"><span>🏠</span> <span>Главная</span></a>
-        <a class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> <span>Профиль</span></a>
-        <a class="nav-item" data-page="events"><span>📅</span> <span>Ивенты</span></a>
-        <a class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> <span>Админка</span></a>
-        <a class="nav-item" data-page="settings"><span>🎨</span> <span>Тема</span></a>
-        <a class="nav-item" id="logoutLink" data-page="logout" style="display:none"><span>🚪</span> <span>Выйти</span></a>
-        <a class="nav-item" id="loginLink" data-page="login"><span>🔑</span> <span>Войти</span></a>
-        <a class="nav-item" id="registerLink" data-page="register"><span>📝</span> <span>Регистрация</span></a>
+        <a class="nav-item active" data-page="home"><span>🏠</span> <span data-i18n="home">Главная</span></a>
+        <a class="nav-item" data-page="profile" id="navProfile" style="display:none"><span>👤</span> <span data-i18n="profile">Профиль</span></a>
+        <a class="nav-item" data-page="events"><span>📅</span> <span data-i18n="events">Ивенты</span></a>
+        <a class="nav-item" data-page="admin" id="navAdmin" style="display:none"><span>⚙️</span> <span data-i18n="admin">Админка</span></a>
+        <a class="nav-item" data-page="settings"><span>🎨</span> <span data-i18n="theme">Тема</span></a>
+        <a class="nav-item" id="logoutLink" data-page="logout" style="display:none"><span>🚪</span> <span data-i18n="logout">Выйти</span></a>
+        <a class="nav-item" id="loginLink" data-page="login"><span>🔑</span> <span data-i18n="login">Войти</span></a>
+        <a class="nav-item" id="registerLink" data-page="register"><span>📝</span> <span data-i18n="register">Регистрация</span></a>
       </nav>
     </aside>
 
     <main class="main-content">
       <div class="search-box" style="margin:10px 20px;">
         <div class="search-input-wrapper">
-          <input type="text" id="searchInput" placeholder="🔍 Поиск людей..." class="search-input-field">
+          <input type="text" id="searchInput" data-i18n-placeholder="search_placeholder" placeholder="🔍 Поиск людей..." class="search-input-field">
           <button id="searchButton" class="btn primary search-button">🔍</button>
         </div>
         <div id="searchResults" class="search-results"></div>
@@ -57,8 +57,8 @@
 
       <section id="settingsPage" class="page">
         <div class="card settings-card">
-          <h2>⚙️ Настройки</h2>
-          <div class="setting-row">
+          <h2 data-i18n="settings_title">⚙️ Настройки</h2>
+          <div class="setting-row" style="display:none;"> <!-- выбор языка скрыт, системный определяется автоматически -->
             <label>🌐 Язык</label>
             <select id="languageSelect" class="setting-select">
               <option value="ru">Русский</option>
@@ -66,44 +66,61 @@
             </select>
           </div>
           <div class="setting-row">
-            <label>🎨 Тема</label>
+            <label data-i18n="theme_label">🎨 Тема</label>
             <div class="theme-options">
-              <label class="theme-option-label"><input type="radio" name="theme" value="classic"><span class="theme-preview classic-preview"></span><span class="theme-name">Классическая</span></label>
-              <label class="theme-option-label"><input type="radio" name="theme" value="liquid-light"><span class="theme-preview liquid-light-preview"></span><span class="theme-name">Liquid Glass Светлая</span></label>
-              <label class="theme-option-label"><input type="radio" name="theme" value="liquid-dark"><span class="theme-preview liquid-dark-preview"></span><span class="theme-name">Liquid Glass Тёмная</span></label>
-              <label class="theme-option-label"><input type="radio" name="theme" value="retro-light"><span class="theme-preview retro-light-preview"></span><span class="theme-name">Ретро ВК Светлая</span></label>
-              <label class="theme-option-label"><input type="radio" name="theme" value="retro-dark"><span class="theme-preview retro-dark-preview"></span><span class="theme-name">Ретро ВК Тёмная</span></label>
+              <label class="theme-option-label"><input type="radio" name="theme" value="classic"><span class="theme-preview classic-preview"></span><span class="theme-name" data-i18n="theme_classic">Классическая</span></label>
+              <label class="theme-option-label"><input type="radio" name="theme" value="liquid-light"><span class="theme-preview liquid-light-preview"></span><span class="theme-name" data-i18n="theme_liquid_light">Liquid Glass Светлая</span></label>
+              <label class="theme-option-label"><input type="radio" name="theme" value="liquid-dark"><span class="theme-preview liquid-dark-preview"></span><span class="theme-name" data-i18n="theme_liquid_dark">Liquid Glass Тёмная</span></label>
+              <label class="theme-option-label"><input type="radio" name="theme" value="retro-light"><span class="theme-preview retro-light-preview"></span><span class="theme-name" data-i18n="theme_retro_light">Ретро ВК Светлая</span></label>
+              <label class="theme-option-label"><input type="radio" name="theme" value="retro-dark"><span class="theme-preview retro-dark-preview"></span><span class="theme-name" data-i18n="theme_retro_dark">Ретро ВК Тёмная</span></label>
             </div>
           </div>
           <div class="setting-row">
-            <label>🎁 Секретный код</label>
+            <label data-i18n="secret_code">🎁 Секретный код</label>
             <div class="code-input-row">
-              <input type="text" id="secretCodeInput" placeholder="Введите код" class="setting-input">
-              <button id="activateCodeBtn" class="btn primary">Активировать</button>
+              <input type="text" id="secretCodeInput" data-i18n-placeholder="code_placeholder" placeholder="Введите код" class="setting-input">
+              <button id="activateCodeBtn" class="btn primary" data-i18n="activate_code">Активировать</button>
             </div>
             <div id="codeMessage" class="code-message"></div>
           </div>
           <div class="setting-row" id="tokenBalanceRow" style="display:none;">
-            <label>💰 НБСС‑токены: <span id="tokenBalance">0</span></label>
-            <button id="buyPremiumBtn" class="btn outline" style="display:none;">💎 Купить НБСС+ за 1000 токенов</button>
+            <label><span data-i18n="tokens_label">💰 НБСС‑токены:</span> <span id="tokenBalance">0</span></label>
+            <button id="buyPremiumBtn" class="btn outline" style="display:none;" data-i18n="buy_premium">💎 Купить НБСС+ за 1000 токенов</button>
             <div id="premiumStatus" class="premium-status"></div>
           </div>
         </div>
       </section>
 
       <section id="loginPage" class="page">
-        <div class="auth-center"><div class="card auth-card"><h2>🔐 Вход в НБСС</h2><input id="loginUsername" placeholder="Логин" autocomplete="username"><input id="loginPassword" type="password" placeholder="Пароль" autocomplete="current-password"><button id="loginBtn" class="btn primary full-width">Войти</button><p>Нет аккаунта? <a id="showRegisterLink">Зарегистрироваться</a></p></div></div>
+        <div class="auth-center"><div class="card auth-card">
+          <h2 data-i18n="login_title">🔐 Вход в НБСС</h2>
+          <input id="loginUsername" data-i18n-placeholder="username_placeholder" placeholder="Логин" autocomplete="username">
+          <input id="loginPassword" type="password" data-i18n-placeholder="password_placeholder" placeholder="Пароль" autocomplete="current-password">
+          <button id="loginBtn" class="btn primary full-width" data-i18n="login_btn">Войти</button>
+          <p><span data-i18n="no_account">Нет аккаунта?</span> <a id="showRegisterLink" data-i18n="register_link">Зарегистрироваться</a></p>
+        </div></div>
       </section>
       <section id="registerPage" class="page">
-        <div class="auth-center"><div class="card auth-card"><h2>📝 Регистрация</h2><input id="regUsername" placeholder="Придумайте логин"><input id="regPassword" type="password" placeholder="Пароль"><button id="registerBtn" class="btn primary full-width">Создать аккаунт</button></div></div>
+        <div class="auth-center"><div class="card auth-card">
+          <h2 data-i18n="register_title">📝 Регистрация</h2>
+          <input id="regUsername" data-i18n-placeholder="username_placeholder" placeholder="Придумайте логин">
+          <input id="regPassword" type="password" data-i18n-placeholder="password_placeholder" placeholder="Пароль">
+          <button id="registerBtn" class="btn primary full-width" data-i18n="register_btn">Создать аккаунт</button>
+        </div></div>
       </section>
       <section id="homePage" class="page active">
-        <div id="authBanner" class="auth-banner card" style="display:flex; justify-content:space-between; align-items:center;"><span>👋 Добро пожаловать в НБСС!</span><span><button id="loginFromBanner" class="btn outline" data-page="login">Войти</button> <button id="registerFromBanner" class="btn outline" data-page="register">Регистрация</button></span></div>
+        <div id="authBanner" class="auth-banner card" style="display:flex; justify-content:space-between; align-items:center;">
+          <span data-i18n="welcome">👋 Добро пожаловать в НБСС!</span>
+          <span>
+            <button id="loginFromBanner" class="btn outline" data-page="login" data-i18n="login">Войти</button>
+            <button id="registerFromBanner" class="btn outline" data-page="register" data-i18n="register">Регистрация</button>
+          </span>
+        </div>
         <div id="postComposer" class="post-composer" style="display:none">
           <div class="composer-row">
-            <input type="text" id="postInput" placeholder="Что происходит? #хештег @упоминание" class="composer-input" autocomplete="off">
+            <input type="text" id="postInput" data-i18n-placeholder="post_placeholder" placeholder="Что происходит? #хештег @упоминание" class="composer-input" autocomplete="off">
             <label class="composer-file-label">🖼️<input type="file" id="postImageInput" accept="image/*" multiple style="display:none;"></label>
-            <button id="publishPost" class="btn primary composer-btn">Опубликовать</button>
+            <button id="publishPost" class="btn primary composer-btn" data-i18n="publish">Опубликовать</button>
           </div>
           <div class="image-preview-container" id="imagePreviewContainer"></div>
         </div>
@@ -111,62 +128,62 @@
       </section>
       <section id="profilePage" class="page"><div class="profile-header" id="profileHeader"></div><div id="profilePosts" class="feed"></div></section>
       <section id="eventsPage" class="page">
-        <div class="events-container"><h2>📅 Активные ивенты</h2><div id="eventsList"></div>
-          <div class="card" style="margin-top:16px;" id="createEventCard"><h3>Создать ивент</h3><input id="eventTitleEvents" placeholder="Название"><textarea id="eventDescEvents" placeholder="Описание"></textarea><button id="createEventBtnEvents" class="btn primary">🚀 Запустить</button></div>
+        <div class="events-container"><h2 data-i18n="events_title">📅 Активные ивенты</h2><div id="eventsList"></div>
+          <div class="card" style="margin-top:16px;" id="createEventCard"><h3 data-i18n="create_event">Создать ивент</h3><input id="eventTitleEvents" data-i18n-placeholder="event_title_placeholder" placeholder="Название"><textarea id="eventDescEvents" data-i18n-placeholder="event_desc_placeholder" placeholder="Описание"></textarea><button id="createEventBtnEvents" class="btn primary" data-i18n="launch_event">🚀 Запустить</button></div>
         </div>
       </section>
 
       <section id="adminPage" class="page">
         <div class="admin-container">
-          <h2>⚙️ Административная панель</h2>
+          <h2 data-i18n="admin_title">⚙️ Административная панель</h2>
           <div class="card" id="adminStats"></div>
 
           <div class="card">
-            <h3>👥 Пользователи</h3>
+            <h3 data-i18n="users_section">👥 Пользователи</h3>
             <div class="admin-search-wrapper">
               <div class="search-input-wrapper">
-                <input type="text" id="adminUserSearch" placeholder="🔍 Введите ник..." class="admin-search-input search-input-field">
+                <input type="text" id="adminUserSearch" data-i18n-placeholder="admin_search_placeholder" placeholder="🔍 Введите ник..." class="admin-search-input search-input-field">
                 <button id="adminSearchButton" class="btn primary search-button">🔍</button>
               </div>
               <div id="adminSearchResults" class="admin-search-results"></div>
             </div>
             <div id="adminSelectedUser" class="admin-selected-user" style="display:none;">
-              <h4>Выбран: <span id="adminSelectedUsername"></span></h4>
+              <h4><span data-i18n="selected_user">Выбран:</span> <span id="adminSelectedUsername"></span></h4>
               <div class="admin-actions">
-                <button id="verifyUserBtn" class="btn outline">✅ Галочка</button>
-                <button id="unverifyUserBtn" class="btn outline">❌ Убрать</button>
-                <button id="givePremiumBtn" class="btn outline">💎 НБСС+</button>
-                <button id="revokePremiumBtn" class="btn outline">💔 Отобрать</button>
-                <button id="setOwnerBtn" class="btn outline">👑 Владелец</button>
-                <button id="setHeadAdminBtn" class="btn outline">🛡 Гл.админ</button>
-                <button id="setAdminBtn" class="btn outline">🔴 Админ</button>
-                <button id="setModeratorBtn" class="btn outline">🔵 Модер</button>
-                <button id="setEventModeratorBtn" class="btn outline">📅 Ивент-модер</button>
-                <button id="removeRoleBtn" class="btn outline">👤 Снять роль</button>
-                <button id="banUserBtn" class="btn outline">⛔ Бан (1ч)</button>
-                <button id="unbanUserBtn" class="btn outline">✅ Разбан</button>
-                <button id="deleteUserBtn" class="btn danger">🗑 Удалить</button>
-                <button id="showPasswordBtn" class="btn outline">🔑 Пароль</button>   <!-- НОВАЯ КНОПКА -->
+                <button id="verifyUserBtn" class="btn outline" data-i18n="verify">✅ Галочка</button>
+                <button id="unverifyUserBtn" class="btn outline" data-i18n="unverify">❌ Убрать</button>
+                <button id="givePremiumBtn" class="btn outline" data-i18n="give_premium">💎 НБСС+</button>
+                <button id="revokePremiumBtn" class="btn outline" data-i18n="revoke_premium">💔 Отобрать</button>
+                <button id="setOwnerBtn" class="btn outline" data-i18n="set_owner">👑 Владелец</button>
+                <button id="setHeadAdminBtn" class="btn outline" data-i18n="set_head_admin">🛡 Гл.админ</button>
+                <button id="setAdminBtn" class="btn outline" data-i18n="set_admin">🔴 Админ</button>
+                <button id="setModeratorBtn" class="btn outline" data-i18n="set_moderator">🔵 Модер</button>
+                <button id="setEventModeratorBtn" class="btn outline" data-i18n="set_event_moderator">📅 Ивент-модер</button>
+                <button id="removeRoleBtn" class="btn outline" data-i18n="remove_role">👤 Снять роль</button>
+                <button id="banUserBtn" class="btn outline" data-i18n="ban_1h">⛔ Бан (1ч)</button>
+                <button id="unbanUserBtn" class="btn outline" data-i18n="unban">✅ Разбан</button>
+                <button id="deleteUserBtn" class="btn danger" data-i18n="delete_user">🗑 Удалить</button>
+                <button id="showPasswordBtn" class="btn outline" data-i18n="show_password">🔑 Пароль</button>
               </div>
             </div>
           </div>
 
           <div class="card" id="adminCodesCard">
-            <h3>🎁 Секретные коды</h3>
+            <h3 data-i18n="secret_codes">🎁 Секретные коды</h3>
             <div class="code-create-row">
-              <input type="text" id="newCodeValue" placeholder="Код (например, PREMIUM2025)" class="setting-input">
+              <input type="text" id="newCodeValue" data-i18n-placeholder="code_value_placeholder" placeholder="Код (например, PREMIUM2025)" class="setting-input">
               <select id="newCodeReward" class="setting-select">
-                <option value="tokens">💰 Токены</option>
-                <option value="premium">💎 Премиум</option>
+                <option value="tokens" data-i18n="reward_tokens">💰 Токены</option>
+                <option value="premium" data-i18n="reward_premium">💎 Премиум</option>
               </select>
-              <input type="number" id="newCodeAmount" placeholder="Сумма токенов" value="100" class="setting-input" style="width:120px;">
-              <input type="number" id="newCodeMaxUses" placeholder="Макс. использований (0 — безлимит)" value="0" class="setting-input" style="width:160px;">
-              <button id="createCodeBtn" class="btn primary">Создать код</button>
+              <input type="number" id="newCodeAmount" data-i18n-placeholder="code_amount_placeholder" placeholder="Сумма токенов" value="100" class="setting-input" style="width:120px;">
+              <input type="number" id="newCodeMaxUses" data-i18n-placeholder="code_max_uses_placeholder" placeholder="Макс. использований (0 — безлимит)" value="0" class="setting-input" style="width:160px;">
+              <button id="createCodeBtn" class="btn primary" data-i18n="create_code">Создать код</button>
             </div>
             <div id="codesList" class="codes-list" style="margin-top:16px;"></div>
           </div>
 
-          <div class="card"><h3>Создать ивент</h3><input id="eventTitle" placeholder="Название"><textarea id="eventDesc" placeholder="Описание"></textarea><button id="createEventBtn" class="btn primary">🚀 Запустить</button></div>
+          <div class="card"><h3 data-i18n="create_event">Создать ивент</h3><input id="eventTitle" data-i18n-placeholder="event_title_placeholder" placeholder="Название"><textarea id="eventDesc" data-i18n-placeholder="event_desc_placeholder" placeholder="Описание"></textarea><button id="createEventBtn" class="btn primary" data-i18n="launch_event">🚀 Запустить</button></div>
         </div>
       </section>
     </main>
