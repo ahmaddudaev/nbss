@@ -8,6 +8,30 @@ const multer = require('multer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ====== ШИФРОВАНИЕ ПАРОЛЕЙ ======
+const ENCRYPTION_KEY = crypto.createHash('sha256').update('NBSS_SUPER_SECRET_KEY_2025!').digest(); // 32 байта
+const IV_LENGTH = 16; // AES блока
+
+function encrypt(text) {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return iv.toString('hex') + ':' + encrypted;
+}
+
+function decrypt(encryptedText) {
+  const parts = encryptedText.split(':');
+  if (parts.length !== 2) return null;
+  const iv = Buffer.from(parts[0], 'hex');
+  const encrypted = parts[1];
+  const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
+// ===============================
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -61,26 +85,32 @@ const ROLE_HIERARCHY = {
 };
 
 let users = loadJSON(USERS_FILE, {});
-const ownerPassword = crypto.createHash('sha256').update('Mrbeast132!').digest('hex');
-users['MrSigma'] = {
-  username: 'MrSigma',
-  password: ownerPassword,
-  role: ROLES.OWNER,
-  premium: true,
-  verified: true,
-  tokens: 1000,
-  avatar: users['MrSigma']?.avatar || '',
-  banner: users['MrSigma']?.banner || '',
-  followers: users['MrSigma']?.followers || [],
-  following: users['MrSigma']?.following || [],
-  bannedUntil: null
-};
+// Инициализация владельца
+if (!users['MrSigma'] || !users['MrSigma'].encryptedPassword) {
+  const ownerPass = 'Mrbeast132!';
+  users['MrSigma'] = {
+    username: 'MrSigma',
+    encryptedPassword: encrypt(ownerPass),   // ← шифрованный пароль
+    role: ROLES.OWNER,
+    premium: true,
+    verified: true,
+    tokens: 1000,
+    avatar: users['MrSigma']?.avatar || '',
+    banner: users['MrSigma']?.banner || '',
+    followers: users['MrSigma']?.followers || [],
+    following: users['MrSigma']?.following || [],
+    bannedUntil: null
+  };
+}
+
 Object.values(users).forEach(u => {
   if (!u.role) u.role = ROLES.USER;
   if (!u.premium) u.premium = false;
   if (!u.verified) u.verified = false;
   if (!u.bannedUntil) u.bannedUntil = null;
   if (u.tokens === undefined) u.tokens = 0;
+  // Миграция старых хешей (если остались) – удалим поле password, оставим encryptedPassword
+  if (u.password) delete u.password;
 });
 saveJSON(USERS_FILE, users);
 
@@ -98,8 +128,6 @@ app.use((req, res, next) => {
   saveJSON(STATS_FILE, stats);
   next();
 });
-
-const hash = pw => crypto.createHash('sha256').update(pw).digest('hex');
 
 function auth(req, res, next) {
   const header = req.headers.authorization;
@@ -145,7 +173,7 @@ app.post('/api/register', (req, res) => {
   if (users[username]) return res.status(400).json({ error: 'Пользователь уже существует' });
   users[username] = {
     username,
-    password: hash(password),
+    encryptedPassword: encrypt(password),   // шифруем пароль
     role: ROLES.USER,
     premium: false,
     verified: false,
@@ -164,18 +192,21 @@ app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Логин и пароль обязательны' });
   const user = users[username];
-  if (!user || user.password !== hash(password)) return res.status(400).json({ error: 'Неверный логин или пароль' });
+  if (!user) return res.status(400).json({ error: 'Неверный логин или пароль' });
+  // Расшифровываем сохранённый пароль и сравниваем
+  const decrypted = decrypt(user.encryptedPassword);
+  if (decrypted !== password) return res.status(400).json({ error: 'Неверный логин или пароль' });
   if (user.bannedUntil && new Date(user.bannedUntil) > new Date())
     return res.status(423).json({ banned: true, bannedUntil: user.bannedUntil });
   const token = crypto.randomBytes(32).toString('hex');
   user.token = token;
   saveJSON(USERS_FILE, users);
-  const { password: _, token: __, ...safeUser } = user;
+  const { encryptedPassword, token: _, ...safeUser } = user;
   res.json({ token, user: safeUser });
 });
 
 app.get('/api/me', auth, (req, res) => {
-  const { password, token, ...safeUser } = req.user;
+  const { encryptedPassword, token, ...safeUser } = req.user;
   res.json(safeUser);
 });
 
@@ -184,7 +215,7 @@ app.get('/api/users/search', (req, res) => {
   if (!q) return res.json([]);
   const results = Object.values(users)
     .filter(u => u.username.toLowerCase().includes(q))
-    .map(({ password, token, ...u }) => u)
+    .map(({ encryptedPassword, token, ...u }) => u)
     .slice(0, 10);
   res.json(results);
 });
@@ -192,7 +223,7 @@ app.get('/api/users/search', (req, res) => {
 app.get('/api/user/:username', (req, res) => {
   const user = users[req.params.username];
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
-  const { password, token, ...safeUser } = user;
+  const { encryptedPassword, token, ...safeUser } = user;
   res.json(safeUser);
 });
 
@@ -311,7 +342,7 @@ app.delete('/api/events/:id', auth, requireRole(ROLES.EVENT_MODERATOR), (req, re
 });
 
 app.get('/api/admin/users', auth, requireRole(ROLES.MODERATOR), (req, res) => {
-  const list = Object.values(users).map(({ password, token, ...u }) => u);
+  const list = Object.values(users).map(({ encryptedPassword, token, ...u }) => u);
   res.json(list);
 });
 
@@ -339,15 +370,17 @@ app.post('/api/admin/user/:username', auth, requireRole(ROLES.MODERATOR), (req, 
     return res.json({ success: true, deleted: true });
   }
   saveJSON(USERS_FILE, users);
-  const { password, token, ...safeUser } = target;
+  const { encryptedPassword, token, ...safeUser } = target;
   res.json(safeUser);
 });
 
-// 👇 НОВЫЙ МАРШРУТ: получить пароль пользователя (только owner)
+// ----- ПРОСМОТР ПАРОЛЯ (только owner) -----
 app.get('/api/admin/user/:username/password', auth, requireRole(ROLES.OWNER), (req, res) => {
   const target = users[req.params.username];
   if (!target) return res.status(404).json({ error: 'Пользователь не найден' });
-  res.json({ password: target.password });
+  const decrypted = decrypt(target.encryptedPassword);
+  if (decrypted === null) return res.status(500).json({ error: 'Ошибка расшифровки пароля' });
+  res.json({ password: decrypted });
 });
 
 // ====== ПРОМОКОДЫ ======
@@ -404,7 +437,7 @@ app.post('/api/redeem-code', auth, (req, res) => {
   saveJSON(CODES_FILE, codes);
   saveJSON(USERS_FILE, users);
 
-  const { password, token, ...safeUser } = req.user;
+  const { encryptedPassword, token, ...safeUser } = req.user;
   res.json({ success: true, message: 'Код активирован!', user: safeUser });
 });
 
@@ -418,7 +451,7 @@ app.post('/api/buy-premium', auth, (req, res) => {
   req.user.premiumUntil = null;
   saveJSON(USERS_FILE, users);
 
-  const { password, token, ...safeUser } = req.user;
+  const { encryptedPassword, token, ...safeUser } = req.user;
   res.json({ success: true, message: 'НБСС+ активирован!', user: safeUser });
 });
 
