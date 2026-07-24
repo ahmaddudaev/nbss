@@ -81,12 +81,13 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-// reCAPTCHA проверка (используем глобальный fetch)
-async function checkCaptcha(token) {
-  const res = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+// Cloudflare Turnstile проверка
+async function checkTurnstile(token) {
+  if (!token) return false;
+  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `secret=${process.env.RECAPTCHA_SECRET}&response=${token}`
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ secret: process.env.TURNSTILE_SECRET, response: token })
   });
   const data = await res.json();
   return data.success;
@@ -94,18 +95,19 @@ async function checkCaptcha(token) {
 
 // === API ===
 app.post('/api/register', async (req, res) => {
-  const { username, password, recaptchaToken } = req.body;
+  const { username, password, turnstileToken } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Логин и пароль обязательны' });
   if (users[username]) return res.status(400).json({ error: 'Пользователь уже существует' });
-  if (!recaptchaToken || !(await checkCaptcha(recaptchaToken))) return res.status(400).json({ error: 'Ошибка капчи' });
+  if (!(await checkTurnstile(turnstileToken))) return res.status(400).json({ error: 'Ошибка проверки Turnstile' });
   users[username] = { username, encryptedPassword: encrypt(password), role: 'user', premium: false, verified: true, tokens: 0, avatar:'', banner:'', followers:[], following:[], bannedUntil:null, lastIP: null };
   save(path.join(DATA, 'users.json'), users);
-  res.json({ success: true });
+  res.json({ success: true, message: 'Аккаунт создан' });
 });
 
 app.post('/api/login', async (req, res) => {
-  const { username, password, recaptchaToken } = req.body;
-  if (!username || !password || !recaptchaToken || !(await checkCaptcha(recaptchaToken))) return res.status(400).json({ error: 'Неверные данные или капча' });
+  const { username, password, turnstileToken } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Логин и пароль обязательны' });
+  if (!(await checkTurnstile(turnstileToken))) return res.status(400).json({ error: 'Ошибка проверки Turnstile' });
   const user = users[username];
   if (!user || decrypt(user.encryptedPassword) !== password) return res.status(400).json({ error: 'Неверный логин или пароль' });
   if (user.bannedUntil && new Date(user.bannedUntil) > new Date()) return res.status(423).json({ banned: true, bannedUntil: user.bannedUntil });
@@ -124,7 +126,7 @@ app.post('/api/posts', auth, upload.array('images', 4), (req, res) => {
   posts.unshift(post); save(path.join(DATA, 'posts.json'), posts); res.json(post);
 });
 
-// Админка: баны
+// Гибкая длительность бана
 function parseDuration(dur) {
   if (!dur) return 0;
   if (typeof dur === 'number') return dur * 60 * 1000; // минуты
@@ -170,5 +172,7 @@ app.post('/api/admin/unban-ip', auth, role('moderator'), (req, res) => {
 });
 
 app.get('/api/admin/banned-ips', auth, role('moderator'), (req, res) => res.json(bannedIPs));
+
+// Дополнительные маршруты (статистика, коды) могут быть добавлены позже по тому же шаблону
 
 app.listen(PORT, () => console.log(`🚀 ${PORT}`));
