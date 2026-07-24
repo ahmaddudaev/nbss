@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const multer = require('multer');
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,7 +13,6 @@ const SECRET = crypto.createHash('sha256').update(process.env.ENCRYPTION_KEY || 
 const IV_LEN = 16;
 const encrypt = text => { const iv = crypto.randomBytes(IV_LEN); const c = crypto.createCipheriv('aes-256-cbc', SECRET, iv); let e = c.update(text, 'utf8', 'hex'); e += c.final('hex'); return iv.toString('hex') + ':' + e; };
 const decrypt = text => { if (!text) return null; const p = text.split(':'); if (p.length !== 2) return null; const d = crypto.createDecipheriv('aes-256-cbc', SECRET, Buffer.from(p[0], 'hex')); let r = d.update(p[1], 'hex', 'utf8'); r += d.final('utf8'); return r; };
-const RECAPTCHA = { site: process.env.RECAPTCHA_SITE_KEY, secret: process.env.RECAPTCHA_SECRET };
 
 const load = (file, def = []) => { try { return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file)) : def } catch { return def } };
 const save = (file, data) => { try { fs.writeFileSync(file, JSON.stringify(data, null, 2)) } catch {} };
@@ -44,7 +42,7 @@ app.use(express.static(__dirname));
 app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' }));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-// IP-бан
+// IP-бан проверка
 app.use((req, res, next) => {
   const ip = req.ip || req.connection.remoteAddress;
   const ban = bannedIPs.find(b => b.ip === ip);
@@ -53,7 +51,7 @@ app.use((req, res, next) => {
       bannedIPs = bannedIPs.filter(b => b.ip !== ip);
       save(path.join(DATA, 'banned_ips.json'), bannedIPs);
     } else {
-      return res.status(423).json({ banned: true, bannedUntil: ban.until || null, message: 'Ваш IP-адрес заблокирован' });
+      return res.status(423).json({ banned: true, bannedUntil: ban.until || null });
     }
   }
   next();
@@ -83,15 +81,94 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
+// reCAPTCHA проверка (используем глобальный fetch)
 async function checkCaptcha(token) {
   const res = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `secret=${RECAPTCHA.secret}&response=${token}`
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `secret=${process.env.RECAPTCHA_SECRET}&response=${token}`
   });
   const data = await res.json();
   return data.success;
 }
 
-// API-маршруты: регистрация, вход, посты, админка и т.д. (оставьте их теми же, что в предыдущем полном server.js)
-// ... (все маршруты, которые были ранее, включая ban-user, ban-ip, unban-ip, управление пользователями и кодами)
+// === API ===
+app.post('/api/register', async (req, res) => {
+  const { username, password, recaptchaToken } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Логин и пароль обязательны' });
+  if (users[username]) return res.status(400).json({ error: 'Пользователь уже существует' });
+  if (!recaptchaToken || !(await checkCaptcha(recaptchaToken))) return res.status(400).json({ error: 'Ошибка капчи' });
+  users[username] = { username, encryptedPassword: encrypt(password), role: 'user', premium: false, verified: true, tokens: 0, avatar:'', banner:'', followers:[], following:[], bannedUntil:null, lastIP: null };
+  save(path.join(DATA, 'users.json'), users);
+  res.json({ success: true });
+});
+
+app.post('/api/login', async (req, res) => {
+  const { username, password, recaptchaToken } = req.body;
+  if (!username || !password || !recaptchaToken || !(await checkCaptcha(recaptchaToken))) return res.status(400).json({ error: 'Неверные данные или капча' });
+  const user = users[username];
+  if (!user || decrypt(user.encryptedPassword) !== password) return res.status(400).json({ error: 'Неверный логин или пароль' });
+  if (user.bannedUntil && new Date(user.bannedUntil) > new Date()) return res.status(423).json({ banned: true, bannedUntil: user.bannedUntil });
+  user.token = crypto.randomBytes(32).toString('hex');
+  user.lastIP = req.ip;
+  save(path.join(DATA, 'users.json'), users);
+  const { encryptedPassword, token, ...safe } = user;
+  res.json({ token: user.token, user: safe });
+});
+
+app.get('/api/me', auth, (req, res) => { const { encryptedPassword, token, ...safe } = req.user; res.json(safe); });
+
+app.get('/api/posts', (req, res) => res.json(posts.map(p => ({ ...p, authorRole: users[p.author]?.role, authorPremium: users[p.author]?.premium, authorVerified: users[p.author]?.verified }))));
+app.post('/api/posts', auth, upload.array('images', 4), (req, res) => {
+  const post = { id: Date.now(), author: req.user.username, text: req.body.text || '', images: req.files?.map(f => '/uploads/posts/' + f.filename) || [], timestamp: new Date().toISOString(), likes: [], reposts: [] };
+  posts.unshift(post); save(path.join(DATA, 'posts.json'), posts); res.json(post);
+});
+
+// Админка: баны
+function parseDuration(dur) {
+  if (!dur) return 0;
+  if (typeof dur === 'number') return dur * 60 * 1000; // минуты
+  if (typeof dur === 'object' && dur.value && dur.unit) {
+    const { value, unit } = dur;
+    switch (unit) {
+      case 'minutes': return value * 60 * 1000;
+      case 'hours': return value * 3600 * 1000;
+      case 'days': return value * 86400 * 1000;
+      case 'weeks': return value * 7 * 86400 * 1000;
+      case 'years': return value * 365 * 86400 * 1000;
+      default: return 0;
+    }
+  }
+  return 0;
+}
+
+app.post('/api/admin/ban-user', auth, role('moderator'), (req, res) => {
+  const { username, duration } = req.body;
+  const user = users[username];
+  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+  user.bannedUntil = duration ? new Date(Date.now() + parseDuration(duration)).toISOString() : null;
+  save(path.join(DATA, 'users.json'), users);
+  res.json({ success: true });
+});
+
+app.post('/api/admin/ban-ip', auth, role('moderator'), (req, res) => {
+  const { username, duration } = req.body;
+  const user = users[username];
+  if (!user?.lastIP) return res.status(400).json({ error: 'Нет IP' });
+  bannedIPs = bannedIPs.filter(b => b.ip !== user.lastIP);
+  bannedIPs.push({ ip: user.lastIP, until: duration ? new Date(Date.now() + parseDuration(duration)).toISOString() : null });
+  save(path.join(DATA, 'banned_ips.json'), bannedIPs);
+  res.json({ success: true });
+});
+
+app.post('/api/admin/unban-ip', auth, role('moderator'), (req, res) => {
+  const { ip } = req.body;
+  if (!ip) return res.status(400).json({ error: 'IP не указан' });
+  bannedIPs = bannedIPs.filter(b => b.ip !== ip);
+  save(path.join(DATA, 'banned_ips.json'), bannedIPs);
+  res.json({ success: true });
+});
+
+app.get('/api/admin/banned-ips', auth, role('moderator'), (req, res) => res.json(bannedIPs));
 
 app.listen(PORT, () => console.log(`🚀 ${PORT}`));
