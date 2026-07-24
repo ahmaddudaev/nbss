@@ -108,7 +108,7 @@ input, textarea, select {
   font-weight: 600; display: inline-flex; align-items: center; gap: 5px;
   padding: 6px 12px; border-radius: 12px;
 }
-.verified-icon { width: 16px; height: 16px; }
+.verified-icon { height: 1em; width: 1em; vertical-align: middle; margin-left: 2px; }
 .premium-nick {
   background: linear-gradient(135deg, #2563eb, #ffffff);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
@@ -207,6 +207,13 @@ input, textarea, select {
 /* ========== АДМИН-КНОПКИ ========== */
 .admin-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .admin-actions button { flex: 1 0 auto; min-width: calc(33% - 10px); }
+.ban-duration-row {
+  display: flex; gap: 8px; margin-bottom: 8px; align-items: center; width: 100%;
+}
+.ban-duration-row input, .ban-duration-row select {
+  padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg2); color: var(--text); font-size: 14px;
+}
 
 /* ========== СЕКРЕТНЫЕ КОДЫ ========== */
 .code-create-row {
@@ -271,3 +278,6 @@ input, textarea, select {
 .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 400; display: flex; flex-direction: column-reverse; gap: 10px; }
 .toast { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; box-shadow: var(--shadow); min-width: 250px; animation: slideInRight 0.3s ease; }
 @keyframes slideInRight { from { transform: translateX(120%); } to { transform: translateX(0); } }
+
+/* reCAPTCHA */
+.g-recaptcha { display: flex; justify-content: center; margin: 15px 0; }
