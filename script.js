@@ -40,7 +40,7 @@ const dict = {
 const t = (key) => dict[uiLang]?.[key] || dict['en'][key] || key;
 const roleName = (r) => t('role_' + (r || 'user')) || r;
 
-// Применяем локализацию сразу (без отдельной функции)
+// Применяем локализацию сразу (без вызова отдельной функции)
 (function() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
