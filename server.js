@@ -8,7 +8,7 @@ const multer = require('multer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DATA = path.join(__dirname, 'data');
-const UPLOADS = path.join(__dirname, 'public/uploads/posts');
+const UPLOADS = path.join(__dirname, 'public', 'uploads', 'posts');
 const SECRET = crypto.createHash('sha256').update(process.env.ENCRYPTION_KEY || 'super_secret').digest();
 const IV_LEN = 16;
 const encrypt = text => { const iv = crypto.randomBytes(IV_LEN); const c = crypto.createCipheriv('aes-256-cbc', SECRET, iv); let e = c.update(text, 'utf8', 'hex'); e += c.final('hex'); return iv.toString('hex') + ':' + e; };
@@ -86,7 +86,6 @@ let cachedPosts = [];
 let lastCache = 0;
 const CACHE_TTL = 5000;
 
-// API
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Логин и пароль обязательны' });
