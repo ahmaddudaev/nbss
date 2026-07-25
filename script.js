@@ -10,7 +10,7 @@ const ROLE_HIERARCHY = {
   owner: 5, head_admin: 4, admin: 3, moderator: 2, event_moderator: 1, user: 0
 };
 
-// Локализация
+// ========== Локализация (встроена, не требует отдельной функции) ==========
 const userLang = (navigator.language || 'en').split('-')[0];
 const uiLang = ['ru', 'en'].includes(userLang) ? userLang : 'en';
 const dict = {
@@ -40,8 +40,8 @@ const dict = {
 const t = (key) => dict[uiLang]?.[key] || dict['en'][key] || key;
 const roleName = (r) => t('role_' + (r || 'user')) || r;
 
-// Функция applyUILanguage теперь определена до вызова
-function applyUILanguage() {
+// Применяем локализацию сразу (без отдельной функции)
+(function() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (dict[uiLang]?.[key]) el.innerText = dict[uiLang][key];
@@ -51,8 +51,7 @@ function applyUILanguage() {
     if (dict[uiLang]?.[key]) el.placeholder = dict[uiLang][key];
   });
   document.title = uiLang === 'ru' ? 'НБСС' : 'NBSS';
-}
-applyUILanguage();
+})();
 
 let selectedAdminUser = null;
 
