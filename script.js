@@ -10,48 +10,18 @@ const ROLE_HIERARCHY = {
   owner: 5, head_admin: 4, admin: 3, moderator: 2, event_moderator: 1, user: 0
 };
 
-// ========== Локализация (встроена, не требует отдельной функции) ==========
-const userLang = (navigator.language || 'en').split('-')[0];
-const uiLang = ['ru', 'en'].includes(userLang) ? userLang : 'en';
-const dict = {
-  ru: {
-    home: 'Главная', profile: 'Профиль', events: 'Ивенты', admin: 'Админка', theme: 'Тема',
-    logout: 'Выйти', login: 'Войти', register: 'Регистрация', search: '🔍 Поиск...',
-    welcome: '👋 Добро пожаловать в НБСС!', login_title: '🔐 Вход', username: 'Логин',
-    password: 'Пароль', login_btn: 'Войти', register_title: '📝 Регистрация',
-    register_btn: 'Создать аккаунт', no_account: 'Нет аккаунта?', register_link: 'Зарегистрироваться',
-    publish: 'Опубликовать', translate: '🌐 Перевести', original: '↩️ Оригинал',
-    ban_title: '🚫 Вы забанены',
-    role_owner: '👑 Владелец', role_head_admin: '🛡️ Гл. админ', role_admin: '🔴 Администратор',
-    role_moderator: '🔵 Модератор', role_event_moderator: '📅 Ивент-модер', role_user: ''
-  },
-  en: {
-    home: 'Home', profile: 'Profile', events: 'Events', admin: 'Admin', theme: 'Theme',
-    logout: 'Logout', login: 'Login', register: 'Register', search: '🔍 Search...',
-    welcome: '👋 Welcome to NBSS!', login_title: '🔐 Login', username: 'Username',
-    password: 'Password', login_btn: 'Login', register_title: '📝 Register',
-    register_btn: 'Create Account', no_account: 'Don\'t have an account?', register_link: 'Register',
-    publish: 'Publish', translate: '🌐 Translate', original: '↩️ Original',
-    ban_title: '🚫 You are banned',
-    role_owner: '👑 Owner', role_head_admin: '🛡️ Head Admin', role_admin: '🔴 Administrator',
-    role_moderator: '🔵 Moderator', role_event_moderator: '📅 Event Moderator', role_user: ''
-  }
+// Простые названия ролей (всегда на русском)
+const roleName = (r) => {
+  const names = {
+    owner: '👑 Владелец',
+    head_admin: '🛡️ Гл. админ',
+    admin: '🔴 Администратор',
+    moderator: '🔵 Модератор',
+    event_moderator: '📅 Ивент-модер',
+    user: ''
+  };
+  return names[r] || '';
 };
-const t = (key) => dict[uiLang]?.[key] || dict['en'][key] || key;
-const roleName = (r) => t('role_' + (r || 'user')) || r;
-
-// Применяем локализацию сразу (без вызова отдельной функции)
-(function() {
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    if (dict[uiLang]?.[key]) el.innerText = dict[uiLang][key];
-  });
-  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-    const key = el.getAttribute('data-i18n-placeholder');
-    if (dict[uiLang]?.[key]) el.placeholder = dict[uiLang][key];
-  });
-  document.title = uiLang === 'ru' ? 'НБСС' : 'NBSS';
-})();
 
 let selectedAdminUser = null;
 
@@ -233,20 +203,19 @@ function attachPostActions() {
       if (translatedPosts[postId]?.translated) {
         textEl.innerHTML = originalHTML;
         translatedPosts[postId].translated = false;
-        this.textContent = t('translate');
+        this.textContent = '🌐 Перевести';
         return;
       }
       const plainText = textEl.innerText.trim();
       if (!plainText) return;
       try {
-        const target = uiLang === 'ru' ? 'en' : 'ru';
-        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${target}&dt=t&q=${encodeURIComponent(plainText)}`;
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(plainText)}`;
         const res = await fetch(url);
         const data = await res.json();
         const translated = data[0].map(part => part[0]).join('');
         translatedPosts[postId] = { original: originalHTML, translated: true };
         textEl.innerText = translated;
-        this.textContent = t('original');
+        this.textContent = '↩️ Оригинал';
       } catch (e) { showToast('Ошибка перевода', 'error'); }
     };
   });
@@ -339,7 +308,6 @@ document.getElementById('banUserBtn')?.addEventListener('click', async () => {
 });
 
 document.getElementById('searchButton')?.addEventListener('click', () => {
-  const q = document.getElementById('searchInput').value.trim();
   showToast('Поиск пока не реализован', 'error');
 });
 
