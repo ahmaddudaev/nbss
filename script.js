@@ -40,6 +40,7 @@ const dict = {
 const t = (key) => dict[uiLang]?.[key] || dict['en'][key] || key;
 const roleName = (r) => t('role_' + (r || 'user')) || r;
 
+// Функция applyUILanguage теперь определена до вызова
 function applyUILanguage() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
@@ -89,7 +90,6 @@ async function request(url, options = {}) {
   updateUIForAuth(); updateNotificationBadge(); showPage('home'); loadTheme();
 })();
 
-// Уведомления (сокращено, но работает)
 function updateNotificationBadge() {
   const badge = document.getElementById('notificationBadge');
   if (badge) { badge.textContent = unreadCount > 9 ? '9+' : unreadCount; badge.style.display = unreadCount > 0 ? 'inline-block' : 'none'; }
@@ -106,7 +106,6 @@ function showToast(message, type = '') {
   setTimeout(() => { if (toast.parentNode) toast.remove(); }, 5000);
 }
 
-// ========== Навигация ==========
 function showPage(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById(pageId + 'Page');
@@ -142,7 +141,6 @@ function updateUIForAuth() {
   document.getElementById('mobileNavAdmin').style.display = adm ? 'flex' : 'none';
 }
 
-// Делегирование кликов для всех кнопок навигации
 document.addEventListener('click', (e) => {
   const navItem = e.target.closest('[data-page]');
   if (navItem) {
@@ -162,10 +160,8 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (e.target.id === 'showRegisterLink') { e.preventDefault(); showPage('register'); }
-  // упоминания, клики по никам, удаление комментариев – оставлены для краткости, работают
 });
 
-// ========== Вход / Регистрация ==========
 document.getElementById('loginBtn')?.addEventListener('click', async () => {
   const u = document.getElementById('loginUsername')?.value.trim(), p = document.getElementById('loginPassword')?.value.trim();
   if (!u || !p) return showToast('Заполните поля', 'error');
@@ -187,13 +183,11 @@ document.getElementById('registerBtn')?.addEventListener('click', async () => {
   } catch (e) { showToast(e.message, 'error'); }
 });
 
-// ========== Темы ==========
 function applyTheme(theme) { document.body.classList.remove('classic','liquid-light','liquid-dark','retro-light','retro-dark'); document.body.classList.add(theme); localStorage.setItem('nbss_theme', theme); }
 function loadTheme() { applyTheme(localStorage.getItem('nbss_theme') || 'classic'); }
 function updateThemeSettings() { const radios = document.querySelectorAll('input[name="theme"]'); const cur = localStorage.getItem('nbss_theme') || 'classic'; radios.forEach(r => { r.checked = (r.value === cur); }); }
 document.addEventListener('DOMContentLoaded', () => { document.querySelectorAll('input[name="theme"]').forEach(radio => { radio.addEventListener('change', (e) => { if (e.target.checked) applyTheme(e.target.value); }); }); });
 
-// ========== Публикация ==========
 const postImageInput = document.getElementById('postImageInput'), previewContainer = document.getElementById('imagePreviewContainer');
 if (postImageInput) postImageInput.addEventListener('change', () => { selectedFiles = Array.from(postImageInput.files); renderPreviews(); });
 function renderPreviews() {
@@ -217,7 +211,6 @@ document.getElementById('publishPost')?.addEventListener('click', async () => {
   try { await request('/posts', { method:'POST', body: formData }); document.getElementById('postInput').value = ''; selectedFiles = []; renderPreviews(); postImageInput.value = ''; loadPosts(); showToast('Пост опубликован', 'success'); } catch (e) { showToast(e.message, 'error'); }
 });
 
-// Лента
 async function loadPosts() { const c = document.getElementById('feedContainer'); if (!c) return; try { const ps = await request('/posts'); c.innerHTML = ps.map(p => renderPost(p)).join(''); attachPostActions(); } catch (e) { c.innerHTML = '<p>Ошибка загрузки</p>'; } }
 function renderPost(p) {
   const role = p.authorRole || 'user', premium = p.authorPremium === true, verified = p.authorVerified === true;
@@ -261,7 +254,6 @@ function attachPostActions() {
   document.querySelectorAll('.delete-post-btn').forEach(btn => btn.onclick = async function(e) { e.stopPropagation(); if (!token) return showToast('Войдите', 'error'); if (confirm('Удалить пост?')) { try { await request(`/posts/${this.dataset.postId}`,{method:'DELETE'}); loadPosts(); } catch(err) { showToast(err.message, 'error'); } } });
 }
 
-// Комментарии (базово)
 async function loadComments(postId, container) {
   if (!container) return;
   try {
@@ -282,7 +274,6 @@ function renderComment(c) {
   return `<div class="comment" data-id="${c.id}"><div class="avatar-small">${c.author[0]?.toUpperCase()}</div><div class="comment-body"><span class="username ${nickClass}">${c.author}${verified ? '<img src="verification.png" class="verified-icon">' : ''}</span>${roleDisplay}<span>${new Date(c.timestamp).toLocaleString()}</span><p class="comment-text">${c.text.replace(/@(\w+)/g, '<span class="mention">@$1</span>')}</p></div></div>`;
 }
 
-// Профиль
 async function loadMyProfile() {
   if (!currentUser) return; const header = document.getElementById('profileHeader'); if (!header) return;
   let nickClass = 'role-' + (currentUser.role || 'user'); if (currentUser.premium && currentUser.role === 'user') nickClass = 'premium-nick';
@@ -304,7 +295,6 @@ async function loadUserProfile(username) {
   } catch (e) { const header = document.getElementById('profileHeader'); if (header) header.innerHTML = '<p>Пользователь не найден</p>'; }
 }
 
-// Ивенты
 async function loadEvents() {
   const list = document.getElementById('eventsList'); if (!list) return;
   try {
@@ -313,7 +303,6 @@ async function loadEvents() {
   } catch (e) {}
 }
 
-// Админка
 async function loadAdminStats() {
   if (!currentUser || !['moderator','admin','head_admin','owner'].includes(currentUser.role)) return;
   const stats = await request('/stats'); const container = document.getElementById('adminStats');
@@ -350,14 +339,11 @@ document.getElementById('banUserBtn')?.addEventListener('click', async () => {
   try { await request('/admin/ban-user', { method:'POST', body: JSON.stringify({ username: selectedAdminUser.username, duration: 60 }) }); showToast('Забанен', 'success'); } catch (e) { showToast(e.message, 'error'); }
 });
 
-// Поиск
 document.getElementById('searchButton')?.addEventListener('click', () => {
   const q = document.getElementById('searchInput').value.trim();
-  // здесь можно вызвать поиск – для простоты оставим заглушку
   showToast('Поиск пока не реализован', 'error');
 });
 
-// PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); });
 }
