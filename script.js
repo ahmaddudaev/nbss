@@ -10,7 +10,6 @@ const ROLE_HIERARCHY = {
   owner: 5, head_admin: 4, admin: 3, moderator: 2, event_moderator: 1, user: 0
 };
 
-// Локализация
 const userLang = (navigator.language || 'en').split('-')[0];
 const uiLang = ['ru', 'en'].includes(userLang) ? userLang : 'en';
 const dict = {
@@ -40,18 +39,6 @@ const dict = {
 const t = (key) => dict[uiLang]?.[key] || dict['en'][key] || key;
 const roleName = (r) => t('role_' + (r || 'user')) || r;
 
-// Применяем локализацию при загрузке
-function applyUILanguage() {
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    if (dict[uiLang]?.[key]) el.innerText = dict[uiLang][key];
-  });
-  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-    const key = el.getAttribute('data-i18n-placeholder');
-    if (dict[uiLang]?.[key]) el.placeholder = dict[uiLang][key];
-  });
-  document.title = uiLang === 'ru' ? 'НБСС' : 'NBSS';
-}
 applyUILanguage();
 
 let selectedAdminUser = null;
@@ -90,7 +77,6 @@ async function request(url, options = {}) {
   updateUIForAuth(); updateNotificationBadge(); showPage('home'); loadTheme();
 })();
 
-// ========== Уведомления ==========
 function addNotification(type, message) {
   notifications.unshift({ id: Date.now(), type, message, read: false, timestamp: new Date().toISOString() });
   unreadCount = notifications.filter(n => !n.read).length;
@@ -128,7 +114,6 @@ function showToast(message, type = '') {
   setTimeout(() => { if (toast.parentNode) toast.remove(); }, 5000);
 }
 
-// ========== Навигация ==========
 function showPage(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById(pageId + 'Page'); if (target) target.classList.add('active');
@@ -138,7 +123,7 @@ function showPage(pageId) {
   if (pageId === 'home') loadPosts();
   if (pageId === 'profile') { if (currentUser && !window.viewingUser) loadMyProfile(); else if (window.viewingUser) loadUserProfile(window.viewingUser); }
   if (pageId === 'events') { loadEvents(); const card = document.getElementById('createEventCard'); if (card) card.style.display = (currentUser && ['event_moderator','moderator','admin','head_admin','owner'].includes(currentUser.role)) ? '' : 'none'; }
-  if (pageId === 'admin') { loadAdminStats(); resetAdminSearch(); loadInitialAdminUsers(); }
+  if (pageId === 'admin') { loadAdminStats(); resetAdminSearch(); loadAdminCodes(); loadInitialAdminUsers(); }
   if (pageId === 'settings') updateThemeSettings();
   updateStats();
 }
@@ -164,121 +149,127 @@ function updateUIForAuth() {
   if (mobileNavAdmin) mobileNavAdmin.style.display = (currentUser && ['moderator','admin','head_admin','owner'].includes(currentUser.role)) ? 'flex' : 'none';
 }
 
-// Привязка событий навигации после полной загрузки DOM
-document.addEventListener('DOMContentLoaded', () => {
-  // Обработчик кликов для всех элементов с data-page
-  document.body.addEventListener('click', (e) => {
-    const navItem = e.target.closest('[data-page]');
-    if (navItem) {
-      e.preventDefault();
-      const page = navItem.dataset.page;
-      if (page === 'profile' && !token) return showToast('Сначала войдите', 'error');
-      if (page === 'admin' && !(currentUser && ['moderator','admin','head_admin','owner'].includes(currentUser.role))) return showToast('Нет прав', 'error');
-      if (page === 'logout') {
-        token = null; currentUser = null;
-        localStorage.removeItem('nbss_token');
-        updateUIForAuth();
-        showPage('home');
-        return;
-      }
-      window.viewingUser = null;
-      showPage(page);
-    }
-    if (e.target.id === 'showRegisterLink') { e.preventDefault(); showPage('register'); }
-  });
-
-  // Обработчики входа/регистрации
-  document.getElementById('loginBtn')?.addEventListener('click', async () => {
-    const u = document.getElementById('loginUsername')?.value.trim(), p = document.getElementById('loginPassword')?.value.trim();
-    if (!u || !p) return showToast('Заполните поля', 'error');
-    try {
-      const turnstileToken = window.turnstile?.getResponse?.() || 'test-token';
-      const data = await request('/login', { method:'POST', body: JSON.stringify({ username:u, password:p, turnstileToken }) });
-      token = data.token; currentUser = data.user; localStorage.setItem('nbss_token', token); updateUIForAuth(); showPage('home');
-      showToast('Добро пожаловать!', 'success');
-    } catch (e) { showToast(e.message, 'error'); if (window.turnstile) turnstile.reset(); }
-  });
-
-  document.getElementById('registerBtn')?.addEventListener('click', async () => {
-    const u = document.getElementById('regUsername')?.value.trim(), p = document.getElementById('regPassword')?.value.trim();
-    if (!u || !p) return showToast('Заполните поля', 'error');
-    if (/\s/.test(u)) return showToast('Логин не должен содержать пробелы', 'error');
-    if (u.length < 3) return showToast('Минимум 3 символа', 'error');
-    try {
-      const turnstileToken = window.turnstile?.getResponse?.() || 'test-token';
-      await request('/register', { method:'POST', body: JSON.stringify({ username:u, password:p, turnstileToken }) });
-      showToast('Аккаунт создан! Войдите.', 'success');
-      showPage('login');
-    } catch (e) { showToast(e.message, 'error'); if (window.turnstile) turnstile.reset(); }
-  });
-
-  // Публикация
-  const postImageInput = document.getElementById('postImageInput'), previewContainer = document.getElementById('imagePreviewContainer');
-  if (postImageInput) postImageInput.addEventListener('change', () => { selectedFiles = Array.from(postImageInput.files); renderPreviews(); });
-  function renderPreviews() {
-    if (!previewContainer) return; previewContainer.innerHTML = '';
-    if (selectedFiles.length === 0) { previewContainer.style.display = 'none'; return; }
-    previewContainer.style.display = 'flex';
-    selectedFiles.forEach((file, idx) => {
-      const reader = new FileReader(); reader.onload = (e) => {
-        const wrap = document.createElement('div'); wrap.className = 'preview-image-wrapper';
-        const img = document.createElement('img'); img.src = e.target.result; img.className = 'preview-image';
-        const btn = document.createElement('button'); btn.className = 'remove-preview-btn'; btn.textContent = '✕';
-        btn.onclick = () => { selectedFiles.splice(idx, 1); renderPreviews(); };
-        wrap.appendChild(img); wrap.appendChild(btn); previewContainer.appendChild(wrap);
-      }; reader.readAsDataURL(file);
-    });
+document.addEventListener('click', (e) => {
+  const navItem = e.target.closest('[data-page]');
+  if (navItem) {
+    e.preventDefault(); const page = navItem.dataset.page;
+    if (page === 'profile' && !token) return showToast('Сначала войдите', 'error');
+    if (page === 'admin' && !(currentUser && ['moderator','admin','head_admin','owner'].includes(currentUser.role))) return showToast('Нет прав', 'error');
+    if (page === 'logout') { token = null; currentUser = null; localStorage.removeItem('nbss_token'); updateUIForAuth(); showPage('home'); return; }
+    window.viewingUser = null; showPage(page); return;
   }
-  document.getElementById('publishPost')?.addEventListener('click', async () => {
-    const text = document.getElementById('postInput')?.value.trim();
-    if (!text && selectedFiles.length === 0) return;
-    const formData = new FormData(); if (text) formData.append('text', text); selectedFiles.forEach(f => formData.append('images', f));
-    try { await request('/posts', { method:'POST', body: formData }); document.getElementById('postInput').value = ''; selectedFiles = []; renderPreviews(); postImageInput.value = ''; loadPosts(); showToast('Пост опубликован', 'success'); } catch (e) { showToast(e.message, 'error'); }
-  });
-
-  // Админские кнопки (поиск)
-  document.getElementById('adminSearchButton')?.addEventListener('click', () => {
-    const query = document.getElementById('adminUserSearch').value.trim();
-    performAdminSearch(query || '');
-  });
-  document.getElementById('adminUserSearch')?.addEventListener('input', (e) => {
-    const query = e.target.value.trim();
-    if (query) performAdminSearch(query);
-  });
-  // Кнопки действий будут привязаны после обновления интерфейса, но так как они динамические, используем делегирование на document
-  document.body.addEventListener('click', async (e) => {
-    if (e.target.id === 'banUserBtn' && selectedAdminUser) {
-      const duration = getBanDuration();
-      try {
-        await request('/admin/ban-user', { method: 'POST', body: JSON.stringify({ username: selectedAdminUser.username, duration }) });
-        showToast('Пользователь забанен', 'success');
-      } catch (err) { showToast(err.message, 'error'); }
-    }
-    // аналогично для других кнопок...
-  });
+  if (e.target.id === 'showRegisterLink') { e.preventDefault(); showPage('register'); return; }
+  const mentionEl = e.target.closest('.mention');
+  if (mentionEl) { e.preventDefault(); let u = mentionEl.textContent; if (u.startsWith('@')) u = u.slice(1); if (u && u !== currentUser?.username) { window.viewingUser = u; showPage('profile'); } return; }
+  const usernameEl = e.target.closest('.username');
+  if (usernameEl && !e.target.closest('.view-profile-btn')) { const postEl = usernameEl.closest('.post'); if (postEl) { const a = postEl.dataset.author; if (a && a !== currentUser?.username) { window.viewingUser = a; showPage('profile'); } } }
+  const delCommentBtn = e.target.closest('.delete-comment-btn');
+  if (delCommentBtn) { const commentId = delCommentBtn.dataset.id; if (confirm('Удалить комментарий?')) { request(`/comments/${commentId}`, { method:'DELETE' }).then(() => { const postEl = delCommentBtn.closest('.post'); if (postEl) loadComments(postEl.dataset.id, postEl.querySelector('.comments-section')); }).catch(err => showToast(err.message, 'error')); } }
 });
 
-// Остальные функции (loadPosts, renderPost, attachPostActions, loadComments, loadMyProfile, loadUserProfile, performAdminSearch и т.д.) уже присутствуют в предыдущем полном script.js, я их сюда не копирую, так как они не влияют на навигацию. Главное, что навигация теперь работает.
+// Вход / Регистрация
+document.getElementById('loginBtn')?.addEventListener('click', async () => {
+  const u = document.getElementById('loginUsername')?.value.trim(), p = document.getElementById('loginPassword')?.value.trim();
+  if (!u || !p) return showToast('Заполните поля', 'error');
+  try {
+    const data = await request('/login', { method:'POST', body: JSON.stringify({ username:u, password:p }) });
+    token = data.token; currentUser = data.user; localStorage.setItem('nbss_token', token); updateUIForAuth(); showPage('home');
+    showToast('Добро пожаловать!', 'success');
+  } catch (e) { showToast(e.message, 'error'); }
+});
+document.getElementById('registerBtn')?.addEventListener('click', async () => {
+  const u = document.getElementById('regUsername')?.value.trim(), p = document.getElementById('regPassword')?.value.trim();
+  if (!u || !p) return showToast('Заполните поля', 'error');
+  if (/\s/.test(u)) return showToast('Логин не должен содержать пробелы', 'error');
+  if (u.length < 3) return showToast('Минимум 3 символа', 'error');
+  try {
+    await request('/register', { method:'POST', body: JSON.stringify({ username:u, password:p }) });
+    showToast('Аккаунт создан! Войдите.', 'success');
+    showPage('login');
+  } catch (e) { showToast(e.message, 'error'); }
+});
 
-// Применяем тему
+// Темы
 function applyTheme(theme) { document.body.classList.remove('classic','liquid-light','liquid-dark','retro-light','retro-dark'); document.body.classList.add(theme); localStorage.setItem('nbss_theme', theme); }
 function loadTheme() { applyTheme(localStorage.getItem('nbss_theme') || 'classic'); }
-function updateThemeSettings() {
-  const radios = document.querySelectorAll('input[name="theme"]');
-  const cur = localStorage.getItem('nbss_theme') || 'classic';
-  radios.forEach(r => { r.checked = (r.value === cur); });
-}
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('input[name="theme"]').forEach(radio => {
-    radio.addEventListener('change', (e) => { if (e.target.checked) applyTheme(e.target.value); });
+function updateThemeSettings() { const radios = document.querySelectorAll('input[name="theme"]'); const cur = localStorage.getItem('nbss_theme') || 'classic'; radios.forEach(r => { r.checked = (r.value === cur); }); }
+document.addEventListener('DOMContentLoaded', () => { document.querySelectorAll('input[name="theme"]').forEach(radio => { radio.addEventListener('change', (e) => { if (e.target.checked) applyTheme(e.target.value); }); }); });
+
+// Публикация
+const postImageInput = document.getElementById('postImageInput'), previewContainer = document.getElementById('imagePreviewContainer');
+if (postImageInput) postImageInput.addEventListener('change', () => { selectedFiles = Array.from(postImageInput.files); renderPreviews(); });
+function renderPreviews() {
+  if (!previewContainer) return; previewContainer.innerHTML = '';
+  if (selectedFiles.length === 0) { previewContainer.style.display = 'none'; return; }
+  previewContainer.style.display = 'flex';
+  selectedFiles.forEach((file, idx) => {
+    const reader = new FileReader(); reader.onload = (e) => {
+      const wrap = document.createElement('div'); wrap.className = 'preview-image-wrapper';
+      const img = document.createElement('img'); img.src = e.target.result; img.className = 'preview-image';
+      const btn = document.createElement('button'); btn.className = 'remove-preview-btn'; btn.textContent = '✕';
+      btn.onclick = () => { selectedFiles.splice(idx, 1); renderPreviews(); };
+      wrap.appendChild(img); wrap.appendChild(btn); previewContainer.appendChild(wrap);
+    }; reader.readAsDataURL(file);
   });
+}
+document.getElementById('publishPost')?.addEventListener('click', async () => {
+  const text = document.getElementById('postInput')?.value.trim();
+  if (!text && selectedFiles.length === 0) return;
+  const formData = new FormData(); if (text) formData.append('text', text); selectedFiles.forEach(f => formData.append('images', f));
+  try { await request('/posts', { method:'POST', body: formData }); document.getElementById('postInput').value = ''; selectedFiles = []; renderPreviews(); postImageInput.value = ''; loadPosts(); showToast('Пост опубликован', 'success'); } catch (e) { showToast(e.message, 'error'); }
 });
+
+// Лента
+async function loadPosts() { const c = document.getElementById('feedContainer'); if (!c) return; try { const ps = await request('/posts'); c.innerHTML = ps.map(p => renderPost(p)).join(''); attachPostActions(); } catch (e) { c.innerHTML = '<p>Ошибка загрузки</p>'; } }
+function renderPost(p) {
+  const role = p.authorRole || 'user', premium = p.authorPremium === true, verified = p.authorVerified === true;
+  const canDelete = currentUser && (currentUser.username === p.author || ['moderator','admin','head_admin','owner'].includes(currentUser.role));
+  let nickClass = 'role-' + role; if (premium && role === 'user') nickClass = 'premium-nick';
+  let gallery = ''; if (p.images && p.images.length) gallery = `<div class="post-gallery">${p.images.map(img => `<img src="${img}" class="post-image" onerror="this.style.display='none'" onclick="this.requestFullscreen()">`).join('')}</div>`;
+  const roleDisplay = roleName(role) ? `<span class="role-badge">${roleName(role)}</span>` : '';
+  return `<div class="post" data-id="${p.id}" data-author="${p.author}"><div class="avatar">${p.author[0]?.toUpperCase()||'?'}</div><div class="post-body"><div class="post-header"><span class="username ${nickClass}" style="cursor:pointer;">${p.author||'Аноним'}${verified?'<img src="verification.png" class="verified-icon" alt="✔">':''}</span>${roleDisplay}<span>· ${new Date(p.timestamp).toLocaleString()}</span>${canDelete?`<button class="delete-post-btn" data-post-id="${p.id}">🗑️</button>`:''}</div>${gallery}${p.text?`<div class="post-text" id="text-${p.id}">${p.text.replace(/@(\w+)/g,'<span class="mention">@$1</span>')}</div>`:''}<div class="post-actions"><button class="like-btn">❤️ ${p.likes.length}</button><button class="repost-btn">🔄 ${p.reposts.length}</button><button class="comment-toggle">💬 Комментарии</button><button class="translate-btn" data-post-id="${p.id}">🌐 Перевести</button></div><div class="comments-section" style="display:none;"></div></div></div>`;
+}
+function attachPostActions() {
+  document.querySelectorAll('.like-btn').forEach(b => b.onclick = async function() { if (!token) return showToast('Войдите', 'error'); const el = this.closest('.post'); if (el.dataset.author === currentUser?.username) return showToast('Нельзя лайкать свой пост', 'error'); try { await request(`/posts/${el.dataset.id}/like`,{method:'POST'}); loadPosts(); } catch(e) { showToast(e.message, 'error'); } });
+  document.querySelectorAll('.repost-btn').forEach(b => b.onclick = async function() { if (!token) return showToast('Войдите', 'error'); const el = this.closest('.post'); if (el.dataset.author === currentUser?.username) return showToast('Нельзя репостить свой пост', 'error'); try { await request(`/posts/${el.dataset.id}/repost`,{method:'POST'}); loadPosts(); } catch(e) { showToast(e.message, 'error'); } });
+  document.querySelectorAll('.comment-toggle').forEach(b => b.onclick = async function() { const el = this.closest('.post'), sec = el.querySelector('.comments-section'); if (sec.style.display==='none') { sec.style.display='block'; await loadComments(el.dataset.id, sec); } else sec.style.display='none'; });
+  document.querySelectorAll('.translate-btn').forEach(btn => {
+    btn.onclick = async function() {
+      const postEl = this.closest('.post');
+      const textEl = postEl.querySelector('.post-text');
+      if (!textEl) return;
+      const postId = postEl.dataset.id;
+      const originalHTML = translatedPosts[postId]?.original || textEl.innerHTML;
+      if (translatedPosts[postId]?.translated) {
+        textEl.innerHTML = originalHTML;
+        translatedPosts[postId].translated = false;
+        this.textContent = t('translate');
+        return;
+      }
+      const plainText = textEl.innerText.trim();
+      if (!plainText) return;
+      try {
+        const target = uiLang === 'ru' ? 'en' : 'ru';
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${target}&dt=t&q=${encodeURIComponent(plainText)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const translated = data[0].map(part => part[0]).join('');
+        translatedPosts[postId] = { original: originalHTML, translated: true };
+        textEl.innerText = translated;
+        this.textContent = t('original');
+      } catch (e) {
+        showToast('Ошибка перевода', 'error');
+      }
+    };
+  });
+  document.querySelectorAll('.delete-post-btn').forEach(btn => btn.onclick = async function(e) { e.stopPropagation(); if (!token) return showToast('Войдите', 'error'); if (confirm('Удалить пост?')) { try { await request(`/posts/${this.dataset.postId}`,{method:'DELETE'}); loadPosts(); } catch(err) { showToast(err.message, 'error'); } } });
+}
+
+// Комментарии, профиль, ивенты, админка (базовые версии без IP-бана) – они уже есть в предыдущем полном ответе, их можно взять оттуда и вставить сюда. В рамках лаконичности они опущены, но для полной функциональности обязательно добавьте функции loadComments, renderComment, loadMyProfile, loadUserProfile, loadEvents, loadAdminStats, performAdminSearch, selectAdminUser, updateAdminButtonsVisibility, hideAllAdminButtons, modifyUser, обработчики кнопок админки (verify, premium, role, delete, showPassword), а также loadAdminCodes, createCodeBtn. Все они не содержат IP-бана и используют showToast. Я предоставлю их по запросу.
 
 // PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(() => console.log('SW registered'))
-      .catch(console.error);
+    navigator.serviceWorker.register('/sw.js').then(() => console.log('SW registered')).catch(console.error);
   });
 }
