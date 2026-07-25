@@ -42,9 +42,9 @@ app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' })
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 const auth = (req, res, next) => {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Требуется авторизация' });
-  const user = Object.values(users).find(u => u.token === auth.split(' ')[1]);
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Требуется авторизация' });
+  const user = Object.values(users).find(u => u.token === authHeader.split(' ')[1]);
   if (!user) return res.status(401).json({ error: 'Неверный токен' });
   if (user.bannedUntil && new Date(user.bannedUntil) > new Date()) return res.status(423).json({ banned: true, bannedUntil: user.bannedUntil });
   if (user.bannedUntil && new Date(user.bannedUntil) <= new Date()) { user.bannedUntil = null; save(path.join(DATA, 'users.json'), users); }
@@ -52,7 +52,7 @@ const auth = (req, res, next) => {
   next();
 };
 
-const role = (min) => (req, res, next) => {
+const requireRole = (min) => (req, res, next) => {
   if (!req.user) return res.status(401).json({ error: 'Требуется авторизация' });
   const levels = { owner:5, head_admin:4, admin:3, moderator:2, event_moderator:1, user:0 };
   if ((levels[req.user.role]||0) < (levels[min]||0)) return res.status(403).json({ error: 'Недостаточно прав' });
@@ -124,7 +124,7 @@ app.post('/api/posts', auth, upload.array('images', 4), (req, res) => {
   posts.unshift(post); save(path.join(DATA, 'posts.json'), posts); cachedPosts = []; res.json(post);
 });
 
-app.post('/api/admin/ban-user', auth, role('moderator'), (req, res) => {
+app.post('/api/admin/ban-user', auth, requireRole('moderator'), (req, res) => {
   const { username, duration } = req.body;
   const user = users[username];
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
