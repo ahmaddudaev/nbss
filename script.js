@@ -10,7 +10,6 @@ const ROLE_HIERARCHY = {
   owner: 5, head_admin: 4, admin: 3, moderator: 2, event_moderator: 1, user: 0
 };
 
-// Простые названия ролей (всегда на русском)
 const roleName = (r) => {
   const names = {
     owner: '👑 Владелец',
