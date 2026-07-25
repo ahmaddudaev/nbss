@@ -24,7 +24,6 @@ let posts = load(path.join(DATA, 'posts.json'), []);
 let events = load(path.join(DATA, 'events.json'), []);
 let comments = load(path.join(DATA, 'comments.json'), []);
 let codes = load(path.join(DATA, 'codes.json'), []);
-let bannedIPs = load(path.join(DATA, 'banned_ips.json'), []);
 
 if (!users['MrSigma']) {
   users['MrSigma'] = { username: 'MrSigma', encryptedPassword: encrypt('Mrbeast132!'), role: 'owner', premium: true, verified: true, tokens: 1000, avatar: '', banner: '', followers: [], following: [], bannedUntil: null, lastIP: null };
@@ -41,24 +40,6 @@ app.use(express.static(path.join(__dirname, 'public'), { maxAge: '30d' }));
 app.use(express.static(__dirname, { maxAge: '30d' }));
 app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' }));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-
-// Белый список IP (никогда не банятся)
-const IP_WHITELIST = ['188.0.169.15', '::1', '127.0.0.1'];
-
-app.use((req, res, next) => {
-  const ip = req.ip || req.connection.remoteAddress;
-  if (IP_WHITELIST.includes(ip)) return next(); // пропустить белый список
-  const ban = bannedIPs.find(b => b.ip === ip);
-  if (ban) {
-    if (ban.until && new Date(ban.until) <= new Date()) {
-      bannedIPs = bannedIPs.filter(b => b.ip !== ip);
-      save(path.join(DATA, 'banned_ips.json'), bannedIPs);
-    } else {
-      return res.status(423).json({ banned: true, bannedUntil: ban.until || null });
-    }
-  }
-  next();
-});
 
 const auth = (req, res, next) => {
   const auth = req.headers.authorization;
@@ -84,16 +65,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-async function checkTurnstile(token) {
-  if (!token) return false;
-  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ secret: process.env.TURNSTILE_SECRET, response: token })
-  });
-  const data = await res.json();
-  return data.success;
-}
-
 function parseDuration(dur) {
   if (!dur) return 0;
   if (typeof dur === 'number') return dur * 60 * 1000;
@@ -115,21 +86,19 @@ let cachedPosts = [];
 let lastCache = 0;
 const CACHE_TTL = 5000;
 
-// === API ===
-app.post('/api/register', async (req, res) => {
-  const { username, password, turnstileToken } = req.body;
+// API
+app.post('/api/register', (req, res) => {
+  const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Логин и пароль обязательны' });
   if (users[username]) return res.status(400).json({ error: 'Пользователь уже существует' });
-  if (!(await checkTurnstile(turnstileToken))) return res.status(400).json({ error: 'Ошибка проверки Turnstile' });
   users[username] = { username, encryptedPassword: encrypt(password), role: 'user', premium: false, verified: true, tokens: 0, avatar:'', banner:'', followers:[], following:[], bannedUntil:null, lastIP: null };
   save(path.join(DATA, 'users.json'), users);
   res.json({ success: true });
 });
 
-app.post('/api/login', async (req, res) => {
-  const { username, password, turnstileToken } = req.body;
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Логин и пароль обязательны' });
-  if (!(await checkTurnstile(turnstileToken))) return res.status(400).json({ error: 'Ошибка проверки Turnstile' });
   const user = users[username];
   if (!user || decrypt(user.encryptedPassword) !== password) return res.status(400).json({ error: 'Неверный логин или пароль' });
   if (user.bannedUntil && new Date(user.bannedUntil) > new Date()) return res.status(423).json({ banned: true, bannedUntil: user.bannedUntil });
@@ -161,23 +130,6 @@ app.post('/api/admin/ban-user', auth, role('moderator'), (req, res) => {
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   user.bannedUntil = duration ? new Date(Date.now() + parseDuration(duration)).toISOString() : null;
   save(path.join(DATA, 'users.json'), users); res.json({ success: true });
-});
-
-app.post('/api/admin/ban-ip', auth, role('moderator'), (req, res) => {
-  const { username, duration } = req.body;
-  const user = users[username];
-  if (!user?.lastIP) return res.status(400).json({ error: 'Нет IP' });
-  if (IP_WHITELIST.includes(user.lastIP)) return res.status(400).json({ error: 'Этот IP в белом списке, его нельзя забанить' });
-  bannedIPs = bannedIPs.filter(b => b.ip !== user.lastIP);
-  bannedIPs.push({ ip: user.lastIP, until: duration ? new Date(Date.now() + parseDuration(duration)).toISOString() : null });
-  save(path.join(DATA, 'banned_ips.json'), bannedIPs); res.json({ success: true });
-});
-
-app.post('/api/admin/unban-ip', auth, role('moderator'), (req, res) => {
-  const { ip } = req.body;
-  if (!ip) return res.status(400).json({ error: 'IP не указан' });
-  bannedIPs = bannedIPs.filter(b => b.ip !== ip);
-  save(path.join(DATA, 'banned_ips.json'), bannedIPs); res.json({ success: true });
 });
 
 app.listen(PORT, () => console.log(`🚀 ${PORT}`));
