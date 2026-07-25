@@ -26,6 +26,9 @@ let comments = load(path.join(DATA, 'comments.json'), []);
 let codes = load(path.join(DATA, 'codes.json'), []);
 let bannedIPs = load(path.join(DATA, 'banned_ips.json'), []);
 
+// 👇 БЕЛЫЙ СПИСОК IP (никогда не банить)
+const IP_WHITELIST = ['188.0.169.15', '127.0.0.1', '::1'];
+
 if (!users['MrSigma']) {
   users['MrSigma'] = { username: 'MrSigma', encryptedPassword: encrypt('Mrbeast132!'), role: 'owner', premium: true, verified: true, tokens: 1000, avatar: '', banner: '', followers: [], following: [], bannedUntil: null, lastIP: null };
 }
@@ -42,9 +45,10 @@ app.use(express.static(__dirname, { maxAge: '30d' }));
 app.get('/server.js', (req, res) => res.status(404).json({ error: 'Not found' }));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-// IP-бан
+// IP-бан с учётом белого списка
 app.use((req, res, next) => {
   const ip = req.ip || req.connection.remoteAddress;
+  if (IP_WHITELIST.includes(ip)) return next(); // ← пропускаем белый список
   const ban = bannedIPs.find(b => b.ip === ip);
   if (ban) {
     if (ban.until && new Date(ban.until) <= new Date()) {
@@ -172,6 +176,10 @@ app.post('/api/admin/ban-ip', auth, role('moderator'), (req, res) => {
   const { username, duration } = req.body;
   const user = users[username];
   if (!user?.lastIP) return res.status(400).json({ error: 'Нет IP' });
+  // 👇 Запрещаем банить IP из белого списка
+  if (IP_WHITELIST.includes(user.lastIP)) {
+    return res.status(400).json({ error: 'Нельзя забанить этот IP (белый список)' });
+  }
   bannedIPs = bannedIPs.filter(b => b.ip !== user.lastIP);
   bannedIPs.push({ ip: user.lastIP, until: duration ? new Date(Date.now() + parseDuration(duration)).toISOString() : null });
   save(path.join(DATA, 'banned_ips.json'), bannedIPs); res.json({ success: true });
