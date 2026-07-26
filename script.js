@@ -49,7 +49,16 @@ async function request(url, options = {}) {
   const res = await fetch(API + url, { ...options, headers: { ...headers, ...options.headers } });
   if (res.status === 423) { const data = await res.json(); showBanScreen(data.bannedUntil); throw new Error('BANNED'); }
   if (res.status === 401) { token = null; currentUser = null; localStorage.removeItem('nbss_token'); updateUIForAuth(); throw new Error('Сессия истекла'); }
-  if (!res.ok) { const err = await res.json().catch(() => ({ error: 'Ошибка сети' })); throw new Error(err.error || 'Ошибка'); }
+  if (!res.ok) {
+    let msg = 'Ошибка сети';
+    try {
+      const err = await res.json();
+      msg = err.error || msg;
+    } catch (e) {
+      try { msg = await res.text(); } catch (e2) {}
+    }
+    throw new Error(msg);
+  }
   return res.json();
 }
 
@@ -272,8 +281,11 @@ async function loadEvents() {
 
 async function loadAdminStats() {
   if (!currentUser || !['moderator','admin','head_admin','owner'].includes(currentUser.role)) return;
-  const stats = await request('/stats'); const container = document.getElementById('adminStats');
-  if (container) container.innerHTML = `<h3>📊 Статистика</h3><p>Пользователей: ${stats.users} | Постов: ${stats.posts}</p>`;
+  try {
+    const stats = await request('/stats');
+    const container = document.getElementById('adminStats');
+    if (container) container.innerHTML = `<h3>📊 Статистика</h3><p>Пользователей: ${stats.users} | Постов: ${stats.posts}</p>`;
+  } catch (e) { showToast('Ошибка загрузки статистики', 'error'); }
 }
 function resetAdminSearch() {
   selectedAdminUser = null;
