@@ -107,28 +107,12 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
-function parseDuration(dur) {
-  if (!dur) return 0;
-  if (typeof dur === 'number') return dur * 60 * 1000;
-  if (typeof dur === 'object' && dur.value && dur.unit) {
-    const { value, unit } = dur;
-    switch (unit) {
-      case 'minutes': return value * 60 * 1000;
-      case 'hours': return value * 3600 * 1000;
-      case 'days': return value * 86400 * 1000;
-      case 'weeks': return value * 7 * 86400 * 1000;
-      case 'years': return value * 365 * 86400 * 1000;
-      default: return 0;
-    }
-  }
-  return 0;
-}
-
 // Кэш постов
 let cachedPosts = [];
 let lastCache = 0;
 const CACHE_TTL = 5000;
 
+// ===================== API =====================
 app.post('/api/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Логин и пароль обязательны' });
@@ -158,7 +142,6 @@ app.post('/api/login', (req, res) => {
   if (!user) return res.status(400).json({ error: 'Неверный логин или пароль' });
   const decrypted = decrypt(user.encryptedPassword);
   if (decrypted === null || decrypted !== password) {
-    console.log(`Login failed for ${username}: decrypted=${decrypted}`);
     return res.status(400).json({ error: 'Неверный логин или пароль' });
   }
   if (user.bannedUntil && new Date(user.bannedUntil) > new Date())
@@ -202,10 +185,49 @@ app.post('/api/posts', auth, upload.array('images', 4), (req, res) => {
   res.json(post);
 });
 
+// ---------- Админка ----------
+app.get('/api/stats', (req, res) => {
+  res.json({
+    users: Object.keys(users).length,
+    posts: posts.length
+  });
+});
+
+app.get('/api/admin/users', auth, requireRole('moderator'), (req, res) => {
+  const list = Object.values(users).map(({ encryptedPassword, token, ...u }) => u);
+  res.json(list);
+});
+
+app.get('/api/users/search', (req, res) => {
+  const q = req.query.q?.toLowerCase() || '';
+  if (!q) return res.json([]);
+  const results = Object.values(users)
+    .filter(u => u.username.toLowerCase().includes(q))
+    .map(({ encryptedPassword, token, ...u }) => u)
+    .slice(0, 10);
+  res.json(results);
+});
+
 app.post('/api/admin/ban-user', auth, requireRole('moderator'), (req, res) => {
   const { username, duration } = req.body;
   const user = users[username];
   if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+  const parseDuration = (dur) => {
+    if (!dur) return 0;
+    if (typeof dur === 'number') return dur * 60 * 1000;
+    if (typeof dur === 'object' && dur.value && dur.unit) {
+      const { value, unit } = dur;
+      switch (unit) {
+        case 'minutes': return value * 60 * 1000;
+        case 'hours': return value * 3600 * 1000;
+        case 'days': return value * 86400 * 1000;
+        case 'weeks': return value * 7 * 86400 * 1000;
+        case 'years': return value * 365 * 86400 * 1000;
+        default: return 0;
+      }
+    }
+    return 0;
+  };
   user.bannedUntil = duration ? new Date(Date.now() + parseDuration(duration)).toISOString() : null;
   save(path.join(DATA, 'users.json'), users);
   res.json({ success: true });
